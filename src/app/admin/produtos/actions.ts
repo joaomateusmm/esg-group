@@ -70,29 +70,18 @@ export async function createProduct(rawData: ProductServerPayload) {
 }
 
 // =========================================================
-// --- DELEÇÃO CORRIGIDA (Retorna apenas o ID) ---
+// --- DELEÇÃO BLINDADA (SEM RETURNING E COM ERRO EXPOSTO) ---
 // =========================================================
 
 export async function deleteProduct(id: string) {
   console.log(`[DELETE] Tentando deletar produto ID: ${id}`);
 
   try {
-    // CORREÇÃO: .returning({ deletedId: product.id })
-    // Isso evita o erro de tentar retornar colunas que talvez não existam ou dêem conflito
-    const result = await db
-      .delete(product)
-      .where(eq(product.id, id))
-      .returning({ deletedId: product.id });
+    // MUDANÇA 1: Removemos o .returning().
+    // Se o delete funcionar, ele não dá erro. Se falhar, vai pro catch.
+    await db.delete(product).where(eq(product.id, id));
 
-    console.log("[DELETE] Resultado:", result);
-
-    if (result.length === 0) {
-      return {
-        success: false,
-        message: "Produto não encontrado ou já deletado.",
-      };
-    }
-
+    // Assumimos sucesso se não deu erro
     revalidatePath("/admin/produtos");
     revalidatePath("/");
 
@@ -101,19 +90,16 @@ export async function deleteProduct(id: string) {
     const error = err as { code?: string; message: string };
     console.error("[DELETE ERROR]", error);
 
-    // Erro de Chave Estrangeira (Produto comprado)
+    // Erro de Vínculo (Produto comprado)
     if (error.code === "23503") {
       return {
         success: false,
-        message:
-          "Não é possível excluir: Este produto já possui vendas registradas.",
+        message: "ERRO: Este produto já possui vendas e não pode ser excluído.",
       };
     }
 
-    return {
-      success: false,
-      message: "Erro ao comunicar com o banco de dados.",
-    };
+    // MUDANÇA 2: Retornamos o erro REAL para o Toast
+    return { success: false, message: `Erro do Banco: ${error.message}` };
   }
 }
 
@@ -121,22 +107,13 @@ export async function deleteProducts(ids: string[]) {
   console.log(`[BULK DELETE] IDs:`, ids);
 
   try {
-    // CORREÇÃO: Retornando apenas o ID aqui também
-    const result = await db
-      .delete(product)
-      .where(inArray(product.id, ids))
-      .returning({ deletedId: product.id });
-
-    console.log(`[BULK DELETE] Deletados: ${result.length}`);
-
-    if (result.length === 0) {
-      return { success: false, message: "Nenhum produto foi deletado." };
-    }
+    // MUDANÇA 1: Sem .returning()
+    await db.delete(product).where(inArray(product.id, ids));
 
     revalidatePath("/admin/produtos");
     revalidatePath("/");
 
-    return { success: true, message: `${result.length} produtos excluídos.` };
+    return { success: true, message: "Produtos excluídos com sucesso." };
   } catch (err) {
     const error = err as { code?: string; message: string };
     console.error("[BULK DELETE ERROR]", error);
@@ -149,6 +126,7 @@ export async function deleteProducts(ids: string[]) {
       };
     }
 
-    return { success: false, message: "Erro ao processar exclusão em massa." };
+    // MUDANÇA 2: Retornamos o erro REAL
+    return { success: false, message: `Erro do Banco: ${error.message}` };
   }
 }
