@@ -31,7 +31,7 @@ const CardNav: React.FC<CardNavProps> = ({
   items,
   className = "",
   ease = "power3.out",
-  baseColor = "#0A0A0A", // Mudei o default para algo mais escuro
+  baseColor = "#0A0A0A",
   menuColor,
 }) => {
   const [isHamburgerOpen, setIsHamburgerOpen] = useState(false);
@@ -40,7 +40,6 @@ const CardNav: React.FC<CardNavProps> = ({
   const cardsRef = useRef<HTMLDivElement[]>([]);
   const tlRef = useRef<gsap.core.Timeline | null>(null);
 
-  // --- LÓGICA DE CÁLCULO DE ALTURA (MANTIDA IGUAL) ---
   const calculateHeight = () => {
     const navEl = navRef.current;
     if (!navEl) return 260;
@@ -49,35 +48,30 @@ const CardNav: React.FC<CardNavProps> = ({
     if (isMobile) {
       const contentEl = navEl.querySelector(".card-nav-content") as HTMLElement;
       if (contentEl) {
-        const wasVisible = contentEl.style.visibility;
-        const wasPointerEvents = contentEl.style.pointerEvents;
-        const wasPosition = contentEl.style.position;
-        const wasHeight = contentEl.style.height;
+        // Clonar o elemento para medir a altura real sem afetar o layout atual
+        const clone = contentEl.cloneNode(true) as HTMLElement;
+        clone.style.visibility = "hidden";
+        clone.style.position = "absolute";
+        clone.style.height = "auto";
+        clone.style.width = `${navEl.offsetWidth}px`; // Garante que a largura seja a mesma para o wrap do texto
+        document.body.appendChild(clone);
 
-        contentEl.style.visibility = "visible";
-        contentEl.style.pointerEvents = "auto";
-        contentEl.style.position = "static";
-        contentEl.style.height = "auto";
+        const contentHeight = clone.scrollHeight;
+        document.body.removeChild(clone);
 
         const topBar = 60;
         const padding = 16;
-        const contentHeight = contentEl.scrollHeight;
-
-        contentEl.style.visibility = wasVisible;
-        contentEl.style.pointerEvents = wasPointerEvents;
-        contentEl.style.position = wasPosition;
-        contentEl.style.height = wasHeight;
-
         return topBar + contentHeight + padding;
       }
     }
-    return 260;
+    return 260; // Altura fixa para desktop (ajuste conforme necessário)
   };
 
   const createTimeline = () => {
     const navEl = navRef.current;
     if (!navEl) return null;
 
+    // Estado inicial
     gsap.set(navEl, { height: 60, overflow: "hidden" });
     gsap.set(cardsRef.current, { y: 50, opacity: 0 });
 
@@ -98,6 +92,7 @@ const CardNav: React.FC<CardNavProps> = ({
     return tl;
   };
 
+  // Cria a timeline inicial
   useLayoutEffect(() => {
     const tl = createTimeline();
     tlRef.current = tl;
@@ -106,46 +101,40 @@ const CardNav: React.FC<CardNavProps> = ({
       tl?.kill();
       tlRef.current = null;
     };
-  });
+  }); // Removi 'items' para evitar recriação desnecessária, mas pode adicionar se os items mudarem dinamicamente
 
+  // Lida com resize
   useLayoutEffect(() => {
     const handleResize = () => {
       if (!tlRef.current) return;
 
+      // Recalcula altura apenas se estiver expandido para evitar bugs visuais
       if (isExpanded) {
         const newHeight = calculateHeight();
-        gsap.set(navRef.current, { height: newHeight });
-
-        tlRef.current.kill();
-        const newTl = createTimeline();
-        if (newTl) {
-          newTl.progress(1);
-          tlRef.current = newTl;
-        }
-      } else {
-        tlRef.current.kill();
-        const newTl = createTimeline();
-        if (newTl) {
-          tlRef.current = newTl;
-        }
+        gsap.to(navRef.current, { height: newHeight, duration: 0.2 });
       }
     };
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  });
+  }, [isExpanded]); // Adicionei isExpanded como dependência
 
   const toggleMenu = () => {
     const tl = tlRef.current;
     if (!tl) return;
+
     if (!isExpanded) {
       setIsHamburgerOpen(true);
       setIsExpanded(true);
-      tl.play(0);
+      tl.play(); // Toca a animação de abrir
     } else {
       setIsHamburgerOpen(false);
-      tl.eventCallback("onReverseComplete", () => setIsExpanded(false));
-      tl.reverse();
+      tl.reverse(); // Toca a animação de fechar
+      // Só define isExpanded false quando a animação terminar
+      tl.eventCallback("onReverseComplete", () => {
+        setIsExpanded(false);
+        tl.eventCallback("onReverseComplete", null); // Limpa o callback
+      });
     }
   };
 
@@ -153,19 +142,18 @@ const CardNav: React.FC<CardNavProps> = ({
     if (el) cardsRef.current[i] = el;
   };
 
-  // --- RENDERIZAÇÃO ---
   return (
     <div
-      className={`card-nav-container absolute top-[1.2em] left-1/2 z-[99] w-[90%] max-w-[800px] -translate-x-1/2 md:top-[2em] ${className}`}
+      className={`card-nav-container absolute top-[1.2em] left-1/2 z-[999] w-[90%] max-w-[800px] -translate-x-1/2 md:top-[2em] ${className}`}
     >
       <nav
         ref={navRef}
-        // Adicionei uma borda subtil (border-white/5) para definir o header sem ficar cinza demais
         className={`card-nav ${isExpanded ? "open" : ""} relative block h-[60px] overflow-hidden rounded-md border border-[#ffffff09] p-0 shadow-2xl will-change-[height]`}
         style={{ backgroundColor: baseColor }}
       >
-        <div className="card-nav-top absolute inset-x-0 top-0 z-[2] flex h-[60px] flex-row-reverse items-center justify-between gap-6 px-6">
-          {/* 1. INPUT DE PESQUISA REESTILIZADO */}
+        {/* Aumentei o z-index aqui para garantir que fique acima do conteúdo expandido */}
+        <div className="card-nav-top absolute inset-x-0 top-0 z-[10] flex h-[60px] flex-row-reverse items-center justify-between gap-6 px-6">
+          {/* SEARCH BAR */}
           <div className="relative flex-1">
             <div className="absolute top-1/2 left-3 -translate-y-1/2 text-neutral-500">
               <svg
@@ -190,9 +178,8 @@ const CardNav: React.FC<CardNavProps> = ({
             />
           </div>
 
-          {/* 2. BOTÃO HAMBURGUER REESTILIZADO */}
+          {/* HAMBURGER BUTTON */}
           <div
-            // MUDANÇAS AQUI: Mesmo estilo do input para consistência
             className={`hamburger-menu ${isHamburgerOpen ? "open" : ""} group flex h-10 w-10 shrink-0 cursor-pointer flex-col items-center justify-center gap-[5px] rounded-md border border-[#ffffff09] bg-black/20 duration-300 hover:border-white/10 hover:bg-black/40`}
             onClick={toggleMenu}
             role="button"
@@ -213,13 +200,10 @@ const CardNav: React.FC<CardNavProps> = ({
           </div>
         </div>
 
-        {/* --- CONTEÚDO DOS CARDS --- */}
+        {/* CONTENT */}
         <div
-          className={`card-nav-content absolute top-[60px] right-0 bottom-0 left-0 z-[1] flex flex-col items-stretch justify-start gap-2 p-2 ${
-            isExpanded
-              ? "pointer-events-auto visible"
-              : "pointer-events-none invisible"
-          } md:flex-row md:items-end md:gap-[12px]`}
+          className={`card-nav-content absolute top-[60px] right-0 bottom-0 left-0 z-[1] flex flex-col items-stretch justify-start gap-2 p-2 md:flex-row md:items-end md:gap-[12px]`}
+          style={{ visibility: isExpanded ? "visible" : "hidden" }} // Controla visibilidade via style para evitar flash
           aria-hidden={!isExpanded}
         >
           {(items || []).slice(0, 3).map((item, idx) => (

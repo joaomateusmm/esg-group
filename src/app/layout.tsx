@@ -5,6 +5,9 @@ import { Geist, Geist_Mono, Montserrat } from "next/font/google";
 import localFont from "next/font/local";
 import { Toaster } from "sonner";
 
+import FloatingScrollbar from "@/components/FloatingScrollbar";
+import SmoothScroll from "@/components/SmoothScroll";
+
 // ... configurações da Geist e Montserrat mantidas iguais ...
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,7 +53,8 @@ export default function RootLayout({
         // Verifique se não há espaços extras que quebrem a string, mas o teu estava ok
         className={`${geistSans.variable} ${geistMono.variable} ${montserrat.variable} ${clash.variable} antialiased`}
       >
-        {children}
+        <FloatingScrollbar />
+        <SmoothScroll>{children}</SmoothScroll>
         <Toaster />
       </body>
     </html>

@@ -120,7 +120,7 @@ export default function SingleCubeFivem(props: SingleCubeProps) {
         <ambientLight intensity={1} />
         <directionalLight
           position={[5, 10, 5]}
-          intensity={1500}
+          intensity={2500}
           color="#580000"
           castShadow
         />
