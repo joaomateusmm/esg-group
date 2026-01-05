@@ -96,14 +96,17 @@ export function ProductsTable({
   const handleBulkDelete = () => {
     startTransition(async () => {
       try {
-        await deleteProducts(selectedIds);
-        setSelectedIds([]);
-        setShowDeleteDialog(false);
-        toast.success(`${selectedIds.length} produtos excluídos.`);
+        const result = await deleteProducts(selectedIds);
 
-        router.refresh(); // <--- 3. CHAMADO AQUI (Agora funciona!)
+        if (result.success) {
+          setSelectedIds([]);
+          setShowDeleteDialog(false);
+          toast.success(result.message);
+          router.refresh();
+        } else {
+          toast.error(result.message);
+        }
       } catch {
-        // CORREÇÃO: Removido a variável (error)
         toast.error("Erro ao excluir produtos.");
       }
     });

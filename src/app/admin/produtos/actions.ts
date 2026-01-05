@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, inArray } from "drizzle-orm"; // <--- Adicionado
+import { eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -43,7 +43,6 @@ export async function createProduct(rawData: ProductServerPayload) {
 
   if (!result.success) {
     console.error("Erro de validação:", result.error.flatten());
-    // Retornamos o erro para ser tratado, ou lançamos (como estava antes)
     throw new Error(
       `Dados inválidos: ${JSON.stringify(result.error.flatten().fieldErrors)}`,
     );
@@ -52,7 +51,6 @@ export async function createProduct(rawData: ProductServerPayload) {
   const data = result.data;
 
   // 2. Preparar dados para o banco
-  // TRUQUE: Se o paymentLink vier vazio, salvamos "#" para o banco não dar erro de NOT NULL
   const finalPaymentLink =
     data.paymentLink && data.paymentLink.length > 0 ? data.paymentLink : "#";
 
@@ -62,8 +60,8 @@ export async function createProduct(rawData: ProductServerPayload) {
       name: data.name,
       description: data.description,
 
-      paymentLink: finalPaymentLink, // Usamos o valor tratado
-      downloadUrl: data.downloadUrl, // Novo campo
+      paymentLink: finalPaymentLink,
+      downloadUrl: data.downloadUrl,
 
       price: Math.round(data.price * 100), // Converter R$ para centavos
       discountPrice: data.discountPrice
@@ -92,34 +90,92 @@ export async function createProduct(rawData: ProductServerPayload) {
   redirect("/admin/produtos");
 }
 
-// --- FUNÇÕES NOVAS DE DELEÇÃO ---
+// =========================================================
+// --- FUNÇÕES MELHORADAS DE DELEÇÃO (COM DEBUG E TRATAMENTO DE ERRO) ---
+// =========================================================
 
 // Função para deletar UM produto
 export async function deleteProduct(id: string) {
-  try {
-    await db.delete(product).where(eq(product.id, id));
+  console.log(`[DELETE] Tentando deletar produto ID: ${id}`);
 
-    // Atualiza a tabela de produtos
+  try {
+    // .returning() nos permite ver se algo foi realmente apagado
+    const result = await db
+      .delete(product)
+      .where(eq(product.id, id))
+      .returning();
+
+    console.log("[DELETE] Resultado do banco:", result);
+
+    if (result.length === 0) {
+      console.error(
+        "[DELETE] O banco retornou 0 deletados (ID não encontrado ou já deletado).",
+      );
+      return {
+        success: false,
+        message: "Produto não encontrado ou já deletado.",
+      };
+    }
+
+    // Atualiza o Admin e a Loja Principal
     revalidatePath("/admin/produtos");
+    revalidatePath("/");
 
     return { success: true, message: "Produto deletado com sucesso." };
-  } catch (error) {
-    console.error("Erro ao deletar produto:", error);
-    return { success: false, message: "Erro ao deletar produto." };
+  } catch (err) {
+    // CORREÇÃO: Tratamos o erro como um objeto que pode ter 'code' e 'message'
+    const error = err as { code?: string; message: string };
+
+    console.error("[DELETE ERROR] Erro crítico:", error);
+
+    // Código 23503 no Postgres = Violação de Chave Estrangeira (Foregin Key)
+    // Significa que o produto está sendo usado em outra tabela (ex: vendas/pedidos)
+    if (error.code === "23503") {
+      return {
+        success: false,
+        message:
+          "ERRO: Este produto já possui vendas registradas e não pode ser excluído.",
+      };
+    }
+
+    return { success: false, message: `Erro no banco: ${error.message}` };
   }
 }
 
 // Função para deletar VÁRIOS produtos (Bulk Delete)
 export async function deleteProducts(ids: string[]) {
+  console.log(`[BULK DELETE] Tentando deletar IDs:`, ids);
+
   try {
-    await db.delete(product).where(inArray(product.id, ids));
+    const result = await db
+      .delete(product)
+      .where(inArray(product.id, ids))
+      .returning();
 
-    // Atualiza a tabela de produtos
+    console.log(`[BULK DELETE] Deletados: ${result.length} de ${ids.length}`);
+
+    if (result.length === 0) {
+      return { success: false, message: "Nenhum produto foi deletado." };
+    }
+
     revalidatePath("/admin/produtos");
+    revalidatePath("/");
 
-    return { success: true, message: "Produtos deletados com sucesso." };
-  } catch (error) {
-    console.error("Erro ao deletar produtos:", error);
+    return { success: true, message: `${result.length} produtos deletados.` };
+  } catch (err) {
+    // CORREÇÃO: Tratamos o erro como um objeto tipado aqui também
+    const error = err as { code?: string; message: string };
+
+    console.error("[BULK DELETE ERROR]", error);
+
+    if (error.code === "23503") {
+      return {
+        success: false,
+        message:
+          "Alguns produtos selecionados possuem vendas e não podem ser excluídos.",
+      };
+    }
+
     return { success: false, message: "Erro ao deletar produtos." };
   }
 }

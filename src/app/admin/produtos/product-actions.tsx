@@ -1,7 +1,7 @@
 "use client";
 
 import { Edit, MoreHorizontal, Trash } from "lucide-react";
-import { useRouter } from "next/navigation"; // <--- 1. IMPORTAR ISSO
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -34,19 +34,26 @@ interface ProductActionsProps {
 export function ProductActions({ id }: ProductActionsProps) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const router = useRouter(); // <--- 2. INICIAR O HOOK
+  const router = useRouter();
 
   const handleDelete = () => {
     startTransition(async () => {
       try {
-        await deleteProduct(id);
-        setOpen(false);
-        toast.success("Produto excluído com sucesso.");
+        // Agora pegamos a resposta da action
+        const result = await deleteProduct(id);
 
-        // <--- 3. ADICIONAR ISSO: Força a página a recarregar os dados do servidor
-        router.refresh();
+        if (result.success) {
+          setOpen(false);
+          toast.success(result.message);
+          router.refresh(); // O refresh que adicionamos antes
+        } else {
+          // AQUI É O PULO DO GATO: Mostra pro usuário o motivo real
+          toast.error(result.message);
+          // Não fechamos o modal (setOpen(false)) para ele ver que falhou
+        }
       } catch {
-        toast.error("Erro ao excluir produto.");
+        // CORREÇÃO: Removi a variável (error)
+        toast.error("Erro de comunicação com o servidor.");
       }
     });
   };
