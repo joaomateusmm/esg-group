@@ -1,6 +1,6 @@
 "use client";
 
-import { Edit, MoreHorizontal, Trash } from "lucide-react";
+import { Archive, Edit, MoreHorizontal, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -25,35 +25,59 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { deleteProduct } from "./actions";
+import { archiveProduct, deleteProduct } from "./actions";
 
 interface ProductActionsProps {
   id: string;
 }
 
 export function ProductActions({ id }: ProductActionsProps) {
-  const [open, setOpen] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false); // NOVO DIALOG
+
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
+  // 1. Tenta Deletar
   const handleDelete = () => {
     startTransition(async () => {
       try {
-        // Agora pegamos a resposta da action
         const result = await deleteProduct(id);
 
         if (result.success) {
-          setOpen(false);
+          // Deu certo de primeira? Ótimo.
+          setShowDeleteDialog(false);
           toast.success(result.message);
-          router.refresh(); // O refresh que adicionamos antes
+          router.refresh();
+        } else if (result.code === "CONSTRAINT_VIOLATION") {
+          // AQUI ESTÁ A INTELIGÊNCIA:
+          // Se falhou por causa do banco, fechamos o delete e abrimos a sugestão
+          setShowDeleteDialog(false);
+          setShowArchiveDialog(true);
         } else {
-          // AQUI É O PULO DO GATO: Mostra pro usuário o motivo real
+          // Erro genérico real
           toast.error(result.message);
-          // Não fechamos o modal (setOpen(false)) para ele ver que falhou
         }
       } catch {
-        // CORREÇÃO: Removi a variável (error)
-        toast.error("Erro de comunicação com o servidor.");
+        toast.error("Erro de comunicação.");
+      }
+    });
+  };
+
+  // 2. Aceita Arquivar (Deixar Inativo)
+  const handleArchive = () => {
+    startTransition(async () => {
+      try {
+        const result = await archiveProduct(id);
+        if (result.success) {
+          setShowArchiveDialog(false);
+          toast.success("Produto alterado para Inativo.");
+          router.refresh();
+        } else {
+          toast.error("Não foi possível inativar o produto.");
+        }
+      } catch {
+        toast.error("Erro ao tentar arquivar.");
       }
     });
   };
@@ -83,7 +107,7 @@ export function ProductActions({ id }: ProductActionsProps) {
             className="cursor-pointer text-red-500 focus:bg-red-500/10 focus:text-red-500"
             onSelect={(e) => {
               e.preventDefault();
-              setOpen(true);
+              setShowDeleteDialog(true);
             }}
           >
             <Trash className="mr-2 h-4 w-4" /> Excluir
@@ -91,13 +115,13 @@ export function ProductActions({ id }: ProductActionsProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog open={open} onOpenChange={setOpen}>
+      {/* --- DIALOG 1: TENTATIVA DE EXCLUSÃO --- */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent className="border-white/10 bg-[#111] text-white">
           <AlertDialogHeader>
-            <AlertDialogTitle>Quer mesmo excluir o produto?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir permanentemente?</AlertDialogTitle>
             <AlertDialogDescription className="text-neutral-400">
-              Essa ação não pode ser desfeita. Isso excluirá permanentemente o
-              produto do banco de dados.
+              Essa ação tentará remover o produto do banco de dados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -109,7 +133,42 @@ export function ProductActions({ id }: ProductActionsProps) {
               className="bg-red-600 text-white hover:bg-red-700"
               disabled={isPending}
             >
-              {isPending ? "Excluindo..." : "Excluir"}
+              {isPending ? "Processando..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* --- DIALOG 2: SUGESTÃO INTELIGENTE (ARQUIVAR) --- */}
+      <AlertDialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+        <AlertDialogContent className="border-white/10 bg-[#111] text-white">
+          <AlertDialogHeader>
+            <div className="mb-2 flex items-center gap-2 text-yellow-500">
+              <Archive className="h-5 w-5" />
+              <AlertDialogTitle className="text-white">
+                Não foi possível excluir
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-neutral-300">
+              Algum usuário tem esse produto no carrinho, favoritos ou histórico
+              de compras.
+              <br />
+              <br />
+              Para não perder esses dados, sugerimos deixá-lo como{" "}
+              <strong>Inativo</strong>. Ele não aparecerá mais na loja, mas o
+              histórico será mantido.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-white/10 bg-transparent text-white hover:bg-white/10 hover:text-white">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleArchive}
+              className="bg-yellow-600 text-white hover:bg-yellow-700"
+              disabled={isPending}
+            >
+              {isPending ? "Salvando..." : "Deixar Inativo"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
