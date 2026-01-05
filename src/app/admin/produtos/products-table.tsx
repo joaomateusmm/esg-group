@@ -4,6 +4,7 @@ import { CopyCheck, ImageIcon, Search, SquareCheck } from "lucide-react";
 import { ChevronDown } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation"; // <--- 1. IMPORTADO AQUI
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -61,6 +62,7 @@ export function ProductsTable({
   limitParam,
   allCategories,
 }: ProductsTableProps) {
+  const router = useRouter(); // <--- 2. INICIALIZADO AQUI
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -98,6 +100,8 @@ export function ProductsTable({
         setSelectedIds([]);
         setShowDeleteDialog(false);
         toast.success(`${selectedIds.length} produtos excluídos.`);
+
+        router.refresh(); // <--- 3. CHAMADO AQUI (Agora funciona!)
       } catch {
         // CORREÇÃO: Removido a variável (error)
         toast.error("Erro ao excluir produtos.");

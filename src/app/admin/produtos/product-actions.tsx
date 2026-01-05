@@ -1,6 +1,7 @@
 "use client";
 
 import { Edit, MoreHorizontal, Trash } from "lucide-react";
+import { useRouter } from "next/navigation"; // <--- 1. IMPORTAR ISSO
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -31,8 +32,9 @@ interface ProductActionsProps {
 }
 
 export function ProductActions({ id }: ProductActionsProps) {
-  const [open, setOpen] = useState(false); // Controla se o Alerta está aberto
-  const [isPending, startTransition] = useTransition(); // Estado de carregamento da exclusão
+  const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter(); // <--- 2. INICIAR O HOOK
 
   const handleDelete = () => {
     startTransition(async () => {
@@ -40,8 +42,10 @@ export function ProductActions({ id }: ProductActionsProps) {
         await deleteProduct(id);
         setOpen(false);
         toast.success("Produto excluído com sucesso.");
+
+        // <--- 3. ADICIONAR ISSO: Força a página a recarregar os dados do servidor
+        router.refresh();
       } catch {
-        // CORREÇÃO: Removi a variável (error)
         toast.error("Erro ao excluir produto.");
       }
     });
@@ -68,11 +72,10 @@ export function ProductActions({ id }: ProductActionsProps) {
             <Edit className="mr-2 h-4 w-4" /> Editar
           </DropdownMenuItem>
           <DropdownMenuSeparator className="bg-white/10" />
-          {/* Ao clicar em Excluir, abrimos o Dialog em vez de deletar direto */}
           <DropdownMenuItem
             className="cursor-pointer text-red-500 focus:bg-red-500/10 focus:text-red-500"
             onSelect={(e) => {
-              e.preventDefault(); // Impede o dropdown de fechar abruptamente
+              e.preventDefault();
               setOpen(true);
             }}
           >
@@ -81,7 +84,6 @@ export function ProductActions({ id }: ProductActionsProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* --- ALERT DIALOG --- */}
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent className="border-white/10 bg-[#111] text-white">
           <AlertDialogHeader>
