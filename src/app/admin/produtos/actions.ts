@@ -18,6 +18,8 @@ const productSchema = z.object({
   discountPrice: z.number().optional(),
   images: z.array(z.string()).optional(),
   categories: z.array(z.string()).default([]),
+  gameId: z.string().optional().or(z.literal("")),
+  streamings: z.array(z.string()).default([]),
   status: z.enum(["active", "inactive", "draft"]).default("active"),
   deliveryMode: z.enum(["email", "none"]).default("email"),
   paymentMethods: z.array(z.string()).default([]),
@@ -28,16 +30,22 @@ const productSchema = z.object({
 export type ProductServerPayload = z.infer<typeof productSchema>;
 
 export async function createProduct(rawData: ProductServerPayload) {
-  // ... (Mantenha sua função createProduct igualzinha estava antes) ...
-  // Vou resumir aqui para não ocupar espaço, mas não altere a lógica de create
+  // 1. Validar
   const result = productSchema.safeParse(rawData);
-  if (!result.success) throw new Error("Dados inválidos");
+
+  if (!result.success) {
+    console.error("Erro de validação:", result.error.flatten());
+    throw new Error(
+      `Dados inválidos: ${JSON.stringify(result.error.flatten().fieldErrors)}`,
+    );
+  }
 
   const data = result.data;
   const finalPaymentLink =
     data.paymentLink && data.paymentLink.length > 0 ? data.paymentLink : "#";
 
   try {
+    // 2. Inserir no Banco
     await db.insert(product).values({
       name: data.name,
       description: data.description,
@@ -49,17 +57,22 @@ export async function createProduct(rawData: ProductServerPayload) {
         : null,
       images: data.images || [],
       categories: data.categories,
+      gameId: data.gameId && data.gameId.length > 0 ? data.gameId : null,
+      streamings: data.streamings,
       status: data.status,
       deliveryMode: data.deliveryMode,
       paymentMethods: data.paymentMethods,
       stock: data.stock,
       isStockUnlimited: data.isStockUnlimited,
     });
+
     revalidatePath("/admin/produtos");
+    revalidatePath("/");
   } catch (error) {
-    console.error("Erro create:", error);
-    throw new Error("Erro ao criar");
+    console.error("Erro ao criar produto no banco:", error);
+    throw new Error("Erro interno ao salvar produto.");
   }
+
   redirect("/admin/produtos");
 }
 
@@ -133,7 +146,7 @@ export async function deleteProducts(ids: string[]) {
     revalidatePath("/admin/produtos");
     revalidatePath("/");
     return { success: true, message: "Produtos excluídos." };
-  } catch (error) {
+  } catch {
     return {
       success: false,
       message: "Erro ao excluir (provavelmente produtos em uso).",

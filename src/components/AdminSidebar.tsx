@@ -1,6 +1,15 @@
 "use client";
 
-import { Blocks, Home, LayoutDashboard, Package, Users } from "lucide-react";
+import {
+  Blocks,
+  Gamepad2,
+  Home,
+  LayoutDashboard,
+  Package,
+  TvMinimalPlay,
+  Users,
+} from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -31,10 +40,18 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
   return (
     <Sidebar className="border-r border-white/10 bg-[#0A0A0A] text-white">
       {/* --- HEADER (Logo) --- */}
-      <SidebarHeader className="flex h-16 justify-center border-b border-white/5 px-6">
-        <div className="flex items-center gap-2 pt-4">
-          <div className="h-8 w-8 rounded-md bg-[#D00000]" />
-          <span className="font-clash-display text-xl font-bold">SubMind</span>
+      <SidebarHeader className="flex h-20 justify-center border-b border-white/5 px-6">
+        <div className="flex items-center justify-center gap-2 py-6">
+          <Image
+            src="/images/icons/logo.png"
+            alt="Logo Sub Mind"
+            width={50}
+            height={50}
+            className="object-cover"
+          />
+          <span className="font-clash-display text-2xl font-medium">
+            SubMind
+          </span>
         </div>
       </SidebarHeader>
 
@@ -77,6 +94,32 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
               <Link href="/admin/categorias">
                 <Blocks className="mr-2 h-5 w-5" />
                 <span>Categorias</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          {/* Jogos */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname.startsWith("/admin/jogos")}
+              className="h-12 text-neutral-400 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#D00000]/10 data-[active=true]:text-[#D00000]"
+            >
+              <Link href="/admin/jogos">
+                <Gamepad2 className="mr-2 h-5 w-5" />
+                <span>Jogos</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          {/* Streamings */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname.startsWith("/admin/streamings")}
+              className="h-12 text-neutral-400 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#D00000]/10 data-[active=true]:text-[#D00000]"
+            >
+              <Link href="/admin/streamings">
+                <TvMinimalPlay className="mr-2 h-5 w-5" />
+                <span>Streamings</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

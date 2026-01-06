@@ -55,7 +55,7 @@ export default function RootLayout({
       >
         <FloatingScrollbar />
         <SmoothScroll>{children}</SmoothScroll>
-        <Toaster />
+        <Toaster position="top-left" />
       </body>
     </html>
   );

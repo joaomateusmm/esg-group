@@ -22,6 +22,9 @@ import { toast } from "sonner";
 
 import { createCheckoutSession } from "@/actions/checkout";
 import { getAllCategories } from "@/actions/get-all-categories";
+import { getAllGames } from "@/actions/get-all-games";
+// IMPORTANTE: Certifique-se de que este arquivo existe (criado no passo anterior)
+import { getAllStreamings } from "@/actions/get-all-streamings";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -101,10 +104,19 @@ export function Header() {
   const [mounted, setMounted] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
-  // USANDO 'any[]' PARA ELIMINAR O ERRO DE TIPO 'NEVER' DEFINITIVAMENTE
+  // ESTADOS PARA DADOS DINÂMICOS
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [games, setGames] = useState<any[]>([]);
+  const [isLoadingGames, setIsLoadingGames] = useState(true);
+
+  // NOVO: ESTADO PARA STREAMINGS
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [streamings, setStreamings] = useState<any[]>([]);
+  const [isLoadingStreamings, setIsLoadingStreamings] = useState(true);
 
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
@@ -122,21 +134,42 @@ export function Header() {
   useEffect(() => {
     setMounted(true);
 
-    const fetchCategories = async () => {
+    const fetchData = async () => {
+      // 1. Buscar Categorias
       try {
         setIsLoadingCategories(true);
-        const data = await getAllCategories();
-        if (Array.isArray(data)) {
-          setCategories(data);
-        }
+        const cats = await getAllCategories();
+        if (Array.isArray(cats)) setCategories(cats);
       } catch (error) {
         console.error("Erro ao buscar categorias:", error);
       } finally {
         setIsLoadingCategories(false);
       }
+
+      // 2. Buscar Jogos
+      try {
+        setIsLoadingGames(true);
+        const gms = await getAllGames();
+        if (Array.isArray(gms)) setGames(gms);
+      } catch (error) {
+        console.error("Erro ao buscar jogos:", error);
+      } finally {
+        setIsLoadingGames(false);
+      }
+
+      // 3. Buscar Streamings (NOVO)
+      try {
+        setIsLoadingStreamings(true);
+        const strms = await getAllStreamings();
+        if (Array.isArray(strms)) setStreamings(strms);
+      } catch (error) {
+        console.error("Erro ao buscar streamings:", error);
+      } finally {
+        setIsLoadingStreamings(false);
+      }
     };
 
-    fetchCategories();
+    fetchData();
   }, []);
 
   const formatPrice = (value: number) => {
@@ -248,6 +281,7 @@ export function Header() {
 
           {/* Navegação Principal */}
           <nav className="hidden items-center gap-8 md:flex">
+            {/* CATEGORIAS */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="group flex cursor-pointer items-center gap-1 text-sm font-medium text-neutral-400 transition-colors hover:text-white focus:outline-none data-[state=open]:text-white">
@@ -284,6 +318,7 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
 
+            {/* JOGOS */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="group flex cursor-pointer items-center gap-1 text-sm font-medium text-neutral-400 transition-colors hover:text-white focus:outline-none data-[state=open]:text-white">
@@ -295,24 +330,32 @@ export function Header() {
                 align="start"
                 className="z-[100] w-48 border-white/10 bg-black/80 text-white backdrop-blur-xl"
               >
-                {[
-                  { label: "FiveM", href: "/jogos/fivem" },
-                  { label: "Roblox", href: "/jogos/roblox" },
-                  { label: "Valorant", href: "/jogos/valorant" },
-                  { label: "Clash Royale", href: "/jogos/clash" },
-                ].map((item) => (
-                  <DropdownMenuItem
-                    key={item.label}
-                    className="cursor-pointer focus:bg-white/10 focus:text-white"
-                  >
-                    <Link href={item.href} className="w-full">
-                      {item.label}
-                    </Link>
+                {isLoadingGames ? (
+                  <DropdownMenuItem disabled className="opacity-50">
+                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />{" "}
+                    Carregando...
                   </DropdownMenuItem>
-                ))}
+                ) : games.length > 0 ? (
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  games.map((game: any, index: number) => (
+                    <DropdownMenuItem
+                      key={index}
+                      className="cursor-pointer focus:bg-white/10 focus:text-white"
+                    >
+                      <Link href={game.href || "#"} className="w-full">
+                        {game.label}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <DropdownMenuItem disabled>
+                    Nenhum jogo cadastrado
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
+            {/* STREAMINGS (AGORA DINÂMICO) */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="group flex cursor-pointer items-center gap-1 text-sm font-medium text-neutral-400 transition-colors hover:text-white focus:outline-none data-[state=open]:text-white">
@@ -324,24 +367,26 @@ export function Header() {
                 align="start"
                 className="z-[100] w-48 border-white/10 bg-black/80 text-white backdrop-blur-xl"
               >
-                {[
-                  { label: "Netflix", href: "/stream/netflix" },
-                  { label: "Prime Video", href: "/stream/prime" },
-                  { label: "Disney+", href: "/stream/disney" },
-                  { label: "Star+", href: "/stream/star" },
-                  { label: "ESPN", href: "/stream/espn" },
-                  { label: "IPTV Premium", href: "/stream/iptv" },
-                  { label: "Outros", href: "/stream/outros" },
-                ].map((item) => (
-                  <DropdownMenuItem
-                    key={item.label}
-                    className="cursor-pointer focus:bg-white/10 focus:text-white"
-                  >
-                    <Link href={item.href} className="w-full">
-                      {item.label}
-                    </Link>
+                {isLoadingStreamings ? (
+                  <DropdownMenuItem disabled className="opacity-50">
+                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />{" "}
+                    Carregando...
                   </DropdownMenuItem>
-                ))}
+                ) : streamings.length > 0 ? (
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  streamings.map((stream: any, index: number) => (
+                    <DropdownMenuItem
+                      key={index}
+                      className="cursor-pointer focus:bg-white/10 focus:text-white"
+                    >
+                      <Link href={stream.href || "#"} className="w-full">
+                        {stream.label}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <DropdownMenuItem disabled>Nenhum streaming</DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -471,7 +516,7 @@ export function Header() {
                           </p>
                         </div>
                         <SheetTrigger asChild>
-                          <Link href="/catalog">
+                          <Link href="/">
                             <Button
                               variant="outline"
                               className="mt-4 border-white/10 text-white hover:bg-white/5"
@@ -633,7 +678,7 @@ export function Header() {
                             <Heart className="h-5 w-5" /> Meus Favoritos
                           </Button>
                         </Link>
-                        <Link href="/minha-conta/pedidos" className="w-full">
+                        <Link href="/minha-conta/compras" className="w-full">
                           <Button
                             variant="ghost"
                             className="h-12 w-full justify-start gap-3 text-neutral-300 hover:bg-white/5 hover:text-white"

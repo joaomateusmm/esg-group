@@ -71,7 +71,7 @@ export default function WishlistPage() {
             <p className="mt-2 mb-8 text-neutral-400">
               Você ainda não salvou nenhum produto para ver depois.
             </p>
-            <Link href="/catalog">
+            <Link href="/">
               <Button
                 size="lg"
                 className="bg-[#D00000] text-white hover:bg-[#a00000]"

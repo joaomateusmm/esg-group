@@ -14,7 +14,7 @@ export default async function CategoriesPage() {
     .orderBy(desc(category.createdAt));
 
   return (
-    <div className="space-y-8 p-8 pt-6">
+    <div className="space-y-8 p-2 pt-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-clash-display text-3xl font-medium tracking-tight text-white">

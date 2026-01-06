@@ -74,6 +74,36 @@ export const category = pgTable("category", {
     .$onUpdate(() => new Date()),
 });
 
+// --- TABELA DE STREAMING ---
+
+export const streaming = pgTable("streaming", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
+  // Removido o campo image conforme solicitado
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt")
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+// --- TABELA DE JOGOS ---
+
+export const game = pgTable("game", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
+  image: text("image"), // Opcional
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt")
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
 // --- TABELAS DA LOJA ---
 
 export const product = pgTable("product", {
@@ -90,7 +120,16 @@ export const product = pgTable("product", {
   downloadUrl: text("downloadUrl"),
 
   images: text("images").array(),
-  categories: text("categories").array(),
+  categories: text("categories").array(), // Já era array
+
+  // Vínculo com Jogo (Mantém único, geralmente um produto é de um jogo só)
+  gameId: text("gameId").references(() => game.id, { onDelete: "set null" }),
+
+  // --- MUDANÇA AQUI: De 'streamingId' para 'streamings' (Array) ---
+  // Como é um array de IDs, não usamos .references() direto aqui da mesma forma simples
+  // O Drizzle/Postgres trata arrays de texto. A integridade fica por conta da aplicação ou tabela de ligação (NxN).
+  // Para simplificar e manter igual a categorias, usaremos array de texto.
+  streamings: text("streamings").array(),
 
   paymentLink: text("paymentLink").notNull(),
   deliveryMode: text("deliveryMode").notNull().default("email"),
@@ -136,20 +175,19 @@ export const review = pgTable("review", {
 export const order = pgTable("order", {
   id: text("id")
     .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()), // Usaremos este ID como 'order_nsu' na InfinitePay
+    .$defaultFn(() => crypto.randomUUID()),
 
   userId: text("userId")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
 
-  amount: integer("amount").notNull(), // Valor total em centavos (R$ 10,00 = 1000)
-  status: text("status").notNull().default("pending"), // pending, paid, failed, canceled
+  amount: integer("amount").notNull(),
+  status: text("status").notNull().default("pending"),
 
-  // Campos específicos da integração
-  infinitePayUrl: text("infinitePayUrl"), // O link de pagamento gerado
-  transactionId: text("transactionId"), // O ID da transação (transaction_nsu) retornado por eles
+  infinitePayUrl: text("infinitePayUrl"),
+  transactionId: text("transactionId"),
 
-  metadata: text("metadata"), // Para guardar JSON extra se precisar
+  metadata: text("metadata"),
 
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
@@ -169,11 +207,10 @@ export const orderItem = pgTable("orderItem", {
 
   productId: text("productId")
     .notNull()
-    .references(() => product.id), // Mantém referência ao produto original
+    .references(() => product.id),
 
-  // Salvamos um snapshot dos dados para caso o produto mude de preço/nome depois
   productName: text("productName").notNull(),
-  price: integer("price").notNull(), // Preço em centavos no momento da compra
+  price: integer("price").notNull(),
   quantity: integer("quantity").notNull(),
   image: text("image"),
 });

@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PlusCircle } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -26,6 +25,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { ShinyButton } from "@/components/ui/shiny-button";
 import { Textarea } from "@/components/ui/textarea";
 
 import { createCategory } from "./actions";
@@ -61,10 +61,9 @@ export function AddCategoryButton() {
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button className="gap-2 bg-[#D00000] text-white hover:bg-[#a00000]">
-          <PlusCircle className="h-4 w-4" />
+        <ShinyButton className="gap-2 bg-[#D00000] text-white hover:bg-[#a00000]">
           Nova Categoria
-        </Button>
+        </ShinyButton>
       </AlertDialogTrigger>
       <AlertDialogContent className="border-white/10 bg-[#111] text-white sm:max-w-[425px]">
         <AlertDialogHeader>

@@ -151,10 +151,7 @@ export function ProductActions({ id }: ProductActionsProps) {
             </div>
             <AlertDialogDescription className="text-neutral-300">
               Algum usuário tem esse produto no carrinho, favoritos ou histórico
-              de compras.
-              <br />
-              <br />
-              Para não perder esses dados, sugerimos deixá-lo como{" "}
+              de compras. Para não perder esses dados, sugerimos deixá-lo como{" "}
               <strong>Inativo</strong>. Ele não aparecerá mais na loja, mas o
               histórico será mantido.
             </AlertDialogDescription>

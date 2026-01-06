@@ -19,7 +19,6 @@ export function AddProductButton() {
   };
 
   return (
-    // 2. Removemos a prop 'disabled' que causava o erro
     <ShinyButton
       onClick={handleClick}
       className={`font-montserrat min-w-[170px] justify-center font-light transition-all ${

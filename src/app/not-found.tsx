@@ -71,7 +71,7 @@ export default function NotFound() {
               </Button>
             </Link>
 
-            <Link href="/catalog">
+            <Link href="/">
               <Button
                 variant="outline"
                 size="lg"

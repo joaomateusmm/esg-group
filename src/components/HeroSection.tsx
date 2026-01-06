@@ -2,6 +2,7 @@
 
 import { ChevronsRight } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 // Seus componentes interativos e visuais
 import SingleCubeFivem from "@/components/CubeFivem";
@@ -14,12 +15,12 @@ import { ShinyButton } from "@/components/ui/shiny-button";
 
 export default function HeroSection() {
   const partnerLogos = [
-    { src: "/images/icons/fivem.svg", alt: "Contas fivem", href: "/catalogo" },
-    { src: "/images/icons/roblox.svg", alt: "Roblox", href: "/catalogo" },
-    { src: "/images/icons/valorant.svg", alt: "Valorant", href: "#" },
-    { src: "/images/icons/discord.svg", alt: "Contas Discord", href: "#" },
-    { src: "/images/icons/netflix.svg", alt: "Contas Netflix", href: "#" },
-    { src: "/images/icons/amazom.svg", alt: "Contas Amazon", href: "#" },
+    { src: "/images/icons/fivem.svg", alt: "Contas fivem", href: "/" },
+    { src: "/images/icons/roblox.svg", alt: "Roblox", href: "/" },
+    { src: "/images/icons/valorant.svg", alt: "Valorant", href: "/" },
+    { src: "/images/icons/discord.svg", alt: "Contas Discord", href: "/" },
+    { src: "/images/icons/netflix.svg", alt: "Contas Netflix", href: "/" },
+    { src: "/images/icons/amazom.svg", alt: "Contas Amazon", href: "/" },
   ];
 
   return (
@@ -104,10 +105,12 @@ export default function HeroSection() {
         </p>
 
         <div className="mt-10 flex items-center gap-4">
-          <button className="group flex cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-800/30 bg-transparent px-4 py-[10px] backdrop-blur-md duration-300 hover:scale-[1.03]">
-            Servidor{" "}
-            <ChevronsRight className="h-5 w-5 duration-500 group-hover:-rotate-90" />
-          </button>
+          <Link href="https://discord.com/invite/RTahhx6Pvp">
+            <button className="group flex cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-800/30 bg-black/30 px-4 py-[12px] backdrop-blur-md duration-300 hover:scale-[1.03]">
+              Servidor{" "}
+              <ChevronsRight className="h-5 w-5 duration-500 group-hover:-rotate-90" />
+            </button>
+          </Link>
           <ShinyButton
             className="font-montserrat font-light"
             onClick={() =>

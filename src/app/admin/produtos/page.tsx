@@ -2,7 +2,7 @@ import { count, desc } from "drizzle-orm";
 
 import { db } from "@/db";
 // ALTERAÇÃO 1: Adicionei 'category' na importação
-import { category,product } from "@/db/schema";
+import { category, product } from "@/db/schema";
 
 import { AddProductButton } from "./add-button";
 import { ProductsTable } from "./products-table";
@@ -41,9 +41,9 @@ export default async function AdminProductsPage({
     .from(category);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-2 pt-6">
       {/* --- HEADER DA PÁGINA --- */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex items-center justify-between gap-4 flex-row">
         <div>
           <h1 className="font-clash-display text-3xl font-medium text-white">
             Meus Produtos
