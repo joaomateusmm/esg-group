@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeft, CheckCircle, ShoppingBag } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect } from "react";
 
@@ -21,10 +22,16 @@ export default function CheckoutSuccessPage() {
     <div className="flex min-h-screen flex-col bg-[#010000]">
       <Header />
 
-      <main className="flex flex-1 flex-col items-center justify-center px-4 py-20 text-center">
+      <main className="flex flex-1 flex-col items-center justify-center px-4 pt-42 pb-12 text-center">
         {/* Ícone Animado */}
-        <div className="animate-in zoom-in mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-green-500/10 duration-500">
-          <CheckCircle className="h-12 w-12 text-green-500" />
+        <div className="animate-in zoom-in mb-6 flex h-62 w-62 items-center justify-center duration-500">
+          <Image
+            src="/images/illustration-sucess.svg"
+            alt="Sem produtos"
+            width={400}
+            height={400}
+            className="opacity-80"
+          />
         </div>
 
         <h1 className="font-clash-display mb-2 text-3xl font-bold text-white md:text-4xl">
@@ -37,12 +44,12 @@ export default function CheckoutSuccessPage() {
         </p>
 
         {/* Card de Ações */}
-        <div className="flex w-full max-w-sm flex-col gap-3 rounded-xl border border-white/10 bg-[#0A0A0A] p-6">
+        <div className="flex w-full max-w-sm flex-row items-center justify-center gap-5">
           {/* Botão 1: Histórico de Compras */}
           <Link href="/minha-conta/compras" className="w-full">
-            <Button className="h-12 w-full gap-2 bg-[#D00000] text-base font-medium text-white hover:bg-[#a00000]">
+            <Button className="h-12 w-full gap-2 bg-[#D00000] text-base font-medium text-white duration-300 hover:scale-105 hover:bg-[#a00000]">
               <ShoppingBag className="h-4 w-4" />
-              Ver Meus Pedidos
+              Meus Pedidos
             </Button>
           </Link>
 
@@ -50,10 +57,10 @@ export default function CheckoutSuccessPage() {
           <Link href="/" className="w-full">
             <Button
               variant="outline"
-              className="h-12 w-full gap-2 border-white/10 bg-transparent text-white hover:bg-white/5"
+              className="h-12 w-full gap-2 bg-white/5 text-base font-medium text-white duration-300 hover:scale-105 hover:bg-white/10"
             >
               <ArrowLeft className="h-4 w-4" />
-              Voltar para o Catálogo
+              Ver Produtos
             </Button>
           </Link>
         </div>
