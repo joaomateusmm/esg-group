@@ -85,7 +85,7 @@ export default function HeroSection() {
             {/* Avatares dos Clientes */}
             <div className="h-8 w-8 overflow-hidden rounded-full border-2 border-[#0404041f] bg-gray-800 duration-100 hover:scale-[1.05]">
               <Image
-                src="/images/avatar/avatar3.jpg"
+                src="/images/avatar/avatar3.webp"
                 alt="Cliente 1"
                 width={32}
                 height={32}
@@ -94,7 +94,7 @@ export default function HeroSection() {
             </div>
             <div className="-ml-3 h-8 w-8 overflow-hidden rounded-full border-2 border-[#111111] bg-gray-400 duration-100 hover:scale-[1.05]">
               <Image
-                src="/images/avatar/avatar2.jpg"
+                src="/images/avatar/avatar2.webp"
                 alt="Cliente 2"
                 width={32}
                 height={32}
@@ -103,7 +103,7 @@ export default function HeroSection() {
             </div>
             <div className="-ml-3 h-8 w-8 overflow-hidden rounded-full border-2 border-[#111111] bg-gray-300 duration-100 hover:scale-[1.05]">
               <Image
-                src="/images/avatar/avatar1.png"
+                src="/images/avatar/avatar1.webp"
                 alt="Cliente 3"
                 width={32}
                 height={32}

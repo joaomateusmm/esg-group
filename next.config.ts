@@ -19,13 +19,20 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "utfs.io", // <--- ONDE AS IMAGENS DO UPLOADTHING FICAM
+        hostname: "randomuser.me",
       },
       {
         protocol: "https",
-        hostname: "placehold.co", // Para seus placeholders
+        hostname: "lh3.googleusercontent.com",
       },
-      // Pode remover twitter, reddit, etc.
+      {
+        protocol: "https",
+        hostname: "*.googleusercontent.com",
+      },
+      {
+        protocol: "https",
+        hostname: "utfs.io", // <--- ADICIONADO PARA UPLOADTHING
+      },
     ],
   },
 };
