@@ -116,9 +116,9 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
           )}
         />
 
-        {/* Botões Flutuantes */}
         <div className="absolute right-4 bottom-4 z-20 flex translate-y-4 flex-col gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
           <Button
+            // BOTAO PARA ADD NOS FAVORITOS
             size="icon"
             onClick={handleFavorite}
             className={cn(

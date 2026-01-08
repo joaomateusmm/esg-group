@@ -1,92 +1,59 @@
-import {
-  DollarSign,
-  LayoutDashboard,
-  LogOut,
-  Settings,
-  ShoppingBag,
-} from "lucide-react";
-import Link from "next/link";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
-export default function AffiliateLayout({
+import { AffiliateSidebar } from "@/components/AffiliateSideBar"; // <--- Import da nova Sidebar
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { auth } from "@/lib/auth";
+
+export default async function AffiliateLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // 1. Pegar sessão para passar os dados do usuário para a Sidebar
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  // Objeto de usuário formatado para a Sidebar
+  const user = {
+    name: session.user.name,
+    email: session.user.email,
+    image: session.user.image,
+  };
+
   return (
-    <div className="flex min-h-screen bg-[#0a0a0a] text-white">
-      {/* --- SIDEBAR --- */}
-      <aside className="hidden w-64 flex-col border-r border-white/10 bg-[#111] md:flex">
-        <div className="border-b border-white/10 p-6">
-          <h2 className="text-xl font-bold tracking-tight">
-            Afiliados<span className="text-red-600">.</span>
-          </h2>
-        </div>
+    // SidebarProvider é necessário para controlar o estado (aberto/fechado) da Sidebar
+    <SidebarProvider>
+      {/* Chamada do componente Sidebar que criamos */}
+      <AffiliateSidebar user={user} />
 
-        <nav className="flex-1 space-y-2 p-4">
-          <SidebarLink
-            href="/afiliados/painel"
-            icon={<LayoutDashboard size={20} />}
-            label="Visão Geral"
-          />
-          <SidebarLink
-            href="/afiliados/painel/produtos"
-            icon={<ShoppingBag size={20} />}
-            label="Produtos & Links"
-          />
-          <SidebarLink
-            href="/afiliados/painel/financeiro"
-            icon={<DollarSign size={20} />}
-            label="Financeiro"
-          />
-          <SidebarLink
-            href="/afiliados/painel/configuracoes"
-            icon={<Settings size={20} />}
-            label="Configurações"
-          />
-        </nav>
-
-        <div className="border-t border-white/10 p-4">
-          <Link
-            href="/"
-            className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-neutral-400 transition-all hover:bg-white/5 hover:text-white"
-          >
-            <LogOut size={20} />
-            Sair do Painel
-          </Link>
-        </div>
-      </aside>
-
-      {/* --- CONTEÚDO PRINCIPAL --- */}
-      <main className="flex-1 overflow-y-auto">
-        {/* Header Mobile (opcional, simplificado aqui) */}
-        <header className="flex items-center justify-between border-b border-white/10 bg-[#111] p-4 md:hidden">
-          <span className="font-bold">Menu Afiliado</span>
-          {/* Aqui você colocaria um Sheet/Drawer para mobile */}
+      {/* SidebarInset é o container do conteúdo principal que se ajusta automaticamente */}
+      <SidebarInset className="bg-[#0a0a0a] text-white">
+        {/* Header interno com o Trigger (Botão Hamburger) para Mobile */}
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-white/5 px-4 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-ml-1 text-white hover:bg-white/10" />
+            <div className="mr-2 h-4 w-[1px] bg-white/10" />
+            <span className="text-sm font-medium text-neutral-400">
+              Painel do Afiliado
+            </span>
+          </div>
         </header>
 
-        <div className="mx-auto max-w-6xl p-8">{children}</div>
-      </main>
-    </div>
-  );
-}
-
-// Componente auxiliar para os links
-function SidebarLink({
-  href,
-  icon,
-  label,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-3 rounded-lg px-4 py-3 font-medium text-neutral-400 transition-all hover:bg-white/5 hover:text-white"
-    >
-      {icon}
-      {label}
-    </Link>
+        {/* Conteúdo da Página (Children) */}
+        <main className="flex flex-1 flex-col gap-4 p-4 pt-4 md:p-8">
+          {children}
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

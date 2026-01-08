@@ -1,12 +1,14 @@
-import { desc, eq } from "drizzle-orm"; // Adicionei 'desc' para ordenar
+import { desc, eq } from "drizzle-orm";
+import { ShoppingBag } from "lucide-react"; // Importei um ícone para o título da tabela
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db";
-import { affiliate, commission } from "@/db/schema"; // Importar tabelas
+import { affiliate, commission, product } from "@/db/schema"; // Adicionado 'product'
 import { auth } from "@/lib/auth";
 
-// Interface para as propriedades do Card (Corrige o erro do ESLint)
+import { AffiliateProductsTable } from "./components/affiliate-products-table";
+
 interface CardProps {
   title: string;
   value: string | number;
@@ -22,19 +24,27 @@ export default async function DashboardPage() {
 
   if (!session) redirect("/login");
 
-  // Busca dados atualizados do afiliado
+  // 1. Busca dados do afiliado (Saldo e Métricas)
   const affData = await db.query.affiliate.findFirst({
     where: eq(affiliate.userId, session.user.id),
     with: {
-      // Graças ao 'affiliateRelations' no schema, isto agora funciona:
       commissions: {
-        orderBy: [desc(commission.createdAt)], // Ordena as mais recentes primeiro
-        limit: 5, // Traz apenas as 5 últimas
+        orderBy: [desc(commission.createdAt)],
+        limit: 5,
       },
     },
   });
 
   if (!affData) redirect("/afiliados");
+
+  // 2. Busca todos os produtos ATIVOS da loja (Para a tabela)
+  const activeProducts = await db.query.product.findMany({
+    where: eq(product.status, "active"),
+    orderBy: [desc(product.createdAt)],
+  });
+
+  // 3. Configurações auxiliares
+  const domain = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("pt-BR", {
@@ -42,85 +52,70 @@ export default async function DashboardPage() {
       currency: "BRL",
     }).format(val / 100);
 
-  // Garante que commissions seja um array (mesmo se vier undefined por algum motivo)
-  const commissionsList = affData.commissions || [];
-
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-white">
-          Olá, {session.user.name.split(" ")[0]} 👋
-        </h1>
-        <p className="text-neutral-400">Aqui está o resumo dos seus ganhos.</p>
-      </div>
-
-      {/* CARDS DE MÉTRICAS */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <Card
-          title="Saldo Disponível"
-          value={formatCurrency(affData.balance)}
-          desc="Pronto para saque"
-          highlight
-        />
-        <Card
-          title="Total Ganho"
-          value={formatCurrency(affData.totalEarnings)}
-          desc="Desde o início"
-        />
-        <Card
-          title="Seu Código"
-          value={affData.code}
-          desc="Use ?ref=SEUCODIGO nos links"
-          mono
-        />
-      </div>
-
-      {/* LISTA DE VENDAS RECENTES */}
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-[#191919]">
-        <div className="border-b border-white/10 p-6">
-          <h3 className="font-semibold text-white">Vendas Recentes</h3>
+    <div className="space-y-10 px-6 py-8 md:px-16">
+      {/* --- SEÇÃO 1: CABEÇALHO E MÉTRICAS --- */}
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-white">
+            Olá, {session.user.name.split(" ")[0]}
+          </h1>
+          <p className="text-neutral-400">
+            Aqui está o resumo dos seus ganhos.
+          </p>
         </div>
-        <div className="p-6">
-          {commissionsList.length === 0 ? (
-            <p className="text-sm text-neutral-500">
-              Nenhuma venda registrada ainda. Comece a divulgar!
-            </p>
-          ) : (
-            <ul className="space-y-4">
-              {commissionsList.map((comm) => (
-                <li
-                  key={comm.id}
-                  className="flex items-center justify-between border-b border-white/5 pb-2 text-sm last:border-0"
-                >
-                  <span className="text-neutral-300">
-                    {comm.description || "Comissão de Venda"}
-                  </span>
-                  <div className="text-right">
-                    <span className="block font-medium text-green-400">
-                      + {formatCurrency(comm.amount)}
-                    </span>
-                    <span className="text-xs text-neutral-600 capitalize">
-                      {comm.status === "pending" ? "Pendente" : "Disponível"}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <Card
+            title="Saldo Disponível"
+            value={formatCurrency(affData.balance)}
+            desc="Pronto para saque"
+            highlight
+          />
+          <Card
+            title="Total Ganho"
+            value={formatCurrency(affData.totalEarnings)}
+            desc="Desde o início"
+          />
+          <Card
+            title="Seu Código"
+            value={affData.code}
+            desc="Use ?ref=SEUCODIGO nos links"
+            mono
+          />
         </div>
+      </div>
+      <div className="h-[1px] w-full bg-white/5" /> {/* Separador Visual */}
+      {/* --- SEÇÃO 2: TABELA DE PRODUTOS --- */}
+      <div className="space-y-6">
+        <div>
+          <h2 className="flex items-center gap-2 text-xl font-bold text-white">
+            Gerar Links de Divulgação
+          </h2>
+          <p className="text-sm text-neutral-400">
+            Escolha um produto abaixo, copie o link e comece a vender.
+          </p>
+        </div>
+
+        {/* Componente da Tabela importado */}
+        <AffiliateProductsTable
+          data={activeProducts}
+          affiliateCode={affData.code}
+          domain={domain}
+        />
       </div>
     </div>
   );
 }
 
-// Componente Card com tipagem correta
+// Componente Card auxiliar
 function Card({ title, value, desc, highlight, mono }: CardProps) {
   return (
     <div
-      className={`rounded-xl border p-6 ${
+      className={`rounded-xl border p-6 transition-colors ${
         highlight
           ? "border-transparent bg-white text-black"
-          : "border-white/10 bg-[#191919] text-white"
+          : "border-white/10 bg-[#191919] text-white hover:border-white/20"
       }`}
     >
       <h3

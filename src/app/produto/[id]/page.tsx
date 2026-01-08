@@ -15,6 +15,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { AddToCartButton } from "@/components/add-to-cart-button";
+import { AddToWishlistButton } from "@/components/AddToWishlistButton";
 import { BuyNowButton } from "@/components/BuyNowButton";
 // IMPORTAÇÃO DO NOVO BOTÃO
 import { DeleteReviewButton } from "@/components/delete-review-button";
@@ -243,14 +244,15 @@ export default async function ProductPage({ params }: ProductPageProps) {
                       className="text-md h-14 flex-1 border-white/10 bg-transparent font-bold text-white hover:bg-white/5"
                     />
 
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="text-md h-14 flex-1 border-white/10 bg-transparent font-bold text-white hover:bg-white/5"
-                    >
-                      <HeartPlus className="mr-2 h-5 w-5" />
-                      Favoritar
-                    </Button>
+                    <AddToWishlistButton
+                      product={{
+                        id: productData.id,
+                        name: productData.name,
+                        price: finalPrice,
+                        image: productImage,
+                        category: categoryNames[0] || "Geral", // Passamos a primeira categoria ou "Geral"
+                      }}
+                    />
                   </div>
                 </div>
 

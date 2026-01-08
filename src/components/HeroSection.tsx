@@ -61,13 +61,13 @@ export default function HeroSection() {
       </div>
 
       {/* --- CUBOS 3D --- */}
-      <div className="absolute bottom-0 left-0 h-[300px] w-[300px] opacity-50 blur-xs md:bottom-[-100px] md:left-[1000px] md:h-[500px] md:w-[500px]">
+      <div className="absolute bottom-0 left-0 hidden h-[300px] w-[300px] opacity-50 blur-xs md:bottom-[-100px] md:left-[1000px] md:flex md:h-[500px] md:w-[500px]">
         <SingleCubeRoblox scale={8} initialRotation={[2, 2, 0]} />
       </div>
-      <div className="absolute top-[-220px] right-[-250px] h-[350px] w-[350px] opacity-50 blur-xs duration-500 md:h-[800px] md:w-[800px]">
+      <div className="absolute top-[-220px] right-[-250px] hidden h-[350px] w-[350px] opacity-50 blur-xs duration-500 md:flex md:h-[800px] md:w-[800px]">
         <SingleCubeFivem scale={7} initialRotation={[0.5, 0.5, 0]} />
       </div>
-      <div className="absolute top-[0px] left-[120px] h-[250px] w-[250px] opacity-40 blur-xs md:h-[800px] md:w-[800px]">
+      <div className="absolute top-[0px] left-[120px] hidden h-[250px] w-[250px] opacity-40 blur-xs md:flex md:h-[800px] md:w-[800px]">
         <SingleCubeValorant scale={5} initialRotation={[1, 2, 0]} />
       </div>
 

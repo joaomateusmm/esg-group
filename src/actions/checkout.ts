@@ -1,10 +1,10 @@
 "use server";
 
 import { eq, inArray } from "drizzle-orm";
-import { cookies,headers } from "next/headers"; // Adicionado cookies
+import { cookies, headers } from "next/headers";
 
 import { db } from "@/db";
-import { affiliate, commission, order, orderItem, product } from "@/db/schema"; // Importar tabelas novas
+import { affiliate, commission, order, orderItem, product } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 // Tipo esperado dos itens do carrinho
@@ -81,7 +81,6 @@ export async function createCheckoutSession(items: CartItemInput[]) {
   if (activeAffiliate) {
     try {
       // Precisamos buscar os produtos reais no DB para pegar a % de comissão (affiliateRate)
-      // Não confiamos apenas no front-end para taxas de comissão
       const productIds = items.map((i) => i.id);
 
       const dbProducts = await db
@@ -95,8 +94,9 @@ export async function createCheckoutSession(items: CartItemInput[]) {
       for (const item of items) {
         const dbProd = dbProducts.find((p) => p.id === item.id);
 
-        // Se o produto não tiver taxa definida, usa 10% (ou 0 se preferir)
-        const rate = dbProd?.affiliateRate ?? 10;
+        // --- MUDANÇA AQUI: Alterado de 10 para 20 ---
+        // Se o produto não tiver taxa definida no banco, usa 20% como padrão
+        const rate = dbProd?.affiliateRate ?? 20;
 
         const itemTotal = item.price * item.quantity;
         const commissionValue = Math.round(itemTotal * (rate / 100));
@@ -110,7 +110,7 @@ export async function createCheckoutSession(items: CartItemInput[]) {
           affiliateId: activeAffiliate.id,
           orderId: newOrder.id,
           amount: totalCommission,
-          status: "pending", 
+          status: "pending",
           description: `Venda via link de afiliado: ${affiliateCode}`,
         });
 
@@ -119,7 +119,6 @@ export async function createCheckoutSession(items: CartItemInput[]) {
         );
       }
     } catch (error) {
-      // Não queremos travar a venda se der erro na comissão, apenas logamos
       console.error("Erro ao gerar comissão:", error);
     }
   }
@@ -154,7 +153,6 @@ export async function createCheckoutSession(items: CartItemInput[]) {
     metadata: {
       source: "submind_site",
       user_id: user.id,
-      // Opcional: Enviar ID do afiliado nos metadados da InfinitePay também
       affiliate_id: activeAffiliate?.id || "",
     },
   };

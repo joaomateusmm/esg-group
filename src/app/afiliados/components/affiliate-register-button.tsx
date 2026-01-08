@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { registerAffiliate } from "@/actions/affiliate";
+import { ShinyButton } from "@/components/ui/shiny-button";
 
 export function AffiliateRegisterButton() {
   const [loading, setLoading] = useState(false);
@@ -24,12 +25,11 @@ export function AffiliateRegisterButton() {
   };
 
   return (
-    <button
+    <ShinyButton
       onClick={handleRegister}
-      disabled={loading}
-      className="w-full rounded-lg bg-white py-3 font-bold text-black transition-colors hover:bg-neutral-200 disabled:opacity-50"
+      className="w-full rounded-lg bg-white px-5 py-3 font-bold text-black transition-colors hover:bg-neutral-200 disabled:opacity-50"
     >
-      {loading ? "Criando painel..." : "Ativar Minha Conta de Afiliado"}
-    </button>
+      {loading ? "Criando painel..." : "Ser Afiliado"}
+    </ShinyButton>
   );
 }

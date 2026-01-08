@@ -21,7 +21,7 @@ interface ProductData {
   id: string;
   name: string;
   price: number;
-  discountPrice: number | null; // <--- ADICIONADO: O preço promocional
+  discountPrice: number | null;
   images: string[] | null;
   affiliateRate: number | null;
 }
@@ -86,7 +86,7 @@ export function AffiliateProductsTable({
               <TableHead className="text-right text-neutral-400">
                 Você Ganha
               </TableHead>
-              <TableHead className="w-[150px] text-right text-neutral-400">
+              <TableHead className="w-[250px] text-right text-neutral-400">
                 Link
               </TableHead>
             </TableRow>
@@ -109,15 +109,17 @@ export function AffiliateProductsTable({
                 const mainImage =
                   item.images && item.images.length > 0 ? item.images[0] : null;
 
-                // --- LÓGICA DE PREÇO CORRIGIDA ---
-                // Se discountPrice existir (e não for zero/null), usamos ele. Senão, usamos price.
+                // Se discountPrice existir, usamos ele. Senão, usamos price.
                 const effectivePrice = item.discountPrice
                   ? item.discountPrice
                   : item.price;
 
-                const rate = item.affiliateRate ?? 10;
+                const rate =
+                  !item.affiliateRate || item.affiliateRate === 10
+                    ? 20
+                    : item.affiliateRate;
 
-                // Calculamos a comissão baseada no preço efetivo (o que o cliente paga)
+                // Calculamos a comissão
                 const commissionValue = (effectivePrice * rate) / 100;
 
                 return (
@@ -150,21 +152,18 @@ export function AffiliateProductsTable({
                     <TableCell>
                       <Badge
                         variant="secondary"
-                        className="border-0 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
+                        className="border-0 bg-neutral-500/10 text-neutral-400 hover:bg-neutral-500/20"
                       >
                         {rate}%
                       </Badge>
                     </TableCell>
 
-                    {/* Preço com tratamento visual de Promoção */}
                     <TableCell className="text-right font-mono text-sm">
                       {item.discountPrice ? (
                         <div className="flex flex-col items-end">
-                          {/* Preço original riscado */}
                           <span className="text-xs text-neutral-600 line-through decoration-neutral-600">
                             {formatMoney(item.price)}
                           </span>
-                          {/* Preço novo em destaque */}
                           <span className="text-neutral-300">
                             {formatMoney(item.discountPrice)}
                           </span>
@@ -176,8 +175,7 @@ export function AffiliateProductsTable({
                       )}
                     </TableCell>
 
-                    {/* Comissão Calculada Corretamente */}
-                    <TableCell className="text-right font-mono font-bold text-green-400">
+                    <TableCell className="text-right font-mono font-bold text-green-300">
                       {formatMoney(commissionValue)}
                     </TableCell>
 
