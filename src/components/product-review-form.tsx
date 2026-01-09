@@ -21,6 +21,8 @@ const initialState = {
   errors: undefined,
 };
 
+const MAX_CHARS = 155; // Limite máximo de caracteres
+
 export function ProductReviewForm({ productId }: ProductReviewFormProps) {
   // Estado da Server Action
   const [state, action, isPending] = useActionState(
@@ -31,14 +33,18 @@ export function ProductReviewForm({ productId }: ProductReviewFormProps) {
   // Estados locais
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
-  const [localError, setLocalError] = useState(""); // <--- Novo estado para o erro local
+  const [localError, setLocalError] = useState("");
+
+  // Novo estado para controlar o texto e contagem
+  const [commentText, setCommentText] = useState("");
 
   // Efeito para mostrar toast de sucesso ou erro vindo do servidor
   useEffect(() => {
     if (state?.message) {
       if (state.success) {
         toast.success(state.message);
-        setLocalError(""); // Limpa erros se tiver sucesso
+        setLocalError("");
+        setCommentText(""); // Limpa o campo após sucesso
       } else if (!state.success && state.message) {
         toast.error(state.message);
       }
@@ -47,24 +53,26 @@ export function ProductReviewForm({ productId }: ProductReviewFormProps) {
 
   // Função para validar no cliente antes de enviar
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    // Pegamos o valor do comentário
-    const formData = new FormData(e.currentTarget);
-    const comment = formData.get("comment") as string;
+    // A validação de required já bloqueia envio vazio,
+    // mas verificamos o tamanho mínimo e máximo manualmente também
 
-    // Resetamos erro anterior
     setLocalError("");
 
-    // Validação Manual
-    if (!comment || comment.trim().length < 3) {
-      e.preventDefault(); // Impede o envio
-
+    if (!commentText || commentText.trim().length < 3) {
+      e.preventDefault();
       const msg = "O comentário precisa ter pelo menos 3 caracteres.";
-      toast.warning(msg); // Toast
-      setLocalError(msg); // Texto vermelho no card
+      toast.warning(msg);
+      setLocalError(msg);
       return;
     }
 
-    // Se passar, o form segue para a server action
+    if (commentText.length > MAX_CHARS) {
+      e.preventDefault();
+      const msg = `O comentário excede o limite de ${MAX_CHARS} caracteres.`;
+      toast.error(msg);
+      setLocalError(msg);
+      return;
+    }
   };
 
   return (
@@ -75,13 +83,13 @@ export function ProductReviewForm({ productId }: ProductReviewFormProps) {
       </h4>
 
       {state?.success ? (
-        <div className="animate-in fade-in zoom-in flex flex-col items-center justify-center gap-2 rounded-lg border border-green-500/20 bg-green-500/10 p-6 text-center text-sm text-green-500 duration-300">
-          <div className="rounded-full bg-green-500/20 p-2">
-            <Star className="h-6 w-6 fill-current" />
+        <div className="animate-in fade-in zoom-in flex flex-col items-center justify-center gap-2 rounded-lg border border-neutral-500/20 bg-neutral-500/10 p-6 text-center text-sm text-green-500 duration-300">
+          <div className="rounded-full bg-neutral-800/40 p-2 shadow-md duration-500 hover:scale-110">
+            <Star className="h-6 w-6 fill-current text-[#F0B100]" />
           </div>
           <div>
-            <p className="text-base font-semibold">Avaliação Enviada!</p>
-            <p className="opacity-90">{state.message}</p>
+            <p className="font-semibold text-white">Obrigado por Avaliar</p>
+            <p className="text-white/50 opacity-90">{state.message}</p>
           </div>
         </div>
       ) : (
@@ -122,23 +130,40 @@ export function ProductReviewForm({ productId }: ProductReviewFormProps) {
 
           {/* Comentário */}
           <div className="space-y-2">
-            <Label htmlFor="comment" className="text-xs text-neutral-400">
-              Seu comentário:
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="comment" className="text-xs text-neutral-400">
+                Seu comentário:
+              </Label>
+              {/* CONTADOR DE CARACTERES */}
+              <span
+                className={cn(
+                  "text-[10px] transition-colors",
+                  commentText.length >= MAX_CHARS
+                    ? "font-bold text-red-500"
+                    : "text-neutral-500",
+                )}
+              >
+                {commentText.length} / {MAX_CHARS}
+              </span>
+            </div>
+
             <Textarea
               id="comment"
               name="comment"
               placeholder="Conte o que achou do produto..."
               className={cn(
                 "min-h-[80px] resize-none border-white/10 bg-white/5 text-sm text-white placeholder:text-neutral-600 focus:border-[#D00000]/50 focus:ring-0",
-                localError && "border-red-500/50 focus:border-red-500", // Adiciona borda vermelha se tiver erro
+                localError && "border-red-500/50 focus:border-red-500",
               )}
-              maxLength={500}
-              // Limpa o erro assim que o usuário começa a digitar novamente
-              onChange={() => setLocalError("")}
+              maxLength={MAX_CHARS} // Limite nativo do HTML
+              value={commentText}
+              onChange={(e) => {
+                setCommentText(e.target.value);
+                setLocalError("");
+              }}
             />
 
-            {/* --- MENSAGENS DE ERRO (LOCAL E SERVIDOR) --- */}
+            {/* --- MENSAGENS DE ERRO --- */}
             {localError && (
               <p className="animate-in slide-in-from-left-1 text-xs font-medium text-red-500">
                 {localError}

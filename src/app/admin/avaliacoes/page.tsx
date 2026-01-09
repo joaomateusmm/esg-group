@@ -14,7 +14,6 @@ import {
 import { db } from "@/db";
 import { product, review, user } from "@/db/schema";
 
-// Formata a data para pt-BR
 const formatDate = (date: Date) => {
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
@@ -26,8 +25,6 @@ const formatDate = (date: Date) => {
 };
 
 export default async function AdminReviewsPage() {
-  // --- BUSCA DAS AVALIAÇÕES ---
-  // Trazemos dados da tabela 'review', e juntamos com 'user' e 'product'
   const reviews = await db
     .select({
       id: review.id,
@@ -43,7 +40,7 @@ export default async function AdminReviewsPage() {
     .from(review)
     .leftJoin(user, eq(review.userId, user.id))
     .leftJoin(product, eq(review.productId, product.id))
-    .orderBy(desc(review.createdAt)); // Mais recentes primeiro
+    .orderBy(desc(review.createdAt));
 
   return (
     <div className="space-y-6 p-8">
@@ -63,7 +60,8 @@ export default async function AdminReviewsPage() {
               <TableHead className="text-neutral-400">Cliente</TableHead>
               <TableHead className="text-neutral-400">Produto</TableHead>
               <TableHead className="text-neutral-400">Nota</TableHead>
-              <TableHead className="w-[40%] text-neutral-400">
+              {/* Largura fixa no cabeçalho ajuda a coluna a não colapsar */}
+              <TableHead className="w-[300px] text-neutral-400">
                 Comentário
               </TableHead>
               <TableHead className="text-right text-neutral-400">
@@ -89,7 +87,7 @@ export default async function AdminReviewsPage() {
                   className="border-white/10 hover:bg-white/5"
                 >
                   {/* CLIENTE */}
-                  <TableCell>
+                  <TableCell className="align-middle">
                     <div className="flex items-center gap-3">
                       <div className="relative h-8 w-8 overflow-hidden rounded-full bg-neutral-800">
                         {item.userImage && (
@@ -113,7 +111,7 @@ export default async function AdminReviewsPage() {
                   </TableCell>
 
                   {/* PRODUTO */}
-                  <TableCell>
+                  <TableCell className="align-middle">
                     <div className="flex items-center gap-2">
                       <div className="relative h-8 w-12 overflow-hidden rounded bg-neutral-800">
                         {item.productImage && item.productImage[0] && (
@@ -132,7 +130,7 @@ export default async function AdminReviewsPage() {
                   </TableCell>
 
                   {/* NOTA */}
-                  <TableCell>
+                  <TableCell className="align-middle">
                     <div className="flex items-center gap-1 text-yellow-500">
                       <Star className="h-4 w-4 fill-current" />
                       <span className="font-bold text-white">
@@ -141,24 +139,27 @@ export default async function AdminReviewsPage() {
                     </div>
                   </TableCell>
 
-                  {/* COMENTÁRIO */}
-                  <TableCell>
-                    <p className="line-clamp-2 text-sm text-neutral-400">
-                      {item.comment || (
-                        <span className="italic opacity-50">
-                          Sem comentário
-                        </span>
-                      )}
-                    </p>
+                  {/* COMENTÁRIO - CORREÇÃO COMPLETA */}
+                  <TableCell className="align-middle">
+                    {/* A div interna restringe a largura e força a quebra */}
+                    <div className="w-[300px]">
+                      <p className="text-sm break-words whitespace-normal text-neutral-400">
+                        {item.comment || (
+                          <span className="italic opacity-50">
+                            Sem comentário
+                          </span>
+                        )}
+                      </p>
+                    </div>
                   </TableCell>
 
                   {/* DATA */}
-                  <TableCell className="text-right text-xs text-neutral-500">
+                  <TableCell className="text-right align-middle text-xs text-neutral-500">
                     {formatDate(item.createdAt)}
                   </TableCell>
 
                   {/* AÇÕES */}
-                  <TableCell>
+                  <TableCell className="align-middle">
                     <DeleteReviewButton reviewId={item.id} />
                   </TableCell>
                 </TableRow>
