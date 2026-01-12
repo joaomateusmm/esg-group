@@ -25,7 +25,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { archiveProduct, deleteProduct } from "./actions";
+import {
+  archiveProduct,
+  deleteProduct,
+} from "../../../../actions/create-product";
 
 interface ProductActionsProps {
   id: string;
@@ -33,7 +36,7 @@ interface ProductActionsProps {
 
 export function ProductActions({ id }: ProductActionsProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showArchiveDialog, setShowArchiveDialog] = useState(false); // NOVO DIALOG
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
 
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -99,9 +102,15 @@ export function ProductActions({ id }: ProductActionsProps) {
           className="border-white/10 bg-[#111] text-white"
         >
           <DropdownMenuLabel>Ações</DropdownMenuLabel>
-          <DropdownMenuItem className="cursor-pointer focus:bg-white/10 focus:text-white">
+
+          {/* --- AÇÃO DE EDITAR --- */}
+          <DropdownMenuItem
+            className="cursor-pointer focus:bg-white/10 focus:text-white"
+            onClick={() => router.push(`/admin/produtos/${id}/editar`)}
+          >
             <Edit className="mr-2 h-4 w-4" /> Editar
           </DropdownMenuItem>
+
           <DropdownMenuSeparator className="bg-white/10" />
           <DropdownMenuItem
             className="cursor-pointer text-red-500 focus:bg-red-500/10 focus:text-red-500"

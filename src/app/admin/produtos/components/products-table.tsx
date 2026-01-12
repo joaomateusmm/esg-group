@@ -38,7 +38,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { deleteProducts } from "./actions";
+import { deleteProducts } from "../../../../actions/create-product";
 import { ProductActions } from "./product-actions";
 
 // Tipo auxiliar para as categorias

@@ -2,6 +2,7 @@
 
 import {
   ChevronDown,
+  DollarSign,
   Heart,
   Loader2,
   LogIn,
@@ -9,7 +10,6 @@ import {
   Minus,
   Plus,
   Search,
-  Settings,
   ShoppingBag,
   ShoppingCart,
   Trash2,
@@ -401,12 +401,7 @@ export function Header() {
 
             {/* LÓGICA DO LINK DE AFILIADO */}
             {isAffiliate ? (
-              <HeaderLink
-                href="/afiliados/painel"
-                className="font-semibold text-[#D00000] hover:text-red-400"
-              >
-                Painel Afiliado
-              </HeaderLink>
+              <HeaderLink href="/afiliados/painel">Painel Afiliado</HeaderLink>
             ) : (
               <HeaderLink href="/afiliados">Seja Afiliado</HeaderLink>
             )}
@@ -678,7 +673,7 @@ export function Header() {
                       </div>
                       <Separator className="bg-white/10" />
                       <div className="flex flex-col gap-2">
-                        <Link
+                        {/* <Link
                           href="/minha-conta/configurações"
                           className="w-full"
                         >
@@ -688,7 +683,7 @@ export function Header() {
                           >
                             <Settings className="h-5 w-5" /> Configurações
                           </Button>
-                        </Link>
+                        </Link> */}
                         <Link href="/minha-conta/favoritos" className="w-full">
                           <Button
                             variant="ghost"
@@ -710,9 +705,10 @@ export function Header() {
                           <Link href="/afiliados/painel" className="w-full">
                             <Button
                               variant="ghost"
-                              className="h-12 w-full justify-start gap-3 text-[#D00000] hover:bg-[#D00000]/10 hover:text-[#D00000]"
+                              className="h-12 w-full justify-start gap-3 text-neutral-300 hover:bg-white/5 hover:text-white"
                             >
-                              <LogIn className="h-5 w-5" /> Painel de Afiliado
+                              <DollarSign className="h-5 w-5" /> Painel de
+                              Afiliado
                             </Button>
                           </Link>
                         )}

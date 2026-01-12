@@ -29,6 +29,60 @@ const productSchema = z.object({
 
 export type ProductServerPayload = z.infer<typeof productSchema>;
 
+// CORREÇÃO AQUI: Tipagem correta em vez de 'any'
+export async function updateProduct(id: string, rawData: ProductServerPayload) {
+  // 1. Validar (Igual ao create)
+  const result = productSchema.safeParse(rawData);
+
+  if (!result.success) {
+    console.error("Erro de validação (Update):", result.error.flatten());
+    return { success: false, message: "Dados inválidos para atualização." };
+  }
+
+  const data = result.data;
+  const finalPaymentLink =
+    data.paymentLink && data.paymentLink.length > 0 ? data.paymentLink : "#";
+
+  try {
+    await db
+      .update(product)
+      .set({
+        name: data.name,
+        description: data.description,
+        // O preço já vem em centavos do front no update?
+        // ATENÇÃO: No create você faz Math.round(price * 100).
+        // Se no front você está mandando 10.50, aqui tem que converter.
+        // Se já está mandando 1050, mantenha data.price.
+        // Assumindo que o front manda IGUAL ao create (float), vamos converter:
+        price: Math.round(data.price * 100),
+        discountPrice: data.discountPrice
+          ? Math.round(data.discountPrice * 100)
+          : null,
+        images: data.images,
+        categories: data.categories,
+        streamings: data.streamings,
+        gameId: data.gameId && data.gameId.length > 0 ? data.gameId : null,
+        stock: data.stock,
+        isStockUnlimited: data.isStockUnlimited,
+        deliveryMode: data.deliveryMode,
+        paymentMethods: data.paymentMethods,
+        paymentLink: finalPaymentLink,
+        downloadUrl: data.downloadUrl,
+        status: data.status,
+        updatedAt: new Date(),
+      })
+      .where(eq(product.id, id));
+
+    revalidatePath("/admin/produtos");
+    revalidatePath(`/produto/${id}`);
+
+    return { success: true, message: "Produto atualizado com sucesso!" };
+  } catch (error) {
+    console.error("Erro ao atualizar:", error);
+    return { success: false, message: "Erro ao atualizar produto." };
+  }
+}
+
 export async function createProduct(rawData: ProductServerPayload) {
   // 1. Validar
   const result = productSchema.safeParse(rawData);
@@ -139,7 +193,7 @@ export async function archiveProduct(id: string) {
   }
 }
 
-// Bulk Delete (Mantive simples, mas você pode aplicar a mesma lógica se quiser depois)
+// Bulk Delete
 export async function deleteProducts(ids: string[]) {
   try {
     await db.delete(product).where(inArray(product.id, ids));

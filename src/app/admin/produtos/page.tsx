@@ -4,8 +4,8 @@ import { db } from "@/db";
 // ALTERAÇÃO 1: Adicionei 'category' na importação
 import { category, product } from "@/db/schema";
 
-import { AddProductButton } from "./add-button";
-import { ProductsTable } from "./products-table";
+import { AddProductButton } from "./components/add-button";
+import { ProductsTable } from "./components/products-table";
 
 export default async function AdminProductsPage({
   searchParams,
@@ -43,7 +43,7 @@ export default async function AdminProductsPage({
   return (
     <div className="space-y-8 p-2 pt-6">
       {/* --- HEADER DA PÁGINA --- */}
-      <div className="flex items-center justify-between gap-4 flex-row">
+      <div className="flex flex-row items-center justify-between gap-4">
         <div>
           <h1 className="font-clash-display text-3xl font-medium text-white">
             Meus Produtos

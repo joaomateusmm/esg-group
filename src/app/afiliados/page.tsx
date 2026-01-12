@@ -49,12 +49,6 @@ export default async function AffiliatePage() {
       </div>
       {/* ... */}
       <main className="mx-auto max-w-7xl space-y-24 px-4 pt-40 pb-20 md:px-8">
-        {/* ... (Todo o conteúdo dos cards que já tens) ... */}
-        {/* Vou omitir para não duplicar, mantém o teu JSX aqui */}
-        {/* ... 1. BANNER ... 2. CARDS ... 3. CTA ... */}
-
-        {/* Apenas para garantir que tens o código completo da página: */}
-        {/* --- 1. BANNER HERO --- */}
         <div className="relative flex min-h-[500px] w-full items-center justify-end overflow-hidden rounded-3xl border border-white/10 bg-[#0A0A0A] lg:min-h-[600px]">
           {/* Imagem de Fundo */}
           <div className="absolute inset-0 h-full w-full">

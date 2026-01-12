@@ -17,6 +17,16 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+// Importe suas actions.
+import {
+  createProduct,
+  ProductServerPayload,
+  updateProduct,
+} from "@/actions/create-product";
+// Importe suas funções de fetch
+import { getCategories } from "@/app/admin/produtos/new/get-categories";
+import { getGames } from "@/app/admin/produtos/new/get-games";
+import { getStreamings } from "@/app/admin/produtos/new/get-streamings";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -61,14 +71,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { UploadButton } from "@/lib/uploadthing";
 import { cn } from "@/lib/utils";
 
-import {
-  createProduct,
-  ProductServerPayload,
-} from "../../../../actions/create-product";
-import { getCategories } from "./get-categories";
-import { getGames } from "./get-games";
-import { getStreamings } from "./get-streamings";
-
 // --- CONSTANTES ---
 const PAYMENT_METHODS_OPTIONS = [
   { id: "pix", label: "Pix" },
@@ -77,33 +79,32 @@ const PAYMENT_METHODS_OPTIONS = [
   { id: "boleto", label: "Boleto" },
 ];
 
-// --- SCHEMA ATUALIZADO ---
+// --- SCHEMA CORRIGIDO PARA URL ---
 const formSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   description: z.string().optional(),
+
+  // CORREÇÃO: Aceita string vazia "" OU uma URL válida.
+  // Isso impede que textos inválidos cheguem ao servidor.
   paymentLink: z
-    .string()
-    .url("Insira uma URL válida")
-    .optional()
-    .or(z.literal("")),
-  downloadUrl: z.string().optional(),
+    .union([z.literal(""), z.string().url("URL inválida. Inclua https://")])
+    .optional(),
+  downloadUrl: z
+    .union([z.literal(""), z.string().url("URL inválida. Inclua https://")])
+    .optional(),
+
   price: z.number().min(0.01, "O preço deve ser maior que R$ 0,00"),
   discountPrice: z.number().optional(),
-
-  categories: z.array(z.string()).default([]),
-
-  // ATUALIZADO: Agora é array de strings para múltiplos streamings
-  streamings: z.array(z.string()).default([]),
-
+  categories: z.array(z.string()),
+  streamings: z.array(z.string()),
   gameId: z.string().optional(),
-
   status: z.enum(["active", "inactive", "draft"]),
   deliveryMode: z.enum(["email", "none"]),
   paymentMethods: z.array(z.string()).refine((value) => value.length > 0, {
     message: "Selecione pelo menos uma forma de pagamento.",
   }),
-  stock: z.coerce.number().default(0),
-  isStockUnlimited: z.boolean().default(false),
+  stock: z.number(),
+  isStockUnlimited: z.boolean(),
 });
 
 type ProductFormValues = z.infer<typeof formSchema>;
@@ -113,6 +114,26 @@ interface OptionData {
   name: string;
 }
 
+// Interface para os dados vindos do banco
+interface ProductData {
+  id: string;
+  name: string;
+  description?: string | null;
+  price: number;
+  discountPrice?: number | null;
+  paymentLink?: string | null;
+  downloadUrl?: string | null;
+  images?: string[] | null;
+  categories?: string[] | null;
+  streamings?: string[] | null;
+  gameId?: string | null;
+  status: string;
+  deliveryMode: string;
+  paymentMethods?: string[] | null;
+  stock?: number | null;
+  isStockUnlimited?: boolean | null;
+}
+
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -120,19 +141,28 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-export default function NewProductPage() {
+// --- PROPS DO COMPONENTE ---
+interface ProductFormProps {
+  initialData?: ProductData | null;
+}
+
+export function ProductForm({ initialData }: ProductFormProps) {
   const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
 
-  // ESTADOS PARA AS OPÇÕES
-  const [categories, setCategories] = useState<OptionData[]>([]);
-  const [games, setGames] = useState<OptionData[]>([]);
-  const [streamings, setStreamings] = useState<OptionData[]>([]);
+  // Inicializa imagens com as do banco se for edição
+  const [uploadedImages, setUploadedImages] = useState<string[]>(
+    initialData?.images || [],
+  );
 
+  const [categoriesList, setCategoriesList] = useState<OptionData[]>([]);
+  const [gamesList, setGamesList] = useState<OptionData[]>([]);
+  const [streamingsList, setStreamingsList] = useState<OptionData[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
-  // Carregar dados iniciais
+  const pageTitle = initialData ? "Editar Produto" : "Adicionar Novo Produto";
+  const buttonText = initialData ? "Salvar Alterações" : "Criar Produto";
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -141,9 +171,9 @@ export default function NewProductPage() {
           getGames(),
           getStreamings(),
         ]);
-        setCategories(cats);
-        setGames(gms);
-        setStreamings(stms);
+        setCategoriesList(cats);
+        setGamesList(gms);
+        setStreamingsList(stms);
       } catch {
         toast.error("Erro ao carregar dados auxiliares.");
       } finally {
@@ -153,24 +183,54 @@ export default function NewProductPage() {
     loadData();
   }, []);
 
-  const form = useForm({
+  // --- PREPARAÇÃO DOS DADOS PADRÃO ---
+  const defaultValues: ProductFormValues = initialData
+    ? {
+        name: initialData.name,
+        description: initialData.description || undefined,
+        // Garante que se for null no banco, vire "" para o input não reclamar
+        paymentLink: initialData.paymentLink || "",
+        downloadUrl: initialData.downloadUrl || "",
+        status:
+          (initialData.status as "active" | "inactive" | "draft") || "active",
+        deliveryMode: (initialData.deliveryMode as "email" | "none") || "email",
+        stock: initialData.stock || 0,
+        isStockUnlimited: initialData.isStockUnlimited || false,
+        price: initialData.price ? initialData.price / 100 : 0,
+        discountPrice: initialData.discountPrice
+          ? initialData.discountPrice / 100
+          : undefined,
+        categories: initialData.categories || [],
+        streamings: initialData.streamings || [],
+        gameId: initialData.gameId || undefined,
+        paymentMethods: initialData.paymentMethods || [
+          "pix",
+          "credit_card",
+          "debit_card",
+          "boleto",
+        ],
+      }
+    : {
+        name: "",
+        description: undefined,
+        paymentLink: "",
+        downloadUrl: "",
+        status: "active",
+        deliveryMode: "email",
+        stock: 0,
+        isStockUnlimited: false,
+        price: 0,
+        discountPrice: undefined,
+        categories: [],
+        streamings: [],
+        gameId: undefined,
+        paymentMethods: ["pix", "credit_card", "debit_card", "boleto"],
+      };
+
+  const form = useForm<ProductFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      paymentLink: "",
-      downloadUrl: "",
-      status: "active" as const,
-      deliveryMode: "email" as const,
-      stock: 0,
-      isStockUnlimited: false,
-      price: 0,
-      discountPrice: 0,
-      categories: [],
-      streamings: [], // Inicializa como array vazio
-      gameId: "",
-      paymentMethods: ["pix", "credit_card", "debit_card", "boleto"],
-    },
+    defaultValues,
+    mode: "onChange",
   });
 
   const watchPrice = form.watch("price");
@@ -192,7 +252,11 @@ export default function NewProductPage() {
       return;
     }
 
-    if (data.discountPrice && data.discountPrice >= data.price) {
+    if (
+      data.discountPrice !== undefined &&
+      data.discountPrice > 0 &&
+      data.discountPrice >= data.price
+    ) {
       toast.error("O preço promocional deve ser menor que o preço original.");
       return;
     }
@@ -206,25 +270,54 @@ export default function NewProductPage() {
     }
 
     try {
-      const formattedData = {
-        ...data,
+      const formattedData: ProductServerPayload = {
+        name: data.name,
+        description: data.description,
+        price: Math.round(data.price * 100),
         discountPrice:
-          data.discountPrice === 0 ? undefined : data.discountPrice,
-        gameId: data.gameId || undefined,
-        // Streamings já é array, não precisa de tratamento especial se estiver vazio (vai [])
+          data.discountPrice && data.discountPrice > 0
+            ? Math.round(data.discountPrice * 100)
+            : undefined,
+        gameId: data.gameId,
         streamings: data.streamings,
         images: uploadedImages,
+        categories: data.categories,
+        status: data.status,
+        deliveryMode: data.deliveryMode,
+        // CORREÇÃO: Se a string for vazia "", envia undefined para o banco
+        paymentLink: data.paymentLink === "" ? undefined : data.paymentLink,
+        downloadUrl: data.downloadUrl === "" ? undefined : data.downloadUrl,
+        paymentMethods: data.paymentMethods,
+        stock: data.stock,
+        isStockUnlimited: data.isStockUnlimited,
       };
 
-      await createProduct(formattedData as unknown as ProductServerPayload);
-
-      toast.success("Produto criado com sucesso!");
-      router.push("/admin/produtos");
+      if (initialData) {
+        // MODO EDIÇÃO
+        const res = await updateProduct(initialData.id, formattedData);
+        if (res.success) {
+          toast.success("Produto atualizado com sucesso!");
+          router.push("/admin/produtos");
+          router.refresh();
+        } else {
+          // Exibe o erro específico vindo do servidor, se houver
+          const errorMsg =
+            typeof res.message === "string"
+              ? res.message
+              : "Erro ao atualizar.";
+          toast.error(errorMsg);
+          console.error("Erro update:", res);
+        }
+      } else {
+        // MODO CRIAÇÃO
+        await createProduct(formattedData);
+        toast.success("Produto criado com sucesso!");
+      }
     } catch (error) {
       if (error instanceof Error && error.message.includes("NEXT_REDIRECT"))
         return;
       console.error(error);
-      toast.error("Erro ao criar produto.");
+      toast.error("Erro ao salvar produto.");
     }
   }
 
@@ -247,7 +340,7 @@ export default function NewProductPage() {
           </Button>
         </Link>
         <h1 className="font-clash-display text-2xl font-medium text-white">
-          Adicionar Novo Produto
+          {pageTitle}
         </h1>
       </div>
 
@@ -301,6 +394,32 @@ export default function NewProductPage() {
                           value={field.value ?? ""}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* PAYMENT LINK - NOVO CAMPO NO GERAL */}
+                <FormField
+                  control={form.control}
+                  name="paymentLink"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2 text-white">
+                        <LinkIcon className="h-4 w-4" /> Link de Pagamento
+                        Externo (Opcional)
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Ex: https://pag.seguro/..."
+                          className="border-white/10 bg-white/5 text-white"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs text-neutral-400">
+                        Caso utilize um checkout externo.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -456,6 +575,7 @@ export default function NewProductPage() {
                             placeholder="Ex: https://drive.google.com/..."
                             className="border-white/10 bg-white/5 text-white"
                             {...field}
+                            value={field.value ?? ""}
                           />
                         </FormControl>
                         <FormDescription className="text-xs text-neutral-400">
@@ -594,7 +714,7 @@ export default function NewProductPage() {
                             <CommandList>
                               <CommandEmpty>Nada encontrado.</CommandEmpty>
                               <CommandGroup>
-                                {categories.map((category) => (
+                                {categoriesList.map((category) => (
                                   <CommandItem
                                     key={category.id}
                                     value={category.name}
@@ -663,7 +783,8 @@ export default function NewProductPage() {
                               )}
                             >
                               {field.value
-                                ? games.find((g) => g.id === field.value)?.name
+                                ? gamesList.find((g) => g.id === field.value)
+                                    ?.name
                                 : "Selecione um jogo..."}
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
@@ -682,12 +803,14 @@ export default function NewProductPage() {
                               <CommandGroup>
                                 <CommandItem
                                   value="none"
-                                  onSelect={() => form.setValue("gameId", "")}
+                                  onSelect={() =>
+                                    form.setValue("gameId", undefined)
+                                  }
                                   className="cursor-pointer text-neutral-400 hover:bg-white/10"
                                 >
                                   Nenhum (Limpar)
                                 </CommandItem>
-                                {games.map((game) => (
+                                {gamesList.map((game) => (
                                   <CommandItem
                                     key={game.id}
                                     value={game.name}
@@ -741,7 +864,7 @@ export default function NewProductPage() {
                               )}
                             >
                               {field.value && field.value.length > 0
-                                ? `${field.value.length} selecionado(s)`
+                                ? `${field.value.length} selecionada(s)`
                                 : "Selecione streamings..."}
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
@@ -758,7 +881,7 @@ export default function NewProductPage() {
                                 Nenhum streaming encontrado.
                               </CommandEmpty>
                               <CommandGroup>
-                                {streamings.map((stream) => (
+                                {streamingsList.map((stream) => (
                                   <CommandItem
                                     key={stream.id}
                                     value={stream.name}
@@ -805,7 +928,7 @@ export default function NewProductPage() {
               </CardContent>
             </Card>
 
-            {/* Preços (Mantido igual) */}
+            {/* Preços */}
             <Card className="border-white/10 bg-[#0A0A0A]">
               <CardHeader>
                 <CardTitle className="text-white">Preços</CardTitle>
@@ -845,7 +968,7 @@ export default function NewProductPage() {
                           onChange={(e) => handlePriceChange(e, field.onChange)}
                         />
                       </FormControl>
-                      {watchDiscountPrice &&
+                      {watchDiscountPrice !== undefined &&
                       watchDiscountPrice > 0 &&
                       watchDiscountPrice >= watchPrice ? (
                         <div className="mt-1 flex items-center gap-2 text-xs text-red-400">
@@ -875,7 +998,7 @@ export default function NewProductPage() {
                 ? "Salvando..."
                 : isUploading
                   ? "Enviando imagens..."
-                  : "Criar Produto"}
+                  : buttonText}
             </Button>
           </div>
         </form>
