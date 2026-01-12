@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { authClient } from "@/lib/auth-client"; // Importamos o cliente de auth
 
 interface BuyNowButtonProps {
   product: {
@@ -23,16 +24,25 @@ interface BuyNowButtonProps {
     price: number;
     image?: string;
   };
-  // Adicionei esta prop para sabermos se o usuário já existe
+  // Mantemos a prop user como opcional, mas vamos dar preferência ao hook
   user?: {
     name: string | null;
     email: string | null;
   } | null;
 }
 
-export function BuyNowButton({ product, user }: BuyNowButtonProps) {
+export function BuyNowButton({
+  product,
+  user: initialUser,
+}: BuyNowButtonProps) {
   const [loading, setLoading] = useState(false);
   const [showGuestModal, setShowGuestModal] = useState(false);
+
+  // Hook para pegar a sessão no cliente (mais confiável aqui)
+  const { data: session } = authClient.useSession();
+
+  // O usuário real é o da sessão (se existir) OU o passado via prop
+  const user = session?.user || initialUser;
 
   // Estados para o formulário de visitante
   const [guestName, setGuestName] = useState("");
@@ -50,7 +60,7 @@ export function BuyNowButton({ product, user }: BuyNowButtonProps) {
 
   // Função Principal de Compra
   const handleBuyNow = async () => {
-    // Se não tiver usuário, abrimos o Modal em vez de tentar comprar direto
+    // Agora 'user' verifica tanto a prop quanto a sessão do cliente
     if (!user) {
       setShowGuestModal(true);
       return;
@@ -115,7 +125,7 @@ export function BuyNowButton({ product, user }: BuyNowButtonProps) {
 
       {/* --- MODAL PARA VISITANTES (GUEST CHECKOUT) --- */}
       <Dialog open={showGuestModal} onOpenChange={setShowGuestModal}>
-        <DialogContent className="border-white/10 bg-[#0A0A0A] text-white max-w-[80vw]">
+        <DialogContent className="max-w-[80vw] border-white/10 bg-[#0A0A0A] text-white">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-white">
               Quase lá!

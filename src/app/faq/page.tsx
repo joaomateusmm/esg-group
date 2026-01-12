@@ -1,6 +1,8 @@
 "use client";
 
+import { ChevronsRight } from "lucide-react";
 import { motion } from "motion/react";
+import Link from "next/link";
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
@@ -85,6 +87,19 @@ export default function FaqPage() {
             ))}
           </Accordion>
         </motion.div>
+      </div>
+
+      <div className="mx-auto flex w-full flex-col items-center justify-center gap-4 pb-12">
+        <h1 className="text-3xl font-bold">Tem uma dúvida mais especídifca?</h1>
+        <p className="text-sm text-neutral-400">
+          Vá no nosso servidor no Discord e abra um Ticket com sua dúvida!
+        </p>
+        <Link href="https://discord.com/invite/RTahhx6Pvp">
+          <button className="group flex cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-800/30 bg-black/30 px-6 py-[10px] backdrop-blur-md duration-300 hover:scale-[1.03]">
+            Servidor Discord{" "}
+            <ChevronsRight className="h-5 w-5 duration-500 group-hover:-rotate-90" />
+          </button>
+        </Link>
       </div>
 
       <Footer />

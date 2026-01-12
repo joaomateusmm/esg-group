@@ -10,7 +10,6 @@ export default function Home() {
       {/* Seção Hero (Cliente - Animações, Auth, Header) */}
       <HeroSection />
 
-      {/* Seção Catálogo (Servidor - Busca no Banco de Dados) */}
       <div id="catalogo">
         <ProductCatalog />
       </div>

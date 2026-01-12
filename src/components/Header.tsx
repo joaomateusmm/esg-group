@@ -836,6 +836,7 @@ export function Header() {
                     { label: "Sobre Nós", href: "/sobre" },
                     { label: "Contato", href: "/contato" },
                     { label: "Termos de Uso", href: "/termos" },
+                    { label: "Política de Privacidade", href: "/privacidade" },
                   ].map((item) => (
                     <DropdownMenuItem
                       key={item.label}
