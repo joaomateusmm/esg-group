@@ -18,6 +18,7 @@ export const user = pgTable("user", {
   createdAt: timestamp("createdAt").notNull(),
   updatedAt: timestamp("updatedAt").notNull(),
   role: text("role").notNull().default("user"),
+  isAffiliate: boolean("isAffiliate").notNull().default(false),
 });
 
 export const session = pgTable("session", {

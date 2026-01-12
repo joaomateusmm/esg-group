@@ -1,10 +1,11 @@
 "use server";
 
 import { eq } from "drizzle-orm";
+import { nanoid } from "nanoid"; // ou crypto.randomUUID()
 import { headers } from "next/headers";
 
 import { db } from "@/db";
-import { affiliate } from "@/db/schema";
+import { affiliate, user } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 export async function registerAffiliate() {
@@ -12,43 +13,48 @@ export async function registerAffiliate() {
     headers: await headers(),
   });
 
-  if (!session) {
-    throw new Error("Você precisa estar logado.");
+  if (!session?.user?.id) {
+    return { success: false, message: "Você precisa estar logado." };
   }
 
-  const user = session.user;
-
-  // 1. Verifica se já é afiliado
-  const existingAffiliate = await db.query.affiliate.findFirst({
-    where: eq(affiliate.userId, user.id),
-  });
-
-  if (existingAffiliate) {
-    return { success: true, redirectUrl: "/afiliados/painel" };
-  }
-
-  // 2. Gerar um código único (Ex: JOAO-X92)
-  // Pegamos o primeiro nome e adicionamos 4 caracteres aleatórios
-  const firstName = user.name
-    .split(" ")[0]
-    .toUpperCase()
-    .replace(/[^A-Z]/g, "");
-  const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
-  const code = `${firstName}-${randomSuffix}`;
+  const userId = session.user.id;
 
   try {
-    // 3. Criar o registro no banco
+    // 1. Verificar se já existe (opcional, mas bom pra evitar duplicatas)
+    const existingAffiliate = await db.query.affiliate.findFirst({
+      where: eq(affiliate.userId, userId),
+    });
+
+    if (existingAffiliate) {
+      // Se já existe, garante que o user tem a flag true e redireciona
+      await db
+        .update(user)
+        .set({ isAffiliate: true })
+        .where(eq(user.id, userId));
+      return { success: true, redirectUrl: "/afiliados/painel" };
+    }
+
+    // 2. Criar registro na tabela 'affiliate'
     await db.insert(affiliate).values({
-      userId: user.id,
-      code: code,
-      status: "active",
+      userId: userId,
+      code: nanoid(10), // Gera um código único
       balance: 0,
       totalEarnings: 0,
+      status: "active",
     });
+
+    // 3. ATUALIZAR O USUÁRIO PARA SER AFILIADO (CRUCIAL!)
+    await db
+      .update(user)
+      .set({ isAffiliate: true }) // <--- ISTO QUE ESTAVA FALTANDO OU FALHANDO
+      .where(eq(user.id, userId));
 
     return { success: true, redirectUrl: "/afiliados/painel" };
   } catch (error) {
-    console.error("Erro ao criar afiliado:", error);
-    throw new Error("Erro ao criar conta de afiliado.");
+    console.error("Erro ao registrar afiliado:", error);
+    return {
+      success: false,
+      message: "Erro interno ao criar conta de afiliado.",
+    };
   }
 }
