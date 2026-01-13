@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-// --- CORREÇÃO DO IMPORT: apontando para @/actions/checkout ---
 import { createCheckoutSession, createFreeOrder } from "@/actions/checkout";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,22 +29,21 @@ interface BuyNowButtonProps {
     name: string | null;
     email: string | null;
   } | null;
+  couponCode?: string; // Prop opcional
 }
 
 export function BuyNowButton({
   product,
   user: initialUser,
+  couponCode,
 }: BuyNowButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showGuestModal, setShowGuestModal] = useState(false);
-
   const { data: session } = authClient.useSession();
   const user = session?.user || initialUser;
-
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
-
   const isFree = product.price === 0;
 
   const itemToCheckout = [
@@ -74,15 +72,23 @@ export function BuyNowButton({
       setLoading(true);
 
       if (isFree) {
-        // Fluxo Gratuito
-        await createFreeOrder(itemToCheckout, guestData);
+        await createFreeOrder(itemToCheckout, guestData, couponCode);
         toast.success("Produto resgatado com sucesso! Verifique seu e-mail.");
         router.push("/checkout/success");
       } else {
         // Fluxo Pago
-        const result = await createCheckoutSession(itemToCheckout, guestData);
-        if (result?.url) {
+        const result = await createCheckoutSession(
+          itemToCheckout,
+          guestData,
+          couponCode,
+        );
+
+        // Verificação de tipo segura para o TypeScript
+        if ("url" in result && result.url) {
           window.location.href = result.url;
+        } else if ("success" in result && result.success) {
+          toast.success("Produto resgatado com sucesso!");
+          router.push("/checkout/success");
         }
       }
     } catch (error) {

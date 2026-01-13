@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { checkAffiliateStatus } from "@/actions/check-affiliate-status"; // <--- IMPORTANTE
+import { checkAffiliateStatus } from "@/actions/check-affiliate-status";
 import { createCheckoutSession } from "@/actions/checkout";
 import { getAllCategories } from "@/actions/get-all-categories";
 import { getAllGames } from "@/actions/get-all-games";
@@ -179,7 +179,7 @@ export function Header() {
     };
 
     fetchData();
-  }, [session]); // Adicionei session como dependência para revalidar ao logar
+  }, [session]);
 
   const formatPrice = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -198,6 +198,7 @@ export function Header() {
     });
   };
 
+  // --- FUNÇÃO CORRIGIDA AQUI ---
   async function handleCheckout() {
     if (!session) {
       toast.error("Você precisa estar logado para finalizar a compra.");
@@ -215,18 +216,26 @@ export function Header() {
         image: item.image,
       }));
 
-      const { url } = await createCheckoutSession(checkoutItems);
+      // Chama a action (pode retornar URL ou Success)
+      const result = await createCheckoutSession(checkoutItems);
 
-      if (url) {
-        window.location.href = url;
+      // Lógica de verificação de tipos segura
+      if ("url" in result && result.url) {
+        // Fluxo Pago
+        window.location.href = result.url;
+      } else if ("success" in result && result.success) {
+        // Fluxo Gratuito
+        toast.success("Pedido realizado com sucesso!");
+        router.push("/checkout/success");
       }
     } catch (error) {
       console.error(error);
-      toast.error("Erro ao criar pagamento. Tente novamente.");
+      toast.error("Erro ao processar o pedido. Tente novamente.");
     } finally {
       setIsCheckingOut(false);
     }
   }
+  // -----------------------------
 
   useEffect(() => {
     let lastScrollY = window.scrollY;

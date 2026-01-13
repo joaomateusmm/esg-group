@@ -2,6 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid"; // ou crypto.randomUUID()
+import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
 import { db } from "@/db";
@@ -56,5 +57,62 @@ export async function registerAffiliate() {
       success: false,
       message: "Erro interno ao criar conta de afiliado.",
     };
+  }
+}
+
+export async function banAffiliateAction(affiliateId: string) {
+  try {
+    // 1. Verificar se quem está pedindo é Admin
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session || session.user.role !== "admin") {
+      throw new Error("Não autorizado.");
+    }
+
+    // 2. Atualizar o status para "banned"
+    // Isso bloqueia o acesso sem perder o histórico de vendas
+    await db
+      .update(affiliate)
+      .set({
+        status: "banned",
+      })
+      .where(eq(affiliate.id, affiliateId));
+
+    // 3. Atualizar a página para refletir a mudança
+    revalidatePath("/admin/afiliados");
+
+    return { success: true, message: "Afiliado banido com sucesso." };
+  } catch (error) {
+    console.error("Erro ao banir afiliado:", error);
+    return { success: false, message: "Erro ao processar solicitação." };
+  }
+}
+
+export async function unbanAffiliateAction(affiliateId: string) {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session || session.user.role !== "admin") {
+      throw new Error("Não autorizado.");
+    }
+
+    // Restaura o status para "active"
+    await db
+      .update(affiliate)
+      .set({
+        status: "active",
+      })
+      .where(eq(affiliate.id, affiliateId));
+
+    revalidatePath("/admin/afiliados");
+
+    return { success: true, message: "Banimento revertido com sucesso." };
+  } catch (error) {
+    console.error("Erro ao desbanir afiliado:", error);
+    return { success: false, message: "Erro ao processar solicitação." };
   }
 }

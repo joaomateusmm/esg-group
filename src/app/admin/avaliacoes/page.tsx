@@ -1,5 +1,5 @@
 import { desc, eq } from "drizzle-orm";
-import { MessageSquare, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import Image from "next/image";
 
 import { DeleteReviewButton } from "@/app/admin/avaliacoes/components/delete-review-button";

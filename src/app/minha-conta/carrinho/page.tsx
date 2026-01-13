@@ -65,11 +65,20 @@ export default function CartPage() {
       }));
 
       // Chama o Backend
-      const { url } = await createCheckoutSession(checkoutItems);
+      // O retorno pode ser { url: string } OU { success: true }
+      const result = await createCheckoutSession(checkoutItems);
 
-      // Redireciona para InfinitePay
-      if (url) {
-        window.location.href = url;
+      // Verificação segura de tipos
+      // Verifica se a propriedade 'url' existe no objeto retornado
+      if ("url" in result && result.url) {
+        window.location.href = result.url;
+      } else if ("success" in result && result.success) {
+        // Verifica se a propriedade 'success' existe (fluxo gratuito)
+        toast.success("Pedido realizado com sucesso!");
+        router.push("/checkout/success");
+      } else {
+        // Caso genérico de erro ou retorno inesperado
+        throw new Error("Erro desconhecido ao processar pedido.");
       }
     } catch (error) {
       console.error(error);

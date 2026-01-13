@@ -1,30 +1,19 @@
 import { desc, eq, inArray } from "drizzle-orm";
 import {
-  Check,
-  CreditCard,
-  Lock,
   MessageSquare,
-  ShieldCheck,
   Star,
   User, // Ícone
-  Zap,
 } from "lucide-react";
 import { headers } from "next/headers"; // <--- Importante para pegar a sessão
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
-import { AddToCartButton } from "@/components/add-to-cart-button";
-import { AddToWishlistButton } from "@/components/AddToWishlistButton";
-import { BuyNowButton } from "@/components/BuyNowButton";
-// IMPORTAÇÃO DO NOVO BOTÃO
 import { DeleteReviewButton } from "@/components/delete-review-button";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { ProductGallery } from "@/components/product-gallery";
+import { ProductPurchaseCard } from "@/components/product-purchase-card";
 import { ProductReviewForm } from "@/components/product-review-form";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { db } from "@/db";
 import { category, product, review, user as userTable } from "@/db/schema";
 import { auth } from "@/lib/auth"; // <--- Importante para auth
@@ -165,150 +154,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
           {/* COLUNA DIREITA (Sidebar de Compra) */}
           <div className="space-y-6 lg:col-span-5">
-            {/* Card Principal de Compra */}
-            <Card className="border-white/10 bg-[#0A0A0A] shadow-xl shadow-black/50">
-              <CardContent className="space-y-6 p-6">
-                <div>
-                  <div className="mb-3 flex flex-wrap gap-2">
-                    {categoryNames.map((cat) => (
-                      <Badge
-                        key={cat}
-                        variant="secondary"
-                        className="bg-white/5 text-xs text-neutral-400 hover:bg-white/10"
-                      >
-                        {cat}
-                      </Badge>
-                    ))}
-                  </div>
-                  <h1 className="font-clash-display text-3xl font-medium text-white">
-                    {productData.name}
-                  </h1>
-                </div>
-
-                <Separator className="bg-white/5" />
-
-                <div className="space-y-1">
-                  <div className="flex items-center gap-3">
-                    {productData.discountPrice && (
-                      <span className="text-sm text-neutral-500 line-through decoration-white/20">
-                        {formatPrice(productData.price)}
-                      </span>
-                    )}
-                    {discountPercentage > 0 && (
-                      <Badge className="border-0 bg-green-500/10 text-xs text-green-500 hover:bg-green-500/20">
-                        {discountPercentage}% OFF
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-4xl font-bold text-white uppercase">
-                      {finalPrice === 0 ? "grátis" : formatPrice(finalPrice)}
-                    </span>
-                  </div>
-                  {finalPrice > 0 && (
-                    <p className="text-sm text-neutral-500">À vista no PIX</p>
-                  )}
-                </div>
-
-                {productData.deliveryMode === "email" && (
-                  <div className="flex items-center gap-2 rounded-md border border-[#D00000]/20 bg-[#D00000]/10 p-3 text-sm text-[#D00000]">
-                    <Zap className="h-4 w-4 shrink-0 fill-current" />
-                    <span className="font-medium">
-                      Entrega Automática via E-mail
-                    </span>
-                  </div>
-                )}
-
-                <div className="py-2">
-                  <BuyNowButton
-                    product={{
-                      id: productData.id,
-                      name: productData.name,
-                      price: finalPrice,
-                      image: productImage,
-                    }}
-                  />
-
-                  <div className="flex w-full gap-4">
-                    <AddToCartButton
-                      product={{
-                        id: productData.id,
-                        name: productData.name,
-                        price: productData.price,
-                        discountPrice: productData.discountPrice,
-                        images: productData.images,
-                      }}
-                      variant="outline"
-                      size="lg"
-                      className="text-md h-14 flex-1 border-white/10 bg-transparent font-bold text-white hover:bg-white/5"
-                    />
-
-                    <AddToWishlistButton
-                      product={{
-                        id: productData.id,
-                        name: productData.name,
-                        price: finalPrice,
-                        image: productImage,
-                        category: categoryNames[0] || "Geral", // Passamos a primeira categoria ou "Geral"
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 text-xs text-neutral-500">
-                  <div className="flex flex-col items-center justify-center gap-1 rounded bg-white/5 p-2 text-center">
-                    <ShieldCheck className="h-5 w-5 text-neutral-300" />
-                    <span>Compra 100% Segura</span>
-                  </div>
-                  <div className="flex flex-col items-center justify-center gap-1 rounded bg-white/5 p-2 text-center">
-                    {productData.isStockUnlimited ? (
-                      <>
-                        <Check className="h-5 w-5 text-green-500" />
-                        <span className="text-green-500">
-                          Estoque Ilimitado
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="h-5 w-5 text-neutral-300" />
-                        <span>Restam {productData.stock} un.</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {productData.paymentMethods &&
-              productData.paymentMethods.length > 0 && (
-                <div className="rounded-xl border border-white/10 bg-[#0A0A0A] p-5">
-                  <h4 className="mb-3 flex items-center gap-2 text-sm font-medium text-white">
-                    <CreditCard className="h-4 w-4 text-[#D00000]" />
-                    Formas de Pagamento
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {productData.paymentMethods.map((method) => (
-                      <Badge
-                        key={method}
-                        variant="secondary"
-                        className="border-white/5 bg-white/5 font-normal text-neutral-400 hover:bg-white/10"
-                      >
-                        {method === "credit_card"
-                          ? "Cartão de Crédito"
-                          : method === "debit_card"
-                            ? "Cartão de Débito"
-                            : method === "pix"
-                              ? "Pix"
-                              : method === "boleto"
-                                ? "Boleto"
-                                : method}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-            {/* LADO DIREITO: FORMULÁRIO (Ocupa 5 colunas) */}
+            <ProductPurchaseCard
+              product={productData}
+              categoryNames={categoryNames}
+            />
             <div className="lg:col-span-5 xl:col-span-4">
               <div className="sticky top-24">
                 <ProductReviewForm productId={productData.id} />

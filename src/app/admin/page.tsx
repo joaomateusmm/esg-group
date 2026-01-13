@@ -4,12 +4,10 @@ import {
   Archive,
   DollarSign,
   Gamepad2,
-  Heart,
   Layers,
   MessageSquare,
   MonitorPlay,
   Package,
-  ShoppingCart,
   Star,
   Users,
 } from "lucide-react";

@@ -164,19 +164,18 @@ export const order = pgTable("order", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-
   userId: text("userId")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-
   amount: integer("amount").notNull(),
   status: text("status").notNull().default("pending"),
-
   infinitePayUrl: text("infinitePayUrl"),
   transactionId: text("transactionId"),
-
   metadata: text("metadata"),
-
+  couponId: text("couponId").references(() => coupon.id, {
+    onDelete: "set null",
+  }),
+  discountAmount: integer("discountAmount").default(0), // Quanto foi descontado em centavos
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
     .notNull()
@@ -217,6 +216,25 @@ export const affiliate = pgTable("affiliate", {
   balance: integer("balance").notNull().default(0),
   totalEarnings: integer("totalEarnings").notNull().default(0),
   status: text("status").notNull().default("active"), // active, suspended, banned
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt")
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export const coupon = pgTable("coupon", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  code: text("code").notNull().unique(), // O código que o cliente digita (ex: "BEMVINDO10")
+  type: text("type").notNull().default("percent"), // 'percent' (porcentagem) ou 'fixed' (valor em centavos)
+  value: integer("value").notNull(), // O valor do desconto (ex: 10 para 10% ou 500 para R$ 5,00)
+  minValue: integer("minValue").default(0), // Valor mínimo do pedido para usar o cupom (em centavos)
+  maxUses: integer("maxUses"), // Limite global de usos (ex: apenas para os primeiros 100)
+  usedCount: integer("usedCount").default(0).notNull(), // Contador de quantas vezes já foi usado
+  expiresAt: timestamp("expiresAt"), // Data de validade (opcional)
+  isActive: boolean("isActive").default(true).notNull(), // Se o cupom está ativo ou não
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
     .notNull()
