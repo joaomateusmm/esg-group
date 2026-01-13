@@ -2,6 +2,7 @@
 
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
+import { Resend } from "resend";
 
 import { db } from "@/db";
 import {
@@ -14,6 +15,9 @@ import {
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
+// Inicializa o Resend com a chave de ambiente
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 // Tipo esperado dos itens do carrinho
 type CartItemInput = {
   id: string;
@@ -24,8 +28,70 @@ type CartItemInput = {
 };
 
 // ==============================================================================
+// FUNÇÃO AUXILIAR DE ENVIO DE E-MAIL (Extraída da lógica do Webhook)
+// ==============================================================================
+async function sendProductEmail(
+  to: string,
+  name: string,
+  items: CartItemInput[],
+) {
+  // Busca os links de download dos produtos no banco
+  const productsWithLinks = await Promise.all(
+    items.map(async (item) => {
+      const prod = await db.query.product.findFirst({
+        where: eq(product.id, item.id),
+        columns: { downloadUrl: true },
+      });
+      return {
+        name: item.name,
+        url: prod?.downloadUrl || "#",
+      };
+    }),
+  );
+
+  const productsHtml = productsWithLinks
+    .map(
+      (p) => `
+      <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ddd;">
+        <h3 style="margin: 0 0 5px; color: #333;">${p.name}</h3>
+        ${
+          p.url && p.url !== "#"
+            ? `<a href="${p.url}" style="background-color: #D00000; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold; font-family: sans-serif;">Baixar Arquivo</a>`
+            : `<p style="color: #666; font-size: 14px;">Acesse sua conta para visualizar.</p>`
+        }
+      </div>
+    `,
+    )
+    .join("");
+
+  const emailHtml = `
+      <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #D00000;">Seu pedido está aqui! 🚀</h1>
+        <p>Olá, <strong>${name}</strong>!</p>
+        <p>Aqui estão os arquivos dos seus produtos:</p>
+        
+        <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #eee;">
+          ${productsHtml}
+        </div>
+
+        <p>Você também pode acessar seus arquivos a qualquer momento na sua área de membros:</p>
+        <a href="${process.env.NEXT_PUBLIC_APP_URL}/minha-conta/compras" style="color: #D00000; text-decoration: underline;">Acessar Minhas Compras</a>
+        
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;" />
+        <p style="font-size: 12px; color: #999;">Obrigado por escolher a SubMind.</p>
+      </div>
+    `;
+
+  await resend.emails.send({
+    from: "SubMind Store <onboarding@resend.dev>", // Ajuste o remetente se já tiver domínio verificado
+    to: [to],
+    subject: "Seu pedido está aqui! 📦",
+    html: emailHtml,
+  });
+}
+
+// ==============================================================================
 // 1. CHECKOUT PAGO (InfinitePay)
-// O e-mail NÃO é enviado aqui. Ele deve ser enviado pelo Webhook após confirmação.
 // ==============================================================================
 export async function createCheckoutSession(
   items: CartItemInput[],
@@ -39,7 +105,7 @@ export async function createCheckoutSession(
   let userEmail: string;
   let userName: string;
 
-  // --- LÓGICA DE IDENTIFICAÇÃO DO USUÁRIO ---
+  // LÓGICA DE IDENTIFICAÇÃO DO USUÁRIO
   if (session) {
     userId = session.user.id;
     userEmail = session.user.email;
@@ -50,7 +116,6 @@ export async function createCheckoutSession(
         "É necessário fazer login ou informar um e-mail para continuar.",
       );
     }
-
     const email = guestInfo.email.toLowerCase();
     const existingUser = await db.query.user.findFirst({
       where: eq(user.email, email),
@@ -83,7 +148,7 @@ export async function createCheckoutSession(
     }
   }
 
-  // --- LÓGICA DE AFILIADOS ---
+  // LÓGICA DE AFILIADOS
   const cookieStore = await cookies();
   const affiliateCode = cookieStore.get("affiliate_code")?.value;
   let activeAffiliate = null;
@@ -97,7 +162,7 @@ export async function createCheckoutSession(
     }
   }
 
-  // 2. Calcular Total
+  // Calcular Total
   const totalAmount = Math.round(
     items.reduce((acc, item) => acc + item.price * item.quantity, 0),
   );
@@ -106,7 +171,7 @@ export async function createCheckoutSession(
     throw new Error("O valor mínimo para transação é R$ 1,00");
   }
 
-  // 3. Criar Pedido
+  // Criar Pedido
   const [newOrder] = await db
     .insert(order)
     .values({
@@ -116,7 +181,7 @@ export async function createCheckoutSession(
     })
     .returning();
 
-  // 4. Salvar Itens
+  // Salvar Itens
   await db.insert(orderItem).values(
     items.map((item) => ({
       orderId: newOrder.id,
@@ -128,7 +193,7 @@ export async function createCheckoutSession(
     })),
   );
 
-  // 5. Calcular Comissão
+  // Calcular Comissão
   if (activeAffiliate) {
     try {
       const productIds = items.map((i) => i.id);
@@ -163,7 +228,7 @@ export async function createCheckoutSession(
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-  // 6. Payload InfinitePay
+  // Payload InfinitePay
   const infinitePayPayload = {
     handle: process.env.INFINITEPAY_HANDLE,
     order_nsu: newOrder.id,
@@ -226,7 +291,6 @@ export async function createCheckoutSession(
 
 // ==============================================================================
 // 2. CHECKOUT GRATUITO (Novo)
-// Aqui DEVEMOS enviar o e-mail, pois não haverá webhook de pagamento.
 // ==============================================================================
 export async function createFreeOrder(
   items: CartItemInput[],
@@ -335,8 +399,12 @@ export async function createFreeOrder(
   }
 
   // --- ENVIO DE E-MAIL ---
-  // Como é grátis e imediato, chamamos a função de envio aqui.
-  await sendOrderEmail(userEmail, userName, items);
+  try {
+    await sendProductEmail(userEmail, userName, items);
+    console.log(`✅ Email de produto gratuito enviado para ${userEmail}`);
+  } catch (error) {
+    console.error("Erro ao enviar email de produto gratuito:", error);
+  }
 
   // Limpa cookie de afiliado se existir
   const cookieStore = await cookies();
@@ -345,33 +413,4 @@ export async function createFreeOrder(
   }
 
   return { success: true, orderId: newOrder.id };
-}
-
-// ==============================================================================
-// 3. FUNÇÃO AUXILIAR DE E-MAIL (PLACEHOLDER)
-// Você deve substituir o console.log pela sua lógica real (Resend, Nodemailer, etc)
-// ==============================================================================
-async function sendOrderEmail(
-  to: string,
-  name: string,
-  items: CartItemInput[],
-) {
-  // TODO: IMPLEMENTAR SUA LÓGICA DE EMAIL AQUI
-  // Exemplo se estiver usando Resend:
-  /*
-  await resend.emails.send({
-    from: 'SubMind <noreply@submind.com>',
-    to: to,
-    subject: 'Seu produto gratuito chegou! 🎁',
-    react: EmailTemplate({ name, items })
-  });
-  */
-
-  console.log(`
-    [SIMULAÇÃO DE EMAIL]
-    Para: ${to}
-    Olá ${name},
-    Aqui estão seus produtos gratuitos:
-    ${items.map((i) => `- ${i.name}`).join("\n")}
-  `);
 }
