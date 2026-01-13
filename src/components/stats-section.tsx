@@ -70,6 +70,12 @@ export async function StatsSection() {
 
   return (
     <section className="w-full pb-8">
+      {/* GRID CONFIGURAÇÃO:
+        - grid-cols-2: Define 2 colunas para telas pequenas (mobile).
+        - gap-4: Espaçamento entre os cards.
+        - lg:grid-cols-4: Muda para 4 colunas em telas grandes (desktop).
+        - lg:gap-8: Aumenta o espaçamento em telas grandes.
+      */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-8">
         {stats.map((stat, index) => (
           <div

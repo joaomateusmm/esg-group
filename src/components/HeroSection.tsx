@@ -204,7 +204,7 @@ export default function HeroSection() {
                     alt={bannerImages[currentIndex].alt}
                     fill
                     priority={true}
-                    className="object-cover"
+                    className="object-cover shadow-md"
                   />
                 </motion.div>
               </AnimatePresence>
