@@ -48,7 +48,7 @@ export default function LogoLoop({
 
   return (
     <div
-      className={cn("relative w-full overflow-hidden", className)}
+      className={cn("relative z-90 w-full overflow-hidden", className)}
       style={{
         maskImage: fadeOut
           ? `linear-gradient(to right, transparent, black 20%, black 80%, transparent)`

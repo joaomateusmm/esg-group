@@ -1,10 +1,11 @@
-"use client"; // Este componente lida com interações e animações
+"use client";
 
-import { ChevronsRight } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion"; // <--- Importamos framer-motion
+import { ChevronLeft, ChevronRight, ChevronsRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
-// Seus componentes interativos e visuais
 import SingleCubeFivem from "@/components/CubeFivem";
 import SingleCubeRoblox from "@/components/CubeRoblox";
 import SingleCubeValorant from "@/components/CubeValorant";
@@ -14,6 +15,59 @@ import Silk from "@/components/Silk";
 import { ShinyButton } from "@/components/ui/shiny-button";
 
 export default function HeroSection() {
+  const bannerImages = [
+    { src: "/images/banner/banner-5.webp", alt: "Banner Principal Valorant" },
+    { src: "/images/banner/banner-6.webp", alt: "Banner Secundário" },
+    { src: "/images/banner/banner-3.webp", alt: "Banner Terciário" },
+  ];
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [direction, setDirection] = useState(0); // 1 = direita, -1 = esquerda
+
+  const nextSlide = () => {
+    setDirection(1);
+    setCurrentIndex((prevIndex) =>
+      prevIndex === bannerImages.length - 1 ? 0 : prevIndex + 1,
+    );
+  };
+
+  const prevSlide = () => {
+    setDirection(-1);
+    setCurrentIndex((prevIndex) =>
+      prevIndex === 0 ? bannerImages.length - 1 : prevIndex - 1,
+    );
+  };
+
+  const goToSlide = (index: number) => {
+    setDirection(index > currentIndex ? 1 : -1);
+    setCurrentIndex(index);
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      nextSlide();
+    }, 5000);
+    return () => clearInterval(interval);
+  });
+
+  // Variantes da animação de slide
+  const variants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 1000 : -1000,
+      opacity: 0,
+    }),
+    center: {
+      zIndex: 1,
+      x: 0,
+      opacity: 1,
+    },
+    exit: (direction: number) => ({
+      zIndex: 0,
+      x: direction < 0 ? 1000 : -1000,
+      opacity: 0,
+    }),
+  };
+
   const partnerLogos = [
     {
       src: "/images/icons/fivem.svg",
@@ -64,10 +118,10 @@ export default function HeroSection() {
       <div className="absolute bottom-0 left-0 hidden h-[300px] w-[300px] opacity-50 blur-xs md:bottom-[-100px] md:left-[1000px] md:flex md:h-[500px] md:w-[500px]">
         <SingleCubeRoblox scale={8} initialRotation={[2, 2, 0]} />
       </div>
-      <div className="absolute top-[-220px] right-[-250px] hidden h-[350px] w-[350px] opacity-50 blur-xs duration-500 md:flex md:h-[800px] md:w-[800px]">
+      <div className="absolute top-[-220px] right-[-230px] hidden h-[350px] w-[350px] opacity-50 blur-xs duration-500 md:flex md:h-[800px] md:w-[800px]">
         <SingleCubeFivem scale={7} initialRotation={[0.5, 0.5, 0]} />
       </div>
-      <div className="absolute top-[0px] left-[120px] hidden h-[250px] w-[250px] opacity-40 blur-xs md:flex md:h-[800px] md:w-[800px]">
+      <div className="absolute top-[120px] -left-[120px] hidden h-[250px] w-[250px] opacity-40 blur-xs md:flex md:h-[800px] md:w-[800px]">
         <SingleCubeValorant scale={5} initialRotation={[1, 2, 0]} />
       </div>
 
@@ -79,7 +133,7 @@ export default function HeroSection() {
       </div>
 
       {/* --- CONTEÚDO PRINCIPAL (HERO) --- */}
-      <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 text-center">
+      <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 pt-38 text-center">
         <div className="mb-6 flex items-center gap-3 rounded-full border border-neutral-800/30 bg-transparent py-1.5 pr-4 pl-2 shadow-sm backdrop-blur-md">
           <div className="flex items-center">
             {/* Avatares dos Clientes */}
@@ -117,7 +171,80 @@ export default function HeroSection() {
           </span>
         </div>
 
-        <h1 className="font-clash-display max-w-4xl text-[55px] leading-[1.1] font-medium tracking-wide drop-shadow-xl md:max-w-[70vw] md:text-[80px]">
+        {/* --- CARROSSEL DE IMAGENS --- */}
+        <div className="mb-12 flex flex-col items-center">
+          <div className="relative h-auto w-[85vw] md:w-[60vw]">
+            {/* Seta Esquerda */}
+            <button
+              onClick={prevSlide}
+              className="absolute top-1/2 left-[-20px] z-20 hidden -translate-y-1/2 rounded-full border border-white/10 bg-black/20 p-2 text-white/50 backdrop-blur-sm transition-all hover:bg-black/50 hover:text-white md:left-[-50px] md:flex"
+              aria-label="Imagem Anterior"
+            >
+              <ChevronLeft size={24} />
+            </button>
+
+            {/* Container da Imagem com AnimatePresence */}
+            <div className="relative aspect-[1800/1050] w-full overflow-hidden rounded-md">
+              <AnimatePresence initial={false} custom={direction}>
+                <motion.div
+                  key={currentIndex}
+                  custom={direction}
+                  variants={variants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{
+                    x: { type: "spring", stiffness: 300, damping: 30 },
+                    opacity: { duration: 0.2 },
+                  }}
+                  className="absolute inset-0 h-full w-full"
+                >
+                  <Image
+                    src={bannerImages[currentIndex].src}
+                    alt={bannerImages[currentIndex].alt}
+                    fill
+                    priority={true}
+                    className="object-cover"
+                  />
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {/* Seta Direita */}
+            <button
+              onClick={nextSlide}
+              className="absolute top-1/2 right-[-20px] z-20 hidden -translate-y-1/2 rounded-full border border-white/10 bg-black/20 p-2 text-white/50 backdrop-blur-sm transition-all hover:bg-black/50 hover:text-white md:right-[-50px] md:flex"
+              aria-label="Próxima Imagem"
+            >
+              <ChevronRight size={24} />
+            </button>
+          </div>
+
+          {/* Bolinhas de Navegação (Dots) */}
+          <div className="mt-4 flex flex-row items-center justify-center gap-2">
+            {bannerImages.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => goToSlide(index)}
+                className={`h-3 w-3 rounded-full transition-all duration-300 ${
+                  currentIndex === index
+                    ? "scale-110 bg-neutral-200" // Cor ativa
+                    : "bg-neutral-800 hover:bg-neutral-600" // Cor inativa
+                }`}
+                aria-label={`Ir para imagem ${index + 1}`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Texto para telas de computador */}
+        <h1 className="font-clash-display hidden max-w-4xl leading-[1.1] font-medium tracking-wide drop-shadow-xl md:flex md:max-w-[70vw] md:text-[70px]">
+          A melhor loja de Citizens, Configs
+          <br className="hidden md:block" /> Privadas e Mod Sons
+        </h1>
+
+        {/* Texto para telas de celular */}
+        <h1 className="font-clash-display max-w-4xl text-2xl leading-[1.1] font-medium tracking-wide drop-shadow-xl md:hidden">
           A melhor loja de Citizens, Configs
           <br className="hidden md:block" /> Privadas e Mod Sons
         </h1>
@@ -128,7 +255,7 @@ export default function HeroSection() {
           Som, Reshades e Configs Privadas.
         </p>
 
-        <div className="mt-10 flex items-center gap-4">
+        <div className="mt-14 flex items-center gap-4">
           <Link href="https://discord.com/invite/RTahhx6Pvp">
             <button className="group flex cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-800/30 bg-black/30 px-4 py-[12px] backdrop-blur-md duration-300 hover:scale-[1.03]">
               Servidor{" "}
@@ -147,11 +274,11 @@ export default function HeroSection() {
           </ShinyButton>
         </div>
 
-        <div className="font-montserrat mt-24 text-xs font-medium text-neutral-500">
+        <div className="font-montserrat mt-16 text-xs font-medium text-neutral-500">
           <p>Contas e Serviços:</p>
         </div>
 
-        <div className="mt-4 w-full max-w-5xl opacity-50 grayscale invert transition-all duration-500 hover:opacity-100 hover:grayscale-0 hover:invert-0">
+        <div className="mt-4 mb-16 w-full max-w-5xl opacity-50 grayscale invert transition-all duration-500 hover:opacity-100 hover:grayscale-0 hover:invert-0">
           <LogoLoop
             logos={partnerLogos}
             speed={60}

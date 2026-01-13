@@ -84,7 +84,7 @@ export function ProductPurchaseCard({
         setAppliedCoupon(null);
         setFinalPrice(initialPrice);
       }
-    } catch (error) {
+    } catch {
       toast.error("Erro ao validar cupom.");
     } finally {
       setIsValidating(false);

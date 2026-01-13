@@ -9,7 +9,6 @@ import { db } from "@/db";
 import { coupon } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
-// --- SCHEMA DE VALIDAÇÃO (Usado na criação) ---
 const createCouponSchema = z.object({
   code: z.string().min(3).toUpperCase().trim(),
   type: z.enum(["percent", "fixed"]),
@@ -19,9 +18,6 @@ const createCouponSchema = z.object({
   expiresAt: z.string().optional(), // Recebe string do input date
 });
 
-// ==============================================================================
-// 1. FUNÇÃO EXISTENTE (Validação no Checkout)
-// ==============================================================================
 export async function validateCoupon(code: string, currentTotal: number) {
   try {
     // Normaliza o código para maiúsculo para evitar erros de digitação

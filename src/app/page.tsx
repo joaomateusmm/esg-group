@@ -8,10 +8,10 @@ import TestimonialsSection from "@/components/TestimonialsSection";
 export default function Home() {
   return (
     <div className="font-montserrat relative flex min-h-screen flex-col overflow-x-hidden bg-[#010000] text-white">
-      {/* Seção Hero (Cliente - Animações, Auth, Header) */}
+
       <HeroSection />
 
-      <div id="catalogo">
+      <div className="mt-28" id="catalogo">
         <ProductCatalog />
       </div>
 
