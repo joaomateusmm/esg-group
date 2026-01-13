@@ -40,8 +40,10 @@ const formatCurrency = (value: number) => {
 };
 
 const getStatusBadge = (status: string) => {
+  // Ajuste aqui: Tratamos "completed" igual a "paid"
   switch (status) {
     case "paid":
+    case "completed": // <--- ADICIONADO PARA PEDIDOS GRATUITOS
       return (
         <Badge className="gap-1 border-green-800/20 bg-green-900/10 px-2 py-0.5 text-xs font-normal text-green-700 hover:bg-green-900/20">
           <CheckCircle2 className="h-3 w-3" /> Aprovado
@@ -143,7 +145,7 @@ export default async function MyPurchasesPage() {
                 </p>
               </div>
               <Link href="/">
-                <Button className="mt-4 p-6 bg-[#D00000] text-white hover:bg-[#a00000]">
+                <Button className="mt-4 bg-[#D00000] p-6 text-white hover:bg-[#a00000]">
                   Explorar Loja
                 </Button>
               </Link>
@@ -232,7 +234,9 @@ export default async function MyPurchasesPage() {
 
                           {/* Botões de Ação */}
                           <div className="flex items-center gap-2">
-                            {order.status === "paid" ? (
+                            {/* --- AJUSTE AQUI: Verifica "paid" OU "completed" --- */}
+                            {order.status === "paid" ||
+                            order.status === "completed" ? (
                               item.downloadUrl && item.downloadUrl !== "#" ? (
                                 <Button
                                   asChild
