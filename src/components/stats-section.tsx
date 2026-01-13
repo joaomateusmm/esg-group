@@ -69,35 +69,35 @@ export async function StatsSection() {
   ];
 
   return (
-    <section className="w-full py-8">
-      {/* Adicionei py-8 para espaçamento vertical seguro */}
-      <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+    <section className="w-full pb-8">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-8">
         {stats.map((stat, index) => (
           <div
             key={index}
             className={cn(
-              "group relative flex items-center justify-between overflow-hidden rounded-2xl border border-white/10 bg-[#0A0A0A] py-6 pl-6 transition-all duration-300",
+              "group relative flex flex-col items-start justify-between overflow-hidden rounded-2xl border border-white/10 bg-[#0A0A0A] p-4 transition-all duration-300 md:flex-row md:items-center md:py-6 md:pl-6",
               stat.borderColor,
             )}
           >
             <div className="z-10 flex flex-col gap-1">
-              {/* z-10 para garantir que o texto fique sobre o blur */}
-              <span className="text-2xl font-bold text-white">
+              <span className="text-xl font-bold text-white md:text-2xl">
                 {stat.value}
               </span>
-              <span className="text-sm font-medium text-neutral-400">
+              <span className="text-xs font-medium text-neutral-400 md:text-sm">
                 {stat.label}
               </span>
             </div>
 
+            {/* Ajuste do ícone para ficar bom no mobile e desktop */}
             <div
               className={cn(
-                "z-10 mx-9 flex h-12 w-12 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110",
+                "z-10 mt-3 flex h-10 w-10 items-center justify-center rounded-xl md:mx-9 md:mt-0 md:h-12 md:w-12",
+                "transition-transform duration-300 group-hover:scale-110",
                 stat.bg,
                 stat.color,
               )}
             >
-              <stat.icon className="h-6 w-6" strokeWidth={2.5} />
+              <stat.icon className="h-5 w-5 md:h-6 md:w-6" strokeWidth={2.5} />
             </div>
 
             {/* Efeito de brilho suave */}
