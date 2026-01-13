@@ -183,7 +183,7 @@ export default async function AdminDashboard() {
         <h3 className="mb-4 text-sm font-semibold tracking-wider text-neutral-500 uppercase">
           Detalhes Operacionais
         </h3>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-5">
           {/* Média Avaliações */}
           <div className="flex flex-col justify-center rounded-lg border border-white/5 bg-white/[0.02] p-4 hover:bg-white/[0.04]">
             <div className="mb-2 flex items-center gap-2 text-[#D00000]">
@@ -234,28 +234,6 @@ export default async function AdminDashboard() {
               {stats.reviews}
             </span>
             <span className="text-[10px] text-neutral-500">Reviews</span>
-          </div>
-
-          {/* Carrinhos (Mock) */}
-          <div className="flex flex-col justify-center rounded-lg border border-white/5 bg-white/[0.02] p-4 hover:bg-white/[0.04]">
-            <div className="mb-2 text-neutral-400">
-              <ShoppingCart className="h-4 w-4" />
-            </div>
-            <span className="text-xl font-bold text-white">
-              {stats.cartItems}
-            </span>
-            <span className="text-[10px] text-neutral-500">Em Carrinhos</span>
-          </div>
-
-          {/* Favoritos (Mock) */}
-          <div className="flex flex-col justify-center rounded-lg border border-white/5 bg-white/[0.02] p-4 hover:bg-white/[0.04]">
-            <div className="mb-2 text-neutral-400">
-              <Heart className="h-4 w-4" />
-            </div>
-            <span className="text-xl font-bold text-white">
-              {stats.favorites}
-            </span>
-            <span className="text-[10px] text-neutral-500">Favoritados</span>
           </div>
         </div>
       </div>

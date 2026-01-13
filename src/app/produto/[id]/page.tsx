@@ -2,7 +2,6 @@ import { desc, eq, inArray } from "drizzle-orm";
 import {
   Check,
   CreditCard,
-  HeartPlus,
   Lock,
   MessageSquare,
   ShieldCheck,
@@ -24,7 +23,6 @@ import { Header } from "@/components/Header";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductReviewForm } from "@/components/product-review-form";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { db } from "@/db";
@@ -204,11 +202,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   </div>
 
                   <div className="flex items-baseline gap-2">
-                    <span className="font-mono text-4xl font-bold text-white">
-                      {formatPrice(finalPrice)}
+                    <span className="text-4xl font-bold text-white uppercase">
+                      {finalPrice === 0 ? "grátis" : formatPrice(finalPrice)}
                     </span>
                   </div>
-                  <p className="text-sm text-neutral-500">À vista no PIX</p>
+                  {finalPrice > 0 && (
+                    <p className="text-sm text-neutral-500">À vista no PIX</p>
+                  )}
                 </div>
 
                 {productData.deliveryMode === "email" && (
@@ -351,10 +351,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                         key={reviewItem.id}
                         className="group relative flex flex-col gap-3 rounded-lg border border-white/5 bg-white/[0.02] p-5 transition-colors hover:border-white/10 hover:bg-white/[0.04]"
                       >
-                        {/* BOTÃO DE DELETAR (LIXEIRA)
-                           - Posição absoluta no canto superior direito
-                           - Só aparece se o usuário logado for o dono da review
-                        */}
+                        {/* BOTÃO DE DELETAR (LIXEIRA) */}
                         {currentUserId === reviewItem.userId && (
                           <div className="absolute top-3 right-3 opacity-0 transition-opacity group-hover:opacity-100">
                             <DeleteReviewButton

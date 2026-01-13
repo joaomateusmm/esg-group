@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 
 import { db } from "@/db";
@@ -23,6 +23,10 @@ type CartItemInput = {
   image?: string;
 };
 
+// ==============================================================================
+// 1. CHECKOUT PAGO (InfinitePay)
+// O e-mail NÃO é enviado aqui. Ele deve ser enviado pelo Webhook após confirmação.
+// ==============================================================================
 export async function createCheckoutSession(
   items: CartItemInput[],
   guestInfo?: { email: string; name: string },
@@ -37,12 +41,10 @@ export async function createCheckoutSession(
 
   // --- LÓGICA DE IDENTIFICAÇÃO DO USUÁRIO ---
   if (session) {
-    // CASO A: Usuário Logado
     userId = session.user.id;
     userEmail = session.user.email;
     userName = session.user.name;
   } else {
-    // CASO B: Visitante (Guest)
     if (!guestInfo?.email) {
       throw new Error(
         "É necessário fazer login ou informar um e-mail para continuar.",
@@ -50,7 +52,6 @@ export async function createCheckoutSession(
     }
 
     const email = guestInfo.email.toLowerCase();
-
     const existingUser = await db.query.user.findFirst({
       where: eq(user.email, email),
     });
@@ -60,22 +61,19 @@ export async function createCheckoutSession(
       userEmail = existingUser.email;
       userName = existingUser.name;
     } else {
-      // CASO C: Criar novo usuário (CORREÇÃO APLICADA AQUI)
-      // Como o schema do User não tem defaults, precisamos passar tudo manualmente
       const newUserId = crypto.randomUUID();
       const now = new Date();
-
       const [newUser] = await db
         .insert(user)
         .values({
-          id: newUserId, // <--- Adicionado: ID Manual
+          id: newUserId,
           name: guestInfo.name || "Cliente Visitante",
           email: email,
           image: "",
           emailVerified: false,
-          createdAt: now, // <--- Adicionado: Data Manual
-          updatedAt: now, // <--- Adicionado: Data Manual
-          role: "user", // Opcional, mas bom garantir
+          createdAt: now,
+          updatedAt: now,
+          role: "user",
         })
         .returning();
 
@@ -84,19 +82,16 @@ export async function createCheckoutSession(
       userName = newUser.name;
     }
   }
-  // -----------------------------------------------------------
 
   // --- LÓGICA DE AFILIADOS ---
   const cookieStore = await cookies();
   const affiliateCode = cookieStore.get("affiliate_code")?.value;
-
   let activeAffiliate = null;
 
   if (affiliateCode) {
     activeAffiliate = await db.query.affiliate.findFirst({
       where: eq(affiliate.code, affiliateCode),
     });
-
     if (activeAffiliate && activeAffiliate.userId === userId) {
       activeAffiliate = null;
     }
@@ -133,18 +128,16 @@ export async function createCheckoutSession(
     })),
   );
 
-  // --- 5. CALCULAR E SALVAR COMISSÃO ---
+  // 5. Calcular Comissão
   if (activeAffiliate) {
     try {
       const productIds = items.map((i) => i.id);
-
       const dbProducts = await db
         .select()
         .from(product)
         .where(inArray(product.id, productIds));
 
       let totalCommission = 0;
-
       for (const item of items) {
         const dbProd = dbProducts.find((p) => p.id === item.id);
         const rate = dbProd?.affiliateRate ?? 20;
@@ -161,8 +154,6 @@ export async function createCheckoutSession(
           status: "pending",
           description: `Venda via link de afiliado: ${affiliateCode}`,
         });
-        console.log(`✅ Comissão registrada para ${affiliateCode}`);
-
         cookieStore.delete("affiliate_code");
       }
     } catch (error) {
@@ -231,4 +222,156 @@ export async function createCheckoutSession(
     if (error instanceof Error) throw error;
     throw new Error("Falha ao processar checkout");
   }
+}
+
+// ==============================================================================
+// 2. CHECKOUT GRATUITO (Novo)
+// Aqui DEVEMOS enviar o e-mail, pois não haverá webhook de pagamento.
+// ==============================================================================
+export async function createFreeOrder(
+  items: CartItemInput[],
+  guestInfo?: { email: string; name: string },
+) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  let userId: string;
+  let userEmail: string;
+  let userName: string;
+
+  // LÓGICA DE IDENTIFICAÇÃO (Mesma da createCheckoutSession)
+  if (session) {
+    userId = session.user.id;
+    userEmail = session.user.email;
+    userName = session.user.name;
+  } else {
+    if (!guestInfo?.email) {
+      throw new Error(
+        "É necessário fazer login ou informar um e-mail para continuar.",
+      );
+    }
+    const email = guestInfo.email.toLowerCase();
+    const existingUser = await db.query.user.findFirst({
+      where: eq(user.email, email),
+    });
+
+    if (existingUser) {
+      userId = existingUser.id;
+      userEmail = existingUser.email;
+      userName = existingUser.name;
+    } else {
+      const newUserId = crypto.randomUUID();
+      const now = new Date();
+      const [newUser] = await db
+        .insert(user)
+        .values({
+          id: newUserId,
+          name: guestInfo.name || "Cliente Visitante",
+          email: email,
+          image: "",
+          emailVerified: false,
+          createdAt: now,
+          updatedAt: now,
+          role: "user",
+        })
+        .returning();
+
+      userId = newUser.id;
+      userEmail = newUser.email;
+      userName = newUser.name;
+    }
+  }
+
+  // VALIDAÇÃO DE SEGURANÇA
+  const totalAmount = items.reduce(
+    (acc, item) => acc + item.price * item.quantity,
+    0,
+  );
+
+  if (totalAmount > 0) {
+    throw new Error("Esta função é válida apenas para pedidos gratuitos.");
+  }
+
+  // CRIAR PEDIDO (Status COMPLETED)
+  const [newOrder] = await db
+    .insert(order)
+    .values({
+      userId: userId,
+      amount: 0,
+      status: "completed",
+    })
+    .returning();
+
+  // SALVAR ITENS
+  await db.insert(orderItem).values(
+    items.map((item) => ({
+      orderId: newOrder.id,
+      productId: item.id,
+      productName: item.name,
+      price: 0,
+      quantity: item.quantity,
+      image: item.image,
+    })),
+  );
+
+  // ATUALIZAR ESTOQUE E VENDAS
+  for (const item of items) {
+    // Sobe contador de vendas
+    await db
+      .update(product)
+      .set({
+        sales: sql`${product.sales} + ${item.quantity}`,
+      })
+      .where(eq(product.id, item.id));
+
+    // Desce estoque se não for ilimitado
+    await db
+      .update(product)
+      .set({
+        stock: sql`${product.stock} - ${item.quantity}`,
+      })
+      .where(and(eq(product.id, item.id), eq(product.isStockUnlimited, false)));
+  }
+
+  // --- ENVIO DE E-MAIL ---
+  // Como é grátis e imediato, chamamos a função de envio aqui.
+  await sendOrderEmail(userEmail, userName, items);
+
+  // Limpa cookie de afiliado se existir
+  const cookieStore = await cookies();
+  if (cookieStore.get("affiliate_code")) {
+    cookieStore.delete("affiliate_code");
+  }
+
+  return { success: true, orderId: newOrder.id };
+}
+
+// ==============================================================================
+// 3. FUNÇÃO AUXILIAR DE E-MAIL (PLACEHOLDER)
+// Você deve substituir o console.log pela sua lógica real (Resend, Nodemailer, etc)
+// ==============================================================================
+async function sendOrderEmail(
+  to: string,
+  name: string,
+  items: CartItemInput[],
+) {
+  // TODO: IMPLEMENTAR SUA LÓGICA DE EMAIL AQUI
+  // Exemplo se estiver usando Resend:
+  /*
+  await resend.emails.send({
+    from: 'SubMind <noreply@submind.com>',
+    to: to,
+    subject: 'Seu produto gratuito chegou! 🎁',
+    react: EmailTemplate({ name, items })
+  });
+  */
+
+  console.log(`
+    [SIMULAÇÃO DE EMAIL]
+    Para: ${to}
+    Olá ${name},
+    Aqui estão seus produtos gratuitos:
+    ${items.map((i) => `- ${i.name}`).join("\n")}
+  `);
 }

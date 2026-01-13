@@ -1,10 +1,12 @@
 "use client";
 
 import { Loader2, Lock } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { createCheckoutSession } from "@/actions/checkout";
+// --- CORREÇÃO DO IMPORT: apontando para @/actions/checkout ---
+import { createCheckoutSession, createFreeOrder } from "@/actions/checkout";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { authClient } from "@/lib/auth-client"; // Importamos o cliente de auth
+import { authClient } from "@/lib/auth-client";
 
 interface BuyNowButtonProps {
   product: {
@@ -24,7 +26,6 @@ interface BuyNowButtonProps {
     price: number;
     image?: string;
   };
-  // Mantemos a prop user como opcional, mas vamos dar preferência ao hook
   user?: {
     name: string | null;
     email: string | null;
@@ -35,18 +36,17 @@ export function BuyNowButton({
   product,
   user: initialUser,
 }: BuyNowButtonProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showGuestModal, setShowGuestModal] = useState(false);
 
-  // Hook para pegar a sessão no cliente (mais confiável aqui)
   const { data: session } = authClient.useSession();
-
-  // O usuário real é o da sessão (se existir) OU o passado via prop
   const user = session?.user || initialUser;
 
-  // Estados para o formulário de visitante
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
+
+  const isFree = product.price === 0;
 
   const itemToCheckout = [
     {
@@ -58,19 +58,14 @@ export function BuyNowButton({
     },
   ];
 
-  // Função Principal de Compra
   const handleBuyNow = async () => {
-    // Agora 'user' verifica tanto a prop quanto a sessão do cliente
     if (!user) {
       setShowGuestModal(true);
       return;
     }
-
-    // Se tiver usuário logado, processa normal
     await processCheckout();
   };
 
-  // Função que chama o Server Action (usada tanto pelo logado quanto pelo guest)
   const processCheckout = async (guestData?: {
     name: string;
     email: string;
@@ -78,19 +73,26 @@ export function BuyNowButton({
     try {
       setLoading(true);
 
-      const result = await createCheckoutSession(itemToCheckout, guestData);
-
-      if (result?.url) {
-        window.location.href = result.url;
+      if (isFree) {
+        // Fluxo Gratuito
+        await createFreeOrder(itemToCheckout, guestData);
+        toast.success("Produto resgatado com sucesso! Verifique seu e-mail.");
+        router.push("/checkout/success");
+      } else {
+        // Fluxo Pago
+        const result = await createCheckoutSession(itemToCheckout, guestData);
+        if (result?.url) {
+          window.location.href = result.url;
+        }
       }
     } catch (error) {
       console.error(error);
-      toast.error("Erro ao iniciar a compra. Tente novamente.");
+      toast.error("Erro ao processar o pedido. Tente novamente.");
+    } finally {
       setLoading(false);
     }
   };
 
-  // Handler do Form de Visitante
   const handleGuestSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!guestEmail) {
@@ -98,7 +100,6 @@ export function BuyNowButton({
       return;
     }
 
-    // Chama o checkout passando os dados do visitante
     await processCheckout({
       name: guestName || "Visitante",
       email: guestEmail,
@@ -118,21 +119,23 @@ export function BuyNowButton({
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             PROCESSANDO...
           </>
+        ) : isFree ? (
+          "BAIXAR AGORA"
         ) : (
           "COMPRAR AGORA"
         )}
       </Button>
 
-      {/* --- MODAL PARA VISITANTES (GUEST CHECKOUT) --- */}
       <Dialog open={showGuestModal} onOpenChange={setShowGuestModal}>
         <DialogContent className="max-w-[80vw] border-white/10 bg-[#0A0A0A] text-white">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-white">
-              Quase lá!
+              {isFree ? "Resgatar Produto" : "Quase lá!"}
             </DialogTitle>
             <DialogDescription className="text-neutral-400">
-              Você não está logado. Informe seu e-mail para receber o acesso ao
-              produto.
+              {isFree
+                ? "Informe seu e-mail para receber o link de download gratuitamente."
+                : "Você não está logado. Informe seu e-mail para receber o acesso ao produto."}
             </DialogDescription>
           </DialogHeader>
 
@@ -178,8 +181,10 @@ export function BuyNowButton({
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Gerando Pagamento...
+                  {isFree ? "Resgatando..." : "Gerando Pagamento..."}
                 </>
+              ) : isFree ? (
+                "Confirmar Resgate"
               ) : (
                 "Ir para Pagamento"
               )}

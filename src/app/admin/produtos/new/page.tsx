@@ -13,7 +13,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { SubmitHandler, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -77,23 +77,23 @@ const PAYMENT_METHODS_OPTIONS = [
   { id: "boleto", label: "Boleto" },
 ];
 
-// --- SCHEMA ATUALIZADO ---
+// --- SCHEMA ---
 const formSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   description: z.string().optional(),
+
   paymentLink: z
-    .string()
-    .url("Insira uma URL válida")
-    .optional()
-    .or(z.literal("")),
-  downloadUrl: z.string().optional(),
-  price: z.number().min(0.01, "O preço deve ser maior que R$ 0,00"),
+    .union([z.literal(""), z.string().url("URL inválida. Inclua https://")])
+    .optional(),
+  downloadUrl: z
+    .union([z.literal(""), z.string().url("URL inválida. Inclua https://")])
+    .optional(),
+
+  price: z.number().min(0, "O preço não pode ser negativo"),
   discountPrice: z.number().optional(),
 
-  categories: z.array(z.string()).default([]),
-
-  // ATUALIZADO: Agora é array de strings para múltiplos streamings
-  streamings: z.array(z.string()).default([]),
+  categories: z.array(z.string()),
+  streamings: z.array(z.string()),
 
   gameId: z.string().optional(),
 
@@ -102,8 +102,10 @@ const formSchema = z.object({
   paymentMethods: z.array(z.string()).refine((value) => value.length > 0, {
     message: "Selecione pelo menos uma forma de pagamento.",
   }),
-  stock: z.coerce.number().default(0),
-  isStockUnlimited: z.boolean().default(false),
+
+  // --- NOVOS CAMPOS DE ESTOQUE ---
+  stock: z.number().min(0, "O estoque não pode ser negativo"),
+  isStockUnlimited: z.boolean(),
 });
 
 type ProductFormValues = z.infer<typeof formSchema>;
@@ -125,14 +127,12 @@ export default function NewProductPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
 
-  // ESTADOS PARA AS OPÇÕES
-  const [categories, setCategories] = useState<OptionData[]>([]);
-  const [games, setGames] = useState<OptionData[]>([]);
-  const [streamings, setStreamings] = useState<OptionData[]>([]);
+  const [categoriesList, setCategoriesList] = useState<OptionData[]>([]);
+  const [gamesList, setGamesList] = useState<OptionData[]>([]);
+  const [streamingsList, setStreamingsList] = useState<OptionData[]>([]);
 
   const [isLoadingData, setIsLoadingData] = useState(true);
 
-  // Carregar dados iniciais
   useEffect(() => {
     async function loadData() {
       try {
@@ -141,9 +141,9 @@ export default function NewProductPage() {
           getGames(),
           getStreamings(),
         ]);
-        setCategories(cats);
-        setGames(gms);
-        setStreamings(stms);
+        setCategoriesList(cats);
+        setGamesList(gms);
+        setStreamingsList(stms);
       } catch {
         toast.error("Erro ao carregar dados auxiliares.");
       } finally {
@@ -153,29 +153,37 @@ export default function NewProductPage() {
     loadData();
   }, []);
 
-  const form = useForm({
+  // --- INICIALIZAÇÃO ---
+  const form = useForm<ProductFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       description: "",
       paymentLink: "",
       downloadUrl: "",
-      status: "active" as const,
-      deliveryMode: "email" as const,
+      status: "active",
+      deliveryMode: "email",
+
+      // Valores padrão de estoque
       stock: 0,
       isStockUnlimited: false,
+
       price: 0,
       discountPrice: 0,
       categories: [],
-      streamings: [], // Inicializa como array vazio
+      streamings: [],
       gameId: "",
       paymentMethods: ["pix", "credit_card", "debit_card", "boleto"],
     },
+    mode: "onChange",
   });
 
+  // Watchers
   const watchPrice = form.watch("price");
   const watchDiscountPrice = form.watch("discountPrice");
   const watchDeliveryMode = form.watch("deliveryMode");
+  // Watcher para controlar a exibição do input de estoque
+  const watchIsStockUnlimited = form.watch("isStockUnlimited");
 
   const handlePriceChange = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -186,13 +194,17 @@ export default function NewProductPage() {
     onChange(numericValue);
   };
 
-  async function onSubmit(data: ProductFormValues) {
+  const onSubmit: SubmitHandler<ProductFormValues> = async (data) => {
     if (uploadedImages.length === 0) {
       toast.error("Adicione pelo menos uma imagem do produto");
       return;
     }
 
-    if (data.discountPrice && data.discountPrice >= data.price) {
+    if (
+      data.discountPrice !== undefined &&
+      data.discountPrice > 0 &&
+      data.discountPrice >= data.price
+    ) {
       toast.error("O preço promocional deve ser menor que o preço original.");
       return;
     }
@@ -206,17 +218,35 @@ export default function NewProductPage() {
     }
 
     try {
-      const formattedData = {
-        ...data,
+      const formattedData: ProductServerPayload = {
+        name: data.name,
+        description: data.description,
+
+        gameId: data.gameId === "" ? undefined : data.gameId,
+        paymentLink: data.paymentLink === "" ? undefined : data.paymentLink,
+        downloadUrl: data.downloadUrl === "" ? undefined : data.downloadUrl,
+
+        price: Math.round(data.price * 100),
         discountPrice:
-          data.discountPrice === 0 ? undefined : data.discountPrice,
-        gameId: data.gameId || undefined,
-        // Streamings já é array, não precisa de tratamento especial se estiver vazio (vai [])
+          data.discountPrice && data.discountPrice > 0
+            ? Math.round(data.discountPrice * 100)
+            : undefined,
+
+        categories: data.categories,
         streamings: data.streamings,
+
+        status: data.status,
+        deliveryMode: data.deliveryMode,
+        paymentMethods: data.paymentMethods,
+
+        // Dados de estoque
+        stock: data.stock,
+        isStockUnlimited: data.isStockUnlimited,
+
         images: uploadedImages,
       };
 
-      await createProduct(formattedData as unknown as ProductServerPayload);
+      await createProduct(formattedData);
 
       toast.success("Produto criado com sucesso!");
       router.push("/admin/produtos");
@@ -226,7 +256,7 @@ export default function NewProductPage() {
       console.error(error);
       toast.error("Erro ao criar produto.");
     }
-  }
+  };
 
   const handleRemoveImage = (indexToRemove: number) => {
     setUploadedImages(
@@ -301,6 +331,32 @@ export default function NewProductPage() {
                           value={field.value ?? ""}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* PAYMENT LINK */}
+                <FormField
+                  control={form.control}
+                  name="paymentLink"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2 text-white">
+                        <LinkIcon className="h-4 w-4" /> Link de Pagamento
+                        Externo (Opcional)
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Ex: https://pag.seguro/..."
+                          className="border-white/10 bg-white/5 text-white"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs text-neutral-400">
+                        Caso utilize um checkout externo.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -440,7 +496,6 @@ export default function NewProductPage() {
                     </FormItem>
                   )}
                 />
-
                 {watchDeliveryMode === "email" && (
                   <FormField
                     control={form.control}
@@ -456,6 +511,7 @@ export default function NewProductPage() {
                             placeholder="Ex: https://drive.google.com/..."
                             className="border-white/10 bg-white/5 text-white"
                             {...field}
+                            value={field.value || ""}
                           />
                         </FormControl>
                         <FormDescription className="text-xs text-neutral-400">
@@ -466,9 +522,7 @@ export default function NewProductPage() {
                     )}
                   />
                 )}
-
                 <Separator className="bg-white/10" />
-
                 <FormField
                   control={form.control}
                   name="paymentMethods"
@@ -525,7 +579,7 @@ export default function NewProductPage() {
           </div>
 
           <div className="space-y-8">
-            {/* Organização (Categorias + Jogo + Streamings) */}
+            {/* Organização */}
             <Card className="border-white/10 bg-[#0A0A0A]">
               <CardHeader>
                 <CardTitle className="text-white">Organização</CardTitle>
@@ -557,7 +611,7 @@ export default function NewProductPage() {
                   )}
                 />
 
-                {/* --- SELETOR DE CATEGORIAS (Múltipla Escolha) --- */}
+                {/* Categorias */}
                 <FormField
                   control={form.control}
                   name="categories"
@@ -594,7 +648,7 @@ export default function NewProductPage() {
                             <CommandList>
                               <CommandEmpty>Nada encontrado.</CommandEmpty>
                               <CommandGroup>
-                                {categories.map((category) => (
+                                {categoriesList.map((category) => (
                                   <CommandItem
                                     key={category.id}
                                     value={category.name}
@@ -639,7 +693,7 @@ export default function NewProductPage() {
                   )}
                 />
 
-                {/* --- SELETOR DE JOGO (Única Escolha) --- */}
+                {/* Jogo */}
                 <FormField
                   control={form.control}
                   name="gameId"
@@ -663,7 +717,8 @@ export default function NewProductPage() {
                               )}
                             >
                               {field.value
-                                ? games.find((g) => g.id === field.value)?.name
+                                ? gamesList.find((g) => g.id === field.value)
+                                    ?.name
                                 : "Selecione um jogo..."}
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
@@ -687,7 +742,7 @@ export default function NewProductPage() {
                                 >
                                   Nenhum (Limpar)
                                 </CommandItem>
-                                {games.map((game) => (
+                                {gamesList.map((game) => (
                                   <CommandItem
                                     key={game.id}
                                     value={game.name}
@@ -717,7 +772,7 @@ export default function NewProductPage() {
                   )}
                 />
 
-                {/* --- SELETOR DE STREAMINGS (Múltipla Escolha) --- */}
+                {/* Streamings */}
                 <FormField
                   control={form.control}
                   name="streamings"
@@ -741,7 +796,7 @@ export default function NewProductPage() {
                               )}
                             >
                               {field.value && field.value.length > 0
-                                ? `${field.value.length} selecionado(s)`
+                                ? `${field.value.length} selecionada(s)`
                                 : "Selecione streamings..."}
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
@@ -758,7 +813,7 @@ export default function NewProductPage() {
                                 Nenhum streaming encontrado.
                               </CommandEmpty>
                               <CommandGroup>
-                                {streamings.map((stream) => (
+                                {streamingsList.map((stream) => (
                                   <CommandItem
                                     key={stream.id}
                                     value={stream.name}
@@ -805,7 +860,77 @@ export default function NewProductPage() {
               </CardContent>
             </Card>
 
-            {/* Preços (Mantido igual) */}
+            {/* ESTOQUE (NOVA CARD) */}
+            <Card className="border-white/10 bg-[#0A0A0A]">
+              <CardHeader>
+                <CardTitle className="text-white">Estoque</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="isStockUnlimited"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-y-0 space-x-3 rounded-md border border-white/10 p-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          className="border-white/50 data-[state=checked]:border-[#D00000] data-[state=checked]:bg-[#D00000]"
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-white">
+                          Estoque Ilimitado
+                        </FormLabel>
+                        <FormDescription className="text-xs text-neutral-400">
+                          O produto é &quot;infinito&quot;.
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                {!watchIsStockUnlimited && (
+                  <FormField
+                    control={form.control}
+                    name="stock"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white">Quantidade</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            className="border-white/10 bg-white/5 text-white [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            {...field}
+                            value={field.value === 0 ? "" : field.value}
+                            onKeyDown={(e) => {
+                              if (
+                                ["e", "E", "+", "-", ",", "."].includes(e.key)
+                              ) {
+                                e.preventDefault();
+                              }
+                            }}
+                            onChange={(e) => {
+                              const rawValue = e.target.value.replace(
+                                /\D/g,
+                                "",
+                              );
+                              field.onChange(
+                                rawValue === "" ? 0 : Number(rawValue),
+                              );
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Preços */}
             <Card className="border-white/10 bg-[#0A0A0A]">
               <CardHeader>
                 <CardTitle className="text-white">Preços</CardTitle>
@@ -845,9 +970,10 @@ export default function NewProductPage() {
                           onChange={(e) => handlePriceChange(e, field.onChange)}
                         />
                       </FormControl>
-                      {watchDiscountPrice &&
+                      {watchDiscountPrice !== undefined &&
                       watchDiscountPrice > 0 &&
-                      watchDiscountPrice >= watchPrice ? (
+                      (watchDiscountPrice as number) >=
+                        (watchPrice as number) ? (
                         <div className="mt-1 flex items-center gap-2 text-xs text-red-400">
                           <AlertCircle className="h-3 w-3" />
                           <span>
