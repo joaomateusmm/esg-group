@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import { ChevronsRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 import { BannerCarousel } from "@/components/BannerCarousel";
@@ -10,11 +9,11 @@ import { Header } from "@/components/Header";
 import LogoLoop from "@/components/LogoLoop";
 import { ShinyButton } from "@/components/ui/shiny-button";
 
+import { ClientBadge } from "./ClientBadge";
 import { FadeInAnimate } from "./FadeInAnimate";
 import { RevealBlockText } from "./RevealBlockText";
 import Silk from "./Silk";
 
-// --- OTIMIZAÇÃO: Mover dados estáticos para fora do componente ---
 const PARTNER_LOGOS = [
   {
     src: "/images/icons/fivem.svg",
@@ -78,41 +77,13 @@ export default function HeroSection() {
       </div>
 
       <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 pt-38 text-center">
-        <div className="mb-6 flex items-center gap-3 rounded-full border border-neutral-800/30 bg-transparent py-1.5 pr-4 pl-2 shadow-sm backdrop-blur-md">
-          <div className="flex items-center">
-            <div className="h-8 w-8 overflow-hidden rounded-full border-2 border-[#0404041f] bg-gray-800 duration-100 hover:scale-[1.05]">
-              <Image
-                src="/images/avatar/avatar3.webp"
-                alt="Cliente 1"
-                width={32}
-                height={32}
-                className="h-full w-full object-cover"
-              />
-            </div>
-            <div className="-ml-3 h-8 w-8 overflow-hidden rounded-full border-2 border-[#111111] bg-gray-400 duration-100 hover:scale-[1.05]">
-              <Image
-                src="/images/avatar/avatar2.webp"
-                alt="Cliente 2"
-                width={32}
-                height={32}
-                className="h-full w-full object-cover"
-              />
-            </div>
-            <div className="-ml-3 h-8 w-8 overflow-hidden rounded-full border-2 border-[#111111] bg-gray-300 duration-100 hover:scale-[1.05]">
-              <Image
-                src="/images/avatar/avatar1.webp"
-                alt="Cliente 3"
-                width={32}
-                height={32}
-                className="h-full w-full object-cover"
-              />
-            </div>
-          </div>
-          <span className="text-sm font-medium text-neutral-500">
-            <span className="font-bold text-neutral-200">3.350+</span> Clientes
-            Satisfeitos
-          </span>
-        </div>
+        <FadeInAnimate
+          className="mb-6 flex justify-center" // Controla posição e margem
+          direction="down"
+          delay={1}
+        >
+          <ClientBadge />
+        </FadeInAnimate>
 
         <BannerCarousel />
 
