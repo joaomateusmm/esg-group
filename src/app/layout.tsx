@@ -83,6 +83,7 @@ export default async function RootLayout({
   return (
     <html lang="pt-br">
       <body
+        suppressHydrationWarning={true}
         className={`${geistSans.variable} ${geistMono.variable} ${montserrat.variable} ${clash.variable} antialiased`}
       >
         <FloatingScrollbar />

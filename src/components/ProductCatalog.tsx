@@ -29,7 +29,7 @@ export default async function ProductCatalog() {
 
   return (
     <section className="relative z-10 w-full bg-[#010000] px-4 pb-24 md:px-8">
-      <div className="mx-auto max-w-[1200px]">
+      <div className="mx-auto max-w-[1400px]">
         {/* Cabeçalho Geral */}
         <div className="flex flex-col text-start">
           <span className="font-montserrat text-sm font-medium tracking-wider text-[#D00000] uppercase">
@@ -52,7 +52,7 @@ export default async function ProductCatalog() {
                     {catSection.name}
                   </h3>
                 </div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-6 md:grid-cols-3 lg:grid-cols-5 mb-8">
                   {catSection.products.map((item) => (
                     // Aqui usamos o componente ProductCard isolado
                     <ProductCard

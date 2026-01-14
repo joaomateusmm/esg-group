@@ -1,9 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, MessageSquareText, Plus } from "lucide-react"; // Removidos Ticket e Switch não usados
+import { Loader2, MessageSquareText, Plus } from "lucide-react";
 import { useState } from "react";
-import { SubmitHandler, useForm } from "react-hook-form"; // Importado SubmitHandler
+import { SubmitHandler, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -34,9 +34,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ShinyButton } from "@/components/ui/shiny-button";
 
-// --- SCHEMA CORRIGIDO (Igual ao padrão que funciona) ---
-// Removemos z.coerce.number() e usamos z.number() puro para controle total
+// --- SCHEMA ---
 const formSchema = z.object({
   code: z.string().min(3, "Mínimo 3 letras").toUpperCase().trim(),
   type: z.enum(["percent", "fixed"]),
@@ -48,13 +48,11 @@ const formSchema = z.object({
   popupDescription: z.string().optional(),
 });
 
-// Inferência do tipo
 type CouponFormValues = z.infer<typeof formSchema>;
 
 export function NewCouponDialog() {
   const [open, setOpen] = useState(false);
 
-  // Inicialização correta com todos os valores padrão
   const form = useForm<CouponFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -64,19 +62,40 @@ export function NewCouponDialog() {
       minValue: 0,
       maxUses: 0,
       expiresAt: "",
+      popupTitle: "",
+      popupDescription: "",
     },
     mode: "onChange",
   });
 
-  // Submit Handler Tipado
+  // --- HELPER: Formata valor visualmente (R$ 0,00) ---
+  const formatCurrency = (value: number | undefined) => {
+    // Se for undefined ou 0, mostra R$ 0,00
+    if (!value) return "R$ 0,00";
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 2,
+    }).format(value);
+  };
+
+  // --- HELPER: Lida com a digitação (Mask de centavos) ---
+  const handlePriceChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    onChange: (value: number) => void,
+  ) => {
+    // Remove tudo que não for dígito
+    const rawValue = e.target.value.replace(/\D/g, "");
+    // Divide por 100 para tratar como centavos (ex: 1234 -> 12.34)
+    const numericValue = Number(rawValue) / 100;
+    onChange(numericValue);
+  };
+
   const onSubmit: SubmitHandler<CouponFormValues> = async (data) => {
-    // Se for valor fixo, converte input (reais) para centavos
-    // Se for percent, mantem o numero (ex: 10)
     const payload = {
       ...data,
       value: data.type === "fixed" ? Math.round(data.value * 100) : data.value,
       minValue: data.minValue ? Math.round(data.minValue * 100) : 0,
-      // Se maxUses for 0, enviamos undefined para ser ilimitado
       maxUses: data.maxUses && data.maxUses > 0 ? data.maxUses : undefined,
     };
 
@@ -96,9 +115,7 @@ export function NewCouponDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="gap-2 bg-[#D00000] text-white hover:bg-[#a00000]">
-          <Plus className="h-4 w-4" /> Novo Cupom
-        </Button>
+        <ShinyButton className="px-2">Novo Cupom</ShinyButton>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto border-white/10 bg-[#0A0A0A] text-white sm:max-w-[500px]">
         <DialogHeader>
@@ -113,9 +130,6 @@ export function NewCouponDialog() {
             onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-4 pt-4"
           >
-            {/* ... SEUS CAMPOS EXISTENTES (Code, Type, Value, MinValue, MaxUses, Expires) ... */}
-            {/* VOU RESUMIR OS EXISTENTES PARA FOCAR NOS NOVOS, MANTENHA OS SEUS AQUI */}
-
             <FormField
               control={form.control}
               name="code"
@@ -135,7 +149,6 @@ export function NewCouponDialog() {
             />
 
             <div className="grid grid-cols-2 gap-4">
-              {/* ... Inputs de Type e Value ... */}
               <FormField
                 control={form.control}
                 name="type"
@@ -159,6 +172,7 @@ export function NewCouponDialog() {
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="value"
@@ -172,52 +186,82 @@ export function NewCouponDialog() {
                     <FormControl>
                       <Input
                         type="number"
-                        className="border-white/10 bg-white/5 text-white"
+                        placeholder={
+                          watchType === "percent" ? "Ex: 10" : "Ex: 20.00"
+                        }
+                        className="border-white/10 bg-white/5 text-white [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                         {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        value={field.value === 0 ? "" : field.value}
+                        onKeyDown={(e) => {
+                          if (
+                            ["e", "E", "+", "-", ",", "."].includes(e.key) &&
+                            watchType === "percent"
+                          ) {
+                            if (
+                              ["e", "E", "+", "-", ",", "."].includes(e.key)
+                            ) {
+                              e.preventDefault();
+                            }
+                          }
+                        }}
+                        onChange={(e) => {
+                          const rawValue = e.target.value.replace(/\D/g, "");
+                          field.onChange(
+                            rawValue === "" ? 0 : Number(rawValue),
+                          );
+                        }}
                       />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
 
+            {/* --- FORM DE VALOR MÍNIMO (ATUALIZADO) --- */}
             <FormField
               control={form.control}
               name="minValue"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Mínimo (Opcional)</FormLabel>
+                  <FormLabel>Valor Mínimo do Pedido (R$)</FormLabel>
                   <FormControl>
                     <Input
-                      type="number"
-                      className="border-white/10 bg-white/5 text-white"
-                      {...field}
-                      value={field.value === 0 ? "" : field.value}
-                      onChange={(e) => field.onChange(Number(e.target.value))}
+                      placeholder="R$ 0,00"
+                      className="border-white/10 bg-white/5 font-mono text-white"
+                      value={formatCurrency(field.value)}
+                      onChange={(e) => handlePriceChange(e, field.onChange)}
                     />
                   </FormControl>
+                  <FormDescription className="text-xs text-neutral-500">
+                    Opcional. Deixe zerado para qualquer valor.
+                  </FormDescription>
+                  <FormMessage />
                 </FormItem>
               )}
             />
 
             <div className="grid grid-cols-2 gap-4">
-              {/* ... MaxUses e Expires ... */}
               <FormField
                 control={form.control}
                 name="maxUses"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Limite Usos</FormLabel>
+                    <FormLabel>Limite de Usos</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
+                        placeholder="Ilimitado"
                         className="border-white/10 bg-white/5 text-white"
                         {...field}
                         value={field.value === 0 ? "" : field.value}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          field.onChange(val === "" ? 0 : Number(val));
+                        }}
                       />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -226,22 +270,23 @@ export function NewCouponDialog() {
                 name="expiresAt"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Validade</FormLabel>
+                    <FormLabel>Validade (Opcional)</FormLabel>
                     <FormControl>
                       <Input
                         type="date"
-                        className="border-white/10 bg-white/5 text-white"
+                        className="block w-full border-white/10 bg-white/5 text-white"
                         {...field}
+                        value={field.value || ""}
                       />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
 
-            {/* --- ÁREA DE DIVULGAÇÃO (NOVO) --- */}
             <div className="mt-6 rounded-lg border border-white/10 bg-white/5 p-4">
-              <div className="mb-4 flex items-center gap-2 text-sm font-medium text-[#D00000]">
+              <div className="mb-4 flex items-center gap-2 text-sm font-medium text-white">
                 <MessageSquareText className="h-4 w-4" />
                 Personalização do Pop-up (Divulgação)
               </div>

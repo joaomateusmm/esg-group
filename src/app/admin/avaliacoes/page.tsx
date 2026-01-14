@@ -43,7 +43,7 @@ export default async function AdminReviewsPage() {
     .orderBy(desc(review.createdAt));
 
   return (
-    <div className="space-y-6 p-8">
+    <div className="space-y-6 p-2">
       <div>
         <h1 className="flex items-center gap-2 text-3xl font-bold text-white">
           Gerenciar Avaliações

@@ -44,7 +44,7 @@ export default async function AdminCouponsPage() {
 
   return (
     <div className="min-h-screen">
-      <div className="">
+      <div className="p-2">
         <div className="mb-6 flex items-center justify-between">
           <div className="space-y-1">
             <h1 className="font-clash-display flex items-center gap-3 text-3xl font-medium text-white">

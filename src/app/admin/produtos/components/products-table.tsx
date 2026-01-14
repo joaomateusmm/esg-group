@@ -122,13 +122,13 @@ export function ProductsTable({
     <>
       {/* --- FILTROS E BOTÕES --- */}
       <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-        <div className="relative w-52">
+        {/* <div className="relative w-52">
           <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-500" />
           <Input
             placeholder="Procurar por nome..."
             className="h-10 border-white/10 bg-white/5 pl-10 text-white placeholder:text-neutral-500 focus:border-[#D00000] focus:ring-0"
           />
-        </div>
+        </div> */}
         <div className="flex items-center justify-center gap-3">
           {selectedIds.length > 0 && (
             <button

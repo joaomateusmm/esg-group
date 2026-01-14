@@ -117,6 +117,9 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
             "bg-white/5 object-cover transition-transform duration-500 group-hover:scale-105",
             isPending && "scale-100 blur-[2px]",
           )}
+          // --- CORREÇÃO AQUI ---
+          // Define os tamanhos baseados no seu grid (2 cols mobile, 3 cols tablet, 4 cols desktop)
+          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
         />
 
         <div className="absolute right-4 bottom-4 z-20 flex translate-y-4 flex-col gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
@@ -151,7 +154,6 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
         </h3>
 
         <div className="mt-auto flex flex-col pt-4">
-          {/* Só mostra preço riscado se tiver desconto E NÃO FOR GRATUITO AGORA (opcional, mas fica melhor) */}
           {data.discountPrice && !isFree && (
             <span className="text-xs text-neutral-500 line-through">
               {formatPrice(data.price)}
@@ -159,7 +161,6 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
           )}
 
           <div className="flex items-center justify-between">
-            {/* LÓGICA DE EXIBIÇÃO DE PREÇO */}
             {isFree ? (
               <span className="font-montserrat text-xl font-bold text-white uppercase">
                 Grátis

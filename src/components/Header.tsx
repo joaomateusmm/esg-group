@@ -13,11 +13,12 @@ import {
   ShoppingBag,
   ShoppingCart,
   Trash2,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { checkAffiliateStatus } from "@/actions/check-affiliate-status";
@@ -25,6 +26,8 @@ import { createCheckoutSession } from "@/actions/checkout";
 import { getAllCategories } from "@/actions/get-all-categories";
 import { getAllGames } from "@/actions/get-all-games";
 import { getAllStreamings } from "@/actions/get-all-streamings";
+// IMPORTANTE: Importe a action que criamos no Passo 1
+import { searchProductsAction } from "@/actions/search-products";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -103,7 +106,7 @@ export function Header() {
   const [mounted, setMounted] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
-  // ESTADOS
+  // ESTADOS DE DADOS
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
@@ -118,6 +121,14 @@ export function Header() {
 
   // NOVO: Estado de Afiliado
   const [isAffiliate, setIsAffiliate] = useState(false);
+
+  // --- NOVOS ESTADOS PARA A BARRA DE PESQUISA ---
+  const [searchQuery, setSearchQuery] = useState("");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
@@ -136,7 +147,6 @@ export function Header() {
     setMounted(true);
 
     const fetchData = async () => {
-      // 1. Buscar Categorias
       try {
         setIsLoadingCategories(true);
         const cats = await getAllCategories();
@@ -147,7 +157,6 @@ export function Header() {
         setIsLoadingCategories(false);
       }
 
-      // 2. Buscar Jogos
       try {
         setIsLoadingGames(true);
         const gms = await getAllGames();
@@ -158,7 +167,6 @@ export function Header() {
         setIsLoadingGames(false);
       }
 
-      // 3. Buscar Streamings
       try {
         setIsLoadingStreamings(true);
         const strms = await getAllStreamings();
@@ -169,7 +177,6 @@ export function Header() {
         setIsLoadingStreamings(false);
       }
 
-      // 4. Verificar Status de Afiliado (NOVO)
       try {
         const status = await checkAffiliateStatus();
         setIsAffiliate(status);
@@ -180,6 +187,40 @@ export function Header() {
 
     fetchData();
   }, [session]);
+
+  // --- LÓGICA DE PESQUISA (DEBOUNCE) ---
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (searchQuery.length >= 2) {
+        setIsSearching(true);
+        const results = await searchProductsAction(searchQuery);
+        setSearchResults(results);
+        setIsSearching(false);
+        setShowResults(true);
+      } else {
+        setSearchResults([]);
+        setShowResults(false);
+      }
+    }, 500); // Espera 500ms após o usuário parar de digitar
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
+  // Fechar resultados ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(event.target as Node)
+      ) {
+        setShowResults(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const formatPrice = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -198,7 +239,6 @@ export function Header() {
     });
   };
 
-  // --- FUNÇÃO CORRIGIDA AQUI ---
   async function handleCheckout() {
     if (!session) {
       toast.error("Você precisa estar logado para finalizar a compra.");
@@ -216,26 +256,25 @@ export function Header() {
         image: item.image,
       }));
 
-      // Chama a action (pode retornar URL ou Success)
       const result = await createCheckoutSession(checkoutItems);
 
-      // Lógica de verificação de tipos segura
       if ("url" in result && result.url) {
-        // Fluxo Pago
         window.location.href = result.url;
       } else if ("success" in result && result.success) {
-        // Fluxo Gratuito
         toast.success("Pedido realizado com sucesso!");
         router.push("/checkout/success");
       }
     } catch (error) {
       console.error(error);
-      toast.error("Erro ao processar o pedido. Tente novamente.");
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Erro ao processar o pedido. Tente novamente.");
+      }
     } finally {
       setIsCheckingOut(false);
     }
   }
-  // -----------------------------
 
   useEffect(() => {
     let lastScrollY = window.scrollY;
@@ -408,7 +447,6 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* LÓGICA DO LINK DE AFILIADO */}
             {isAffiliate ? (
               <HeaderLink href="/afiliados/painel">Painel Afiliado</HeaderLink>
             ) : (
@@ -420,7 +458,6 @@ export function Header() {
           <div className="flex items-center gap-3">
             {!isPending && session ? (
               <>
-                {/* --- FAVORITOS (WISHLIST) --- */}
                 <Sheet>
                   <SheetTrigger asChild>
                     <div>
@@ -505,7 +542,6 @@ export function Header() {
                   </SheetContent>
                 </Sheet>
 
-                {/* --- CARRINHO (CART) --- */}
                 <Sheet>
                   <SheetTrigger asChild>
                     <div>
@@ -641,7 +677,6 @@ export function Header() {
                   </SheetContent>
                 </Sheet>
 
-                {/* --- MENU DE PERFIL --- */}
                 <Sheet>
                   <SheetTrigger asChild>
                     <button className="group flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 pr-2 pl-1 transition-all hover:border-white/20 hover:bg-white/10 active:scale-95">
@@ -682,17 +717,6 @@ export function Header() {
                       </div>
                       <Separator className="bg-white/10" />
                       <div className="flex flex-col gap-2">
-                        {/* <Link
-                          href="/minha-conta/configurações"
-                          className="w-full"
-                        >
-                          <Button
-                            variant="ghost"
-                            className="h-12 w-full justify-start gap-3 text-neutral-300 hover:bg-white/5 hover:text-white"
-                          >
-                            <Settings className="h-5 w-5" /> Configurações
-                          </Button>
-                        </Link> */}
                         <Link href="/minha-conta/favoritos" className="w-full">
                           <Button
                             variant="ghost"
@@ -709,7 +733,6 @@ export function Header() {
                             <ShoppingCart className="h-5 w-5" /> Meus Pedidos
                           </Button>
                         </Link>
-                        {/* LINK PARA PAINEL AFILIADO NO MENU TAMBÉM (OPCIONAL) */}
                         {isAffiliate && (
                           <Link href="/afiliados/painel" className="w-full">
                             <Button
@@ -755,7 +778,6 @@ export function Header() {
       {/* --- RETÂNGULO 2: BARRA INFERIOR --- */}
       <div className="relative w-full border-b border-white/10 bg-black/30 px-4 backdrop-blur-lg transition-all duration-300 md:px-8">
         <div className="mx-auto grid h-14 max-w-7xl grid-cols-3 items-center">
-          {/* COLUNA 1: ESQUERDA (Logo Animado) */}
           <div className="flex justify-start">
             <div
               className={cn(
@@ -783,7 +805,6 @@ export function Header() {
             </div>
           </div>
 
-          {/* COLUNA 2: CENTRO (Menu) */}
           <div className="flex justify-center">
             <nav className="hidden items-center gap-6 lg:flex">
               <DropdownMenu>
@@ -802,7 +823,6 @@ export function Header() {
                     { label: "Minhas Compras", href: "/minha-conta/compras" },
                     { label: "Favoritos", href: "/minha-conta/favoritos" },
                     { label: "Carrinho", href: "/minha-conta/carrinho" },
-                    // Adicionei link para Admin aqui também se precisar
                     { label: "Admin", href: "/admin" },
                   ].map((item) => (
                     <DropdownMenuItem
@@ -861,15 +881,89 @@ export function Header() {
             </nav>
           </div>
 
-          {/* COLUNA 3: DIREITA (Barra de Pesquisa) */}
+          {/* COLUNA 3: DIREITA (Barra de Pesquisa ATUALIZADA) */}
           <div className="flex justify-end">
-            <div className="relative w-full max-w-[280px] transition-all duration-300 md:w-[240px] lg:w-[280px]">
-              <Search className="absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-neutral-500 transition-colors group-focus-within:text-white" />
-              <input
-                type="text"
-                placeholder="O que você procura?"
-                className="h-9 w-full rounded-full border border-white/10 bg-white/5 pr-10 pl-4 text-sm text-white placeholder:text-neutral-600 focus:border-white/20 focus:bg-white/10 focus:outline-none"
-              />
+            <div
+              className="relative w-full max-w-[280px] transition-all duration-300 md:w-[240px] lg:w-[280px]"
+              ref={searchRef}
+            >
+              <div className="relative">
+                {isSearching ? (
+                  <Loader2 className="absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 animate-spin text-neutral-500" />
+                ) : searchQuery.length > 0 ? (
+                  <X
+                    className="absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 cursor-pointer text-neutral-500 hover:text-white"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSearchResults([]);
+                      setShowResults(false);
+                    }}
+                  />
+                ) : (
+                  <Search className="absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-neutral-500 transition-colors group-focus-within:text-white" />
+                )}
+                <input
+                  type="text"
+                  placeholder="O que você procura?"
+                  className="h-9 w-full rounded-full border border-white/10 bg-white/5 pr-10 pl-4 text-sm text-white placeholder:text-neutral-600 focus:border-white/20 focus:bg-white/10 focus:outline-none"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => {
+                    if (searchResults.length > 0) setShowResults(true);
+                  }}
+                />
+              </div>
+
+              {/* DROPDOWN DE RESULTADOS */}
+              {showResults && searchQuery.length >= 2 && (
+                <div className="absolute top-12 left-0 z-50 w-full overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0A] shadow-xl">
+                  {searchResults.length > 0 ? (
+                    <div className="flex flex-col">
+                      {searchResults.map((product) => {
+                        const finalPrice =
+                          product.discountPrice || product.price;
+                        return (
+                          <Link
+                            key={product.id}
+                            href={`/produto/${product.id}`}
+                            className="flex items-center gap-3 border-b border-white/5 p-3 transition-colors last:border-0 hover:bg-white/5"
+                            onClick={() => setShowResults(false)}
+                          >
+                            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded bg-white/5">
+                              {product.images && product.images[0] ? (
+                                <Image
+                                  src={product.images[0]}
+                                  alt={product.name}
+                                  fill
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center">
+                                  <ShoppingBag className="h-4 w-4 text-neutral-600" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex flex-1 flex-col overflow-hidden">
+                              <span className="truncate text-sm font-medium text-white">
+                                {product.name}
+                              </span>
+                              <span className="text-xs font-bold text-[#D00000]">
+                                {finalPrice === 0
+                                  ? "Gratuito"
+                                  : formatPrice(finalPrice)}
+                              </span>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-sm text-neutral-500">
+                      Nenhum produto encontrado.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
