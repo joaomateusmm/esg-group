@@ -10,7 +10,7 @@ import { Header } from "@/components/Header";
 import LogoLoop from "@/components/LogoLoop";
 import { ShinyButton } from "@/components/ui/shiny-button";
 
-const Silk = dynamic(() => import("@/components/Silk"), { ssr: false });
+import Silk from "./Silk";
 
 // --- OTIMIZAÇÃO: Mover dados estáticos para fora do componente ---
 const PARTNER_LOGOS = [
