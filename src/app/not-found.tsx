@@ -37,15 +37,7 @@ export default function NotFound() {
           {/* Texto Principal */}
           <div className="flex flex-col items-center justify-center space-y-4">
             <div className="relative flex items-center justify-center">
-              <GradientText
-                animationSpeed={5.5}
-                pauseOnHover
-                yoyo={false}
-                className="font-clash-display text-[200px] font-bold"
-                colors={["#780000", "#1C0000", "#a00000"]}
-              >
-                404
-              </GradientText>
+              <h1 className="font-clash-display text-[200px] font-bold">404</h1>
             </div>
 
             <div className="space-y-2 py-6">

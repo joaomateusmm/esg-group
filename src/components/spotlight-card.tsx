@@ -1,6 +1,6 @@
 "use client";
 
-import React, { MouseEvent, useEffect, useRef, useState } from "react";
+import React, { MouseEvent, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -18,49 +18,19 @@ export const SpotlightCard = ({
   const divRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  // Refs para guardar as posições sem renderizar o componente
-  const mousePosition = useRef({ x: 0, y: 0 });
-  const spotlightPosition = useRef({ x: 0, y: 0 });
-
   const [opacity, setOpacity] = useState(0);
 
-  // Configuração da suavidade (0.01 a 1.0)
-  // Menor = Mais pesado/lento | Maior = Mais rápido/colado
-  const smoothness = 0.08;
-
-  useEffect(() => {
-    let animationFrameId: number;
-
-    const animate = () => {
-      // Cálculo de Lerp (Linear Interpolation)
-      // Posição Atual += (Alvo - Posição Atual) * velocidade
-      spotlightPosition.current.x +=
-        (mousePosition.current.x - spotlightPosition.current.x) * smoothness;
-      spotlightPosition.current.y +=
-        (mousePosition.current.y - spotlightPosition.current.y) * smoothness;
-
-      if (overlayRef.current) {
-        const { x, y } = spotlightPosition.current;
-        overlayRef.current.style.background = `radial-gradient(600px circle at ${x}px ${y}px, ${spotlightColor}, transparent 40%)`;
-      }
-
-      animationFrameId = requestAnimationFrame(animate);
-    };
-
-    animate();
-
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [spotlightColor]);
-
   const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
-    if (!divRef.current) return;
+    if (!divRef.current || !overlayRef.current) return;
 
     const rect = divRef.current.getBoundingClientRect();
-    // Apenas atualizamos o "Alvo", a animação corre atrás dele
-    mousePosition.current = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Atualização direta do estilo no evento do mouse
+    // Removemos o loop requestAnimationFrame constante e o Lerp pesado
+    // Para um efeito spotlight, a resposta instantânea geralmente é melhor e muito mais leve
+    overlayRef.current.style.background = `radial-gradient(600px circle at ${x}px ${y}px, ${spotlightColor}, transparent 40%)`;
   };
 
   const handleMouseEnter = () => {
@@ -88,7 +58,6 @@ export const SpotlightCard = ({
         className="pointer-events-none absolute -inset-px transition-opacity duration-300"
         style={{
           opacity,
-          // O background agora é controlado via ref no useEffect para performance
         }}
       />
       <div className="relative z-10">{children}</div>

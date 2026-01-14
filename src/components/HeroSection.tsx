@@ -5,62 +5,50 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 
-// Importa o componente isolado
 import { BannerCarousel } from "@/components/BannerCarousel";
 import { Header } from "@/components/Header";
 import LogoLoop from "@/components/LogoLoop";
 import { ShinyButton } from "@/components/ui/shiny-button";
 
-// --- LAZY LOAD ---
 const Silk = dynamic(() => import("@/components/Silk"), { ssr: false });
-// Se possível, defina loading: () => null para evitar flash de loading se não quiser skeleton
-const SingleCubeFivem = dynamic(() => import("@/components/CubeFivem"), {
-  ssr: false,
-});
-const SingleCubeRoblox = dynamic(() => import("@/components/CubeRoblox"), {
-  ssr: false,
-});
-const SingleCubeValorant = dynamic(() => import("@/components/CubeValorant"), {
-  ssr: false,
-});
+
+// --- OTIMIZAÇÃO: Mover dados estáticos para fora do componente ---
+const PARTNER_LOGOS = [
+  {
+    src: "/images/icons/fivem.svg",
+    alt: "Contas fivem",
+    href: "https://sub-mind-sand.vercel.app/jogos/fivem",
+  },
+  {
+    src: "/images/icons/roblox.svg",
+    alt: "Roblox",
+    href: "https://sub-mind-sand.vercel.app/jogos/roblox",
+  },
+  {
+    src: "/images/icons/valorant.svg",
+    alt: "Valorant",
+    href: "https://sub-mind-sand.vercel.app/jogos/valorant",
+  },
+  {
+    src: "/images/icons/discord.svg",
+    alt: "Contas Discord",
+    href: "https://sub-mind-sand.vercel.app/categorias/contas",
+  },
+  {
+    src: "/images/icons/netflix.svg",
+    alt: "Contas Netflix",
+    href: "https://sub-mind-sand.vercel.app/streamings/netflix",
+  },
+  {
+    src: "/images/icons/amazom.svg",
+    alt: "Contas Prime Vídeo",
+    href: "https://sub-mind-sand.vercel.app/streamings/prime-video",
+  },
+];
 
 export default function HeroSection() {
-  const partnerLogos = [
-    {
-      src: "/images/icons/fivem.svg",
-      alt: "Contas fivem",
-      href: "https://sub-mind-sand.vercel.app/jogos/fivem",
-    },
-    {
-      src: "/images/icons/roblox.svg",
-      alt: "Roblox",
-      href: "https://sub-mind-sand.vercel.app/jogos/roblox",
-    },
-    {
-      src: "/images/icons/valorant.svg",
-      alt: "Valorant",
-      href: "https://sub-mind-sand.vercel.app/jogos/valorant",
-    },
-    {
-      src: "/images/icons/discord.svg",
-      alt: "Contas Discord",
-      href: "https://sub-mind-sand.vercel.app/categorias/contas",
-    },
-    {
-      src: "/images/icons/netflix.svg",
-      alt: "Contas Netflix",
-      href: "https://sub-mind-sand.vercel.app/streamings/netflix",
-    },
-    {
-      src: "/images/icons/amazom.svg",
-      alt: "Contas Prime Vídeo",
-      href: "https://sub-mind-sand.vercel.app/streamings/prime-video",
-    },
-  ];
-
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-hidden">
-      {/* --- CAMADA DE FUNDO (SILK) --- */}
       <div className="pointer-events-none absolute inset-0 z-0">
         <Silk
           speed={12}
@@ -71,14 +59,12 @@ export default function HeroSection() {
         />
       </div>
 
-      {/* --- HEADER --- */}
       <div className="z-[100] w-full">
         <div className="mx-auto flex w-full items-center justify-center">
           <Header />
         </div>
       </div>
 
-      {/* --- CONTEÚDO PRINCIPAL --- */}
       <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 pt-38 text-center">
         <div className="mb-6 flex items-center gap-3 rounded-full border border-neutral-800/30 bg-transparent py-1.5 pr-4 pl-2 shadow-sm backdrop-blur-md">
           <div className="flex items-center">
@@ -116,7 +102,6 @@ export default function HeroSection() {
           </span>
         </div>
 
-        {/* --- CARROSSEL DE IMAGENS (ISOLADO) --- */}
         <BannerCarousel />
 
         <h1 className="font-clash-display hidden max-w-4xl leading-[1.1] font-medium tracking-wide drop-shadow-xl md:flex md:max-w-[70vw] md:text-[70px]">
@@ -160,7 +145,7 @@ export default function HeroSection() {
 
         <div className="mt-4 mb-16 w-full max-w-5xl opacity-50 grayscale invert transition-all duration-500 hover:opacity-100 hover:grayscale-0 hover:invert-0">
           <LogoLoop
-            logos={partnerLogos}
+            logos={PARTNER_LOGOS} // <--- Usando a constante externa
             speed={60}
             direction="left"
             logoHeight={40}
