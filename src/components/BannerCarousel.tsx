@@ -54,7 +54,18 @@ export function BannerCarousel() {
   };
 
   return (
-    <div className="mb-12 flex flex-col items-center">
+    // ADICIONADO: Animação de entrada do container inteiro
+    <motion.div
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{
+        type: "spring",
+        stiffness: 100,
+        damping: 20,
+        duration: 0.8,
+      }}
+      className="mb-12 flex flex-col items-center"
+    >
       <div className="relative h-auto w-[85vw] md:w-[60vw]">
         {/* Seta Esquerda */}
         <button
@@ -118,6 +129,6 @@ export function BannerCarousel() {
           />
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 }
