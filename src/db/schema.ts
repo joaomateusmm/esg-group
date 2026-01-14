@@ -236,6 +236,9 @@ export const coupon = pgTable("coupon", {
   expiresAt: timestamp("expiresAt"), // Data de validade (opcional)
   isActive: boolean("isActive").default(true).notNull(), // Se o cupom está ativo ou não
   createdAt: timestamp("createdAt").notNull().defaultNow(),
+  isFeatured: boolean("isFeatured").default(false).notNull(),
+  popupTitle: text("popupTitle"),
+  popupDescription: text("popupDescription"),
   updatedAt: timestamp("updatedAt")
     .notNull()
     .defaultNow()

@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus } from "lucide-react"; // Removidos Ticket e Switch não usados
+import { Loader2, MessageSquareText, Plus } from "lucide-react"; // Removidos Ticket e Switch não usados
 import { useState } from "react";
 import { SubmitHandler, useForm } from "react-hook-form"; // Importado SubmitHandler
 import { toast } from "sonner";
@@ -44,6 +44,8 @@ const formSchema = z.object({
   minValue: z.number().optional(),
   maxUses: z.number().optional(),
   expiresAt: z.string().optional(),
+  popupTitle: z.string().optional(),
+  popupDescription: z.string().optional(),
 });
 
 // Inferência do tipo
@@ -98,11 +100,11 @@ export function NewCouponDialog() {
           <Plus className="h-4 w-4" /> Novo Cupom
         </Button>
       </DialogTrigger>
-      <DialogContent className="border-white/10 bg-[#0A0A0A] text-white sm:max-w-[425px]">
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-white/10 bg-[#0A0A0A] text-white sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Criar Novo Cupom</DialogTitle>
           <DialogDescription className="text-neutral-400">
-            Configure as regras do desconto abaixo.
+            Configure as regras e a divulgação do desconto.
           </DialogDescription>
         </DialogHeader>
 
@@ -111,6 +113,9 @@ export function NewCouponDialog() {
             onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-4 pt-4"
           >
+            {/* ... SEUS CAMPOS EXISTENTES (Code, Type, Value, MinValue, MaxUses, Expires) ... */}
+            {/* VOU RESUMIR OS EXISTENTES PARA FOCAR NOS NOVOS, MANTENHA OS SEUS AQUI */}
+
             <FormField
               control={form.control}
               name="code"
@@ -130,6 +135,7 @@ export function NewCouponDialog() {
             />
 
             <div className="grid grid-cols-2 gap-4">
+              {/* ... Inputs de Type e Value ... */}
               <FormField
                 control={form.control}
                 name="type"
@@ -142,7 +148,7 @@ export function NewCouponDialog() {
                     >
                       <FormControl>
                         <SelectTrigger className="border-white/10 bg-white/5 text-white">
-                          <SelectValue placeholder="Selecione" />
+                          <SelectValue />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent className="border-white/10 bg-[#111] text-white">
@@ -150,11 +156,9 @@ export function NewCouponDialog() {
                         <SelectItem value="fixed">Valor Fixo (R$)</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="value"
@@ -166,16 +170,13 @@ export function NewCouponDialog() {
                         : "Valor (R$)"}
                     </FormLabel>
                     <FormControl>
-                      {/* Conversão manual no onChange para satisfazer z.number() */}
                       <Input
                         type="number"
-                        placeholder={watchType === "percent" ? "10" : "20.00"}
                         className="border-white/10 bg-white/5 text-white"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                       />
                     </FormControl>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -186,71 +187,102 @@ export function NewCouponDialog() {
               name="minValue"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Valor Mínimo do Pedido (R$)</FormLabel>
+                  <FormLabel>Mínimo (Opcional)</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
-                      placeholder="0.00"
                       className="border-white/10 bg-white/5 text-white"
                       {...field}
                       value={field.value === 0 ? "" : field.value}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        field.onChange(val === "" ? 0 : Number(val));
-                      }}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
                     />
                   </FormControl>
-                  <FormDescription className="text-xs text-neutral-500">
-                    Opcional. Deixe vazio para qualquer valor.
-                  </FormDescription>
-                  <FormMessage />
                 </FormItem>
               )}
             />
 
             <div className="grid grid-cols-2 gap-4">
+              {/* ... MaxUses e Expires ... */}
               <FormField
                 control={form.control}
                 name="maxUses"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Limite de Usos</FormLabel>
+                    <FormLabel>Limite Usos</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
-                        placeholder="Ilimitado"
                         className="border-white/10 bg-white/5 text-white"
                         {...field}
                         value={field.value === 0 ? "" : field.value}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          field.onChange(val === "" ? 0 : Number(val));
-                        }}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
                       />
                     </FormControl>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="expiresAt"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Validade (Opcional)</FormLabel>
+                    <FormLabel>Validade</FormLabel>
                     <FormControl>
                       <Input
                         type="date"
-                        className="block w-full border-white/10 bg-white/5 text-white"
+                        className="border-white/10 bg-white/5 text-white"
                         {...field}
-                        value={field.value || ""}
                       />
                     </FormControl>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
+            </div>
+
+            {/* --- ÁREA DE DIVULGAÇÃO (NOVO) --- */}
+            <div className="mt-6 rounded-lg border border-white/10 bg-white/5 p-4">
+              <div className="mb-4 flex items-center gap-2 text-sm font-medium text-[#D00000]">
+                <MessageSquareText className="h-4 w-4" />
+                Personalização do Pop-up (Divulgação)
+              </div>
+
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="popupTitle"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Título do Pop-up</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Ex: Oferta Relâmpago! ⚡"
+                          className="border-white/10 bg-black/20 text-white"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="popupDescription"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Descrição / Texto de Apoio</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Ex: Use este cupom e garanta o melhor preço."
+                          className="border-white/10 bg-black/20 text-white"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
             <Button

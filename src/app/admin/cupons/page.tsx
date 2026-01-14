@@ -18,7 +18,11 @@ import { db } from "@/db";
 import { coupon } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
-import { DeleteCouponButton, ToggleCouponButton } from "./coupon-buttons";
+import {
+  DeleteCouponButton,
+  FeatureCouponButton, // <--- IMPORTANTE: Importar o botão
+  ToggleCouponButton,
+} from "./coupon-buttons";
 import { NewCouponDialog } from "./new-coupon-dialog";
 
 // Helper ajustado para ser seguro contra null/undefined
@@ -81,6 +85,12 @@ export default async function AdminCouponsPage() {
                   >
                     <TableCell className="font-mono text-lg font-bold text-white">
                       {cp.code}
+                      {/* Badge visual se estiver destacado */}
+                      {cp.isFeatured && (
+                        <span className="ml-2 inline-flex items-center rounded-full bg-yellow-500/20 px-2 py-0.5 text-[10px] font-medium text-yellow-500">
+                          Destaque
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="text-neutral-300">
                       {cp.type === "percent" ? (
@@ -130,6 +140,11 @@ export default async function AdminCouponsPage() {
                         : "∞"}
                     </TableCell>
                     <TableCell className="flex justify-end gap-2 text-right">
+                      {/* --- BOTÕES AQUI --- */}
+                      <FeatureCouponButton
+                        id={cp.id}
+                        isFeatured={cp.isFeatured}
+                      />
                       <ToggleCouponButton id={cp.id} isActive={cp.isActive} />
                       <DeleteCouponButton id={cp.id} />
                     </TableCell>
