@@ -9,13 +9,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/store/cart-store";
-import { useWishlistStore } from "@/store/wishlist-store"; // <--- Import da Wishlist
+import { useWishlistStore } from "@/store/wishlist-store";
 
 interface ProductCardProps {
   data: {
     id: string;
     name: string;
-    description: string | null; // <--- Adicionado descrição
+    description: string | null;
     price: number;
     discountPrice?: number | null;
     images: string[] | null;
@@ -27,7 +27,6 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  // Stores
   const addItemToCart = useCartStore((state) => state.addItem);
   const {
     addItem: addItemToWishlist,
@@ -50,6 +49,10 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
       : 0;
 
   const finalPrice = data.discountPrice || data.price;
+
+  // VERIFICA SE É GRATUITO
+  const isFree = finalPrice === 0;
+
   const productImage =
     data.images && data.images.length > 0
       ? data.images[0]
@@ -118,7 +121,6 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
 
         <div className="absolute right-4 bottom-4 z-20 flex translate-y-4 flex-col gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
           <Button
-            // BOTAO PARA ADD NOS FAVORITOS
             size="icon"
             onClick={handleFavorite}
             className={cn(
@@ -149,17 +151,26 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
         </h3>
 
         <div className="mt-auto flex flex-col pt-4">
-          {data.discountPrice && (
+          {/* Só mostra preço riscado se tiver desconto E NÃO FOR GRATUITO AGORA (opcional, mas fica melhor) */}
+          {data.discountPrice && !isFree && (
             <span className="text-xs text-neutral-500 line-through">
               {formatPrice(data.price)}
             </span>
           )}
 
           <div className="flex items-center justify-between">
-            <span className="font-montserrat text-xl font-bold text-white">
-              {formatPrice(finalPrice)}
-            </span>
-            {discountPercentage > 0 && (
+            {/* LÓGICA DE EXIBIÇÃO DE PREÇO */}
+            {isFree ? (
+              <span className="font-montserrat text-xl font-bold text-white uppercase">
+                Grátis
+              </span>
+            ) : (
+              <span className="font-montserrat text-xl font-bold text-white">
+                {formatPrice(finalPrice)}
+              </span>
+            )}
+
+            {discountPercentage > 0 && !isFree && (
               <span className="flex items-center justify-center gap-1 rounded-md border border-green-500/20 bg-green-500/10 p-1.5 text-xs font-bold text-green-500 shadow-md">
                 <TrendingDown className="h-3 w-3" />
                 {discountPercentage}%
@@ -167,7 +178,9 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
             )}
           </div>
 
-          <span className="mt-1 text-xs text-neutral-500">À vista no PIX</span>
+          <span className="mt-1 text-xs text-neutral-500">
+            {isFree ? "Download Imediato" : "À vista no PIX"}
+          </span>
         </div>
       </div>
     </div>
