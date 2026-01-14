@@ -8,7 +8,7 @@ import { db } from "@/db";
 import {
   affiliate,
   commission,
-  coupon, // <--- Importe a tabela coupon
+  coupon,
   order,
   orderItem,
   product,
@@ -27,7 +27,6 @@ type CartItemInput = {
 };
 
 // --- FUNÇÃO AUXILIAR PARA CALCULAR TUDO COM CUPOM ---
-// Isso evita repetir código nas duas actions
 async function calculateOrderTotals(
   items: CartItemInput[],
   couponCode?: string,
@@ -72,7 +71,7 @@ async function calculateOrderTotals(
   return { subtotal, discountAmount, finalTotal, activeCouponId };
 }
 
-// --- FUNÇÃO DE EMAIL (Igual a anterior) ---
+// --- FUNÇÃO DE EMAIL ---
 async function sendProductEmail(
   to: string,
   name: string,
@@ -128,12 +127,11 @@ async function sendProductEmail(
 
 // ==============================================================================
 // 1. CHECKOUT PAGO
-// Agora aceita `couponCode`
 // ==============================================================================
 export async function createCheckoutSession(
   items: CartItemInput[],
   guestInfo?: { email: string; name: string },
-  couponCode?: string, // <--- NOVO PARÂMETRO
+  couponCode?: string,
 ) {
   const session = await auth.api.getSession({ headers: await headers() });
 
@@ -182,13 +180,17 @@ export async function createCheckoutSession(
   const { finalTotal, discountAmount, activeCouponId } =
     await calculateOrderTotals(items, couponCode);
 
-
+  // Se o total for ZERO, redireciona para fluxo gratuito
   if (finalTotal === 0) {
     return await createFreeOrder(items, guestInfo, couponCode);
   }
 
+  // --- CORREÇÃO: Restaurando limite de R$ 1,00 ---
+  // A InfinitePay REJEITA transações abaixo de 100 centavos.
   if (finalTotal < 100) {
-    throw new Error("O valor mínimo para transação (após descontos) é R$ 1,00");
+    throw new Error(
+      "O valor final da compra deve ser de no mínimo R$ 1,00 para processamento bancário.",
+    );
   }
 
   // Afiliados
@@ -208,9 +210,9 @@ export async function createCheckoutSession(
     .insert(order)
     .values({
       userId: userId,
-      amount: finalTotal, // Usa o total com desconto
-      discountAmount: discountAmount, // <--- Salva o desconto
-      couponId: activeCouponId, // <--- Salva o ID do cupom
+      amount: finalTotal,
+      discountAmount: discountAmount,
+      couponId: activeCouponId,
       status: "pending",
     })
     .returning();
@@ -227,9 +229,7 @@ export async function createCheckoutSession(
     })),
   );
 
-  // Comissões (Calculada sobre o valor final pago, não o original)
-  // Isso é importante: se deu desconto, a comissão do afiliado diminui proporcionalmente?
-  // Geralmente sim. Aqui vamos calcular item a item proporcionalmente.
+  // Comissões
   if (activeAffiliate) {
     try {
       const productIds = items.map((i) => i.id);
@@ -239,7 +239,6 @@ export async function createCheckoutSession(
         .where(inArray(product.id, productIds));
       let totalCommission = 0;
 
-      // Fator de desconto (ex: se pagou 80% do valor, comissão é 80% do original)
       const discountFactor = finalTotal / (finalTotal + discountAmount);
 
       for (const item of items) {
@@ -247,7 +246,7 @@ export async function createCheckoutSession(
         const rate = dbProd?.affiliateRate ?? 20;
 
         const itemOriginalTotal = item.price * item.quantity;
-        const itemPaidTotal = itemOriginalTotal * discountFactor; // Valor proporcional pago neste item
+        const itemPaidTotal = itemOriginalTotal * discountFactor;
 
         const commissionValue = Math.round(itemPaidTotal * (rate / 100));
         totalCommission += commissionValue;
@@ -268,22 +267,35 @@ export async function createCheckoutSession(
     }
   }
 
-  // InfinitePay
+  // InfinitePay Payload
+  // Ajuste para evitar erros de arredondamento: Enviamos o total exato e itens ajustados
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  // Calcula o preço proporcional dos itens para a API
+  const apiItems = items.map((item) => ({
+    quantity: item.quantity,
+    price: Math.round(
+      item.price * (finalTotal / (finalTotal + discountAmount)),
+    ),
+    description: item.name.substring(0, 250),
+  }));
+
+  // Validação extra: A soma dos itens bate com o total? (InfinitePay exige isso)
+  const itemsSum = apiItems.reduce((acc, i) => acc + i.price * i.quantity, 0);
+  const diff = finalTotal - itemsSum;
+
+  // Se houver diferença de centavos pelo arredondamento, ajusta no primeiro item
+  if (diff !== 0 && apiItems.length > 0) {
+    apiItems[0].price += diff;
+  }
+
   const infinitePayPayload = {
     handle: process.env.INFINITEPAY_HANDLE,
     order_nsu: newOrder.id,
-    amount: finalTotal, // Valor com desconto
+    amount: finalTotal,
     redirect_url: `${baseUrl}/checkout/success`,
     webhook_url: `${baseUrl}/api/webhooks/infinitepay`,
-    items: items.map((item) => ({
-      quantity: item.quantity,
-      // Ajuste de preço unitário visual para o gateway (proporcional)
-      price: Math.round(
-        item.price * (finalTotal / (finalTotal + discountAmount)),
-      ),
-      description: item.name.substring(0, 250),
-    })),
+    items: apiItems,
     customer: { name: userName, email: userEmail },
     metadata: {
       source: "submind",
@@ -302,16 +314,18 @@ export async function createCheckoutSession(
       },
     );
     const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Erro pagamento");
+
+    // Log para debug em caso de erro
+    if (!res.ok) {
+      console.error("Erro InfinitePay:", JSON.stringify(data, null, 2));
+      throw new Error(data.message || "Erro ao gerar link de pagamento");
+    }
 
     await db
       .update(order)
       .set({ infinitePayUrl: data.url })
       .where(eq(order.id, newOrder.id));
 
-    // Decrementar uso do cupom (se existir) - SÓ QUANDO GERA O LINK (ou idealmente no webhook de sucesso)
-    // Mas como a IP não manda webhook de "link criado", fazemos aqui.
-    // O ideal mesmo seria no webhook de pagamento aprovado, mas vamos fazer aqui pra garantir.
     if (activeCouponId) {
       await db
         .update(coupon)
@@ -328,10 +342,13 @@ export async function createCheckoutSession(
   }
 }
 
+// ==============================================================================
+// 2. CHECKOUT GRATUITO
+// ==============================================================================
 export async function createFreeOrder(
   items: CartItemInput[],
   guestInfo?: { email: string; name: string },
-  couponCode?: string, // <--- NOVO PARÂMETRO
+  couponCode?: string,
 ) {
   const session = await auth.api.getSession({ headers: await headers() });
 
@@ -375,28 +392,24 @@ export async function createFreeOrder(
     }
   }
 
-  // --- CÁLCULO DE TOTAIS ---
   const { finalTotal, discountAmount, activeCouponId } =
     await calculateOrderTotals(items, couponCode);
 
-  // Validação: Só permite se o total final for realmente 0
   if (finalTotal > 0) {
     throw new Error("O valor final não é gratuito. Use o checkout pago.");
   }
 
-  // Criar Pedido
   const [newOrder] = await db
     .insert(order)
     .values({
       userId: userId,
       amount: 0,
-      discountAmount: discountAmount, // Registra o desconto
-      couponId: activeCouponId, // Registra o cupom
+      discountAmount: discountAmount,
+      couponId: activeCouponId,
       status: "completed",
     })
     .returning();
 
-  // Salvar Itens
   await db.insert(orderItem).values(
     items.map((item) => ({
       orderId: newOrder.id,
@@ -408,7 +421,6 @@ export async function createFreeOrder(
     })),
   );
 
-  // Atualizar Estoque/Vendas e Cupom
   for (const item of items) {
     await db
       .update(product)
@@ -420,7 +432,6 @@ export async function createFreeOrder(
       .where(and(eq(product.id, item.id), eq(product.isStockUnlimited, false)));
   }
 
-  // Incrementa uso do cupom
   if (activeCouponId) {
     await db
       .update(coupon)
@@ -430,7 +441,6 @@ export async function createFreeOrder(
       .where(eq(coupon.id, activeCouponId));
   }
 
-  // Email
   try {
     await sendProductEmail(userEmail, userName, items);
   } catch (e) {

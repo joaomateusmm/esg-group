@@ -93,7 +93,11 @@ export function BuyNowButton({
       }
     } catch (error) {
       console.error(error);
-      toast.error("Erro ao processar o pedido. Tente novamente.");
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Erro ao processar o pedido. Tente novamente.");
+      }
     } finally {
       setLoading(false);
     }
