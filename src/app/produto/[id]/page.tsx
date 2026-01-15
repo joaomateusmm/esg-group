@@ -96,11 +96,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
       : 0;
 
   // Formatadores
-  const formatPrice = (value: number) =>
-    new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value / 100);
 
   const formatDate = (date: Date) =>
     new Intl.DateTimeFormat("pt-BR", {
@@ -108,18 +103,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
       month: "long",
       year: "numeric",
     }).format(date);
-
-  const discountPercentage =
-    productData.discountPrice && productData.price
-      ? Math.round(
-          ((productData.price - productData.discountPrice) /
-            productData.price) *
-            100,
-        )
-      : 0;
-
-  const finalPrice = productData.discountPrice || productData.price;
-  const productImage = productData.images?.[0] || "";
 
   return (
     <div className="min-h-screen bg-[#010000]">

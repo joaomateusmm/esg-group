@@ -98,6 +98,9 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                   price: prod.price,
                   discountPrice: prod.discountPrice,
                   images: prod.images,
+                  // --- CORREÇÃO: Adicionando as props de estoque ---
+                  stock: prod.stock,
+                  isStockUnlimited: prod.isStockUnlimited ?? false, // Garante booleano caso venha null
                 }}
                 categoryName={currentCategory.name}
               />

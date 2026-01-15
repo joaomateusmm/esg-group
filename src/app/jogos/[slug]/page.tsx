@@ -101,6 +101,8 @@ export default async function GamePage({ params }: GamePageProps) {
                   price: prod.price,
                   discountPrice: prod.discountPrice,
                   images: prod.images,
+                  stock: prod.stock,
+                  isStockUnlimited: prod.isStockUnlimited ?? false, // Garante booleano caso venha null
                 }}
                 // Passamos o nome do jogo como "categoria" visual ou o nome do jogo mesmo
                 categoryName={currentGame.name}

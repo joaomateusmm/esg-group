@@ -209,7 +209,7 @@ export function Header() {
     };
 
     verifyStock();
-  }, []);
+  });
 
   // --- LÓGICA DE PESQUISA (DEBOUNCE) ---
   useEffect(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { CopyCheck, ImageIcon, Search, SquareCheck } from "lucide-react";
+import { CopyCheck, ImageIcon, SquareCheck } from "lucide-react";
 import { ChevronDown } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -28,7 +28,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,

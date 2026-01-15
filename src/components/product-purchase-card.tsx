@@ -277,7 +277,10 @@ export function ProductPurchaseCard({
               ) : (product.stock || 0) > 0 ? (
                 <>
                   <Lock className="h-5 w-5 text-neutral-300" />
-                  <span>Restam {product.stock} unidades.</span>
+                  <span>
+                    Restam <span className="font-bold">{product.stock}</span>{" "}
+                    unidades.
+                  </span>
                 </>
               ) : (
                 <>

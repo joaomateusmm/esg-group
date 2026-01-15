@@ -1,5 +1,4 @@
 import { desc, eq } from "drizzle-orm";
-import { ShoppingBag } from "lucide-react"; // Importei um ícone para o título da tabela
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 

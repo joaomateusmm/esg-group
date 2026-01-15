@@ -10,7 +10,6 @@ import { coupon } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 // --- 1. ATUALIZAÇÃO DO SCHEMA ZOD ---
-// Adicionei popupTitle e popupDescription como opcionais
 const createCouponSchema = z.object({
   code: z.string().min(3).toUpperCase().trim(),
   type: z.enum(["percent", "fixed"]),
@@ -18,20 +17,18 @@ const createCouponSchema = z.object({
   minValue: z.coerce.number().optional(), // Em centavos
   maxUses: z.coerce.number().optional(),
   expiresAt: z.string().optional(), // Recebe string do input date
-  popupTitle: z.string().optional(), // <--- NOVO
-  popupDescription: z.string().optional(), // <--- NOVO
+  popupTitle: z.string().optional(),
+  popupDescription: z.string().optional(),
 });
 
 export async function validateCoupon(code: string, currentTotal: number) {
   try {
-    // Normaliza o código para maiúsculo para evitar erros de digitação
     const normalizedCode = code.toUpperCase();
 
     const couponData = await db.query.coupon.findFirst({
       where: eq(coupon.code, normalizedCode),
     });
 
-    // 1. Verificações Básicas
     if (!couponData) {
       return { valid: false, message: "Cupom inválido." };
     }
@@ -40,12 +37,10 @@ export async function validateCoupon(code: string, currentTotal: number) {
       return { valid: false, message: "Este cupom foi desativado." };
     }
 
-    // 2. Verificação de Validade (Data)
     if (couponData.expiresAt && new Date() > couponData.expiresAt) {
       return { valid: false, message: "Este cupom expirou." };
     }
 
-    // 3. Verificação de Limite de Uso
     if (
       couponData.maxUses !== null &&
       couponData.usedCount >= couponData.maxUses
@@ -56,7 +51,6 @@ export async function validateCoupon(code: string, currentTotal: number) {
       };
     }
 
-    // 4. Verificação de Valor Mínimo
     if (couponData.minValue && currentTotal < couponData.minValue) {
       const formattedMin = new Intl.NumberFormat("pt-BR", {
         style: "currency",
@@ -69,18 +63,14 @@ export async function validateCoupon(code: string, currentTotal: number) {
       };
     }
 
-    // 5. Calcular Desconto
     let discountAmount = 0;
 
     if (couponData.type === "percent") {
-      // Ex: 20% de 10000 = 2000
       discountAmount = Math.round(currentTotal * (couponData.value / 100));
     } else {
-      // Ex: Fixo R$ 10,00 (1000)
       discountAmount = couponData.value;
     }
 
-    // Garante que o desconto não seja maior que o total (evita valor negativo)
     if (discountAmount > currentTotal) {
       discountAmount = currentTotal;
     }
@@ -101,7 +91,7 @@ export async function validateCoupon(code: string, currentTotal: number) {
 }
 
 export async function createCouponAction(
-  formData: z.infer<typeof createCouponSchema>,
+  rawFormData: z.infer<typeof createCouponSchema>,
 ) {
   try {
     const session = await auth.api.getSession({
@@ -112,7 +102,10 @@ export async function createCouponAction(
       throw new Error("Não autorizado.");
     }
 
-    // Verifica se código já existe
+    // --- CORREÇÃO: Validar os dados usando o Schema ---
+    // Isso remove o erro do ESLint e garante segurança
+    const formData = createCouponSchema.parse(rawFormData);
+
     const existing = await db.query.coupon.findFirst({
       where: eq(coupon.code, formData.code),
     });
@@ -121,8 +114,6 @@ export async function createCouponAction(
       return { success: false, message: "Já existe um cupom com este código." };
     }
 
-    // --- 2. ATUALIZAÇÃO DA INSERÇÃO NO BANCO ---
-    // Incluímos popupTitle e popupDescription na query
     await db.insert(coupon).values({
       code: formData.code,
       type: formData.type,
@@ -130,20 +121,21 @@ export async function createCouponAction(
       minValue: formData.minValue || 0,
       maxUses: formData.maxUses || null,
       expiresAt: formData.expiresAt ? new Date(formData.expiresAt) : null,
-
-      // Novos campos salvos aqui:
       popupTitle: formData.popupTitle || null,
       popupDescription: formData.popupDescription || null,
-
       usedCount: 0,
       isActive: true,
-      isFeatured: false, // Padrão false ao criar
+      isFeatured: false,
     });
 
     revalidatePath("/admin/cupons");
     return { success: true, message: "Cupom criado com sucesso!" };
   } catch (error) {
     console.error(error);
+    // Se for erro do Zod, mostra mensagem específica
+    if (error instanceof z.ZodError) {
+      return { success: false, message: "Dados inválidos." };
+    }
     return { success: false, message: "Erro ao criar cupom." };
   }
 }
@@ -188,12 +180,8 @@ export async function setFeaturedCouponAction(id: string) {
     if (!session || session.user.role !== "admin")
       throw new Error("Não autorizado");
 
-    // Transaction para garantir integridade
     await db.transaction(async (tx) => {
-      // 1. Remove o destaque de TODOS os cupons
       await tx.update(coupon).set({ isFeatured: false });
-
-      // 2. Adiciona o destaque APENAS no cupom selecionado
       await tx
         .update(coupon)
         .set({ isFeatured: true })
@@ -201,7 +189,7 @@ export async function setFeaturedCouponAction(id: string) {
     });
 
     revalidatePath("/admin/cupons");
-    revalidatePath("/"); // Revalida a home para o popup aparecer
+    revalidatePath("/");
     return { success: true, message: "Cupom destacado com sucesso!" };
   } catch (error) {
     console.error(error);
@@ -210,7 +198,6 @@ export async function setFeaturedCouponAction(id: string) {
 }
 
 export async function removeFeaturedCouponAction() {
-  // Caso queira parar de divulgar tudo
   try {
     const session = await auth.api.getSession({ headers: await headers() });
     if (!session || session.user.role !== "admin")

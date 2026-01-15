@@ -3,7 +3,6 @@
 import { ChevronLeft, Home } from "lucide-react";
 import Link from "next/link";
 
-import GradientText from "@/components/GradientText";
 import { Header } from "@/components/Header";
 import Silk from "@/components/Silk";
 import { Button } from "@/components/ui/button";

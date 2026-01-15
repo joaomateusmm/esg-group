@@ -33,7 +33,7 @@ export async function deleteStreaming(id: string) {
     revalidatePath("/admin/streamings");
     revalidatePath("/");
     return { success: true, message: "Streaming excluído." };
-  } catch (error) {
+  } catch {
     return { success: false, message: "Erro ao excluir." };
   }
 }
