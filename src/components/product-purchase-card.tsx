@@ -267,7 +267,7 @@ export function ProductPurchaseCard({
               ) : (
                 <>
                   <Lock className="h-5 w-5 text-neutral-300" />
-                  <span>Restam {product.stock} un.</span>
+                  <span>Restam {product.stock} unidades.</span>
                 </>
               )}
             </div>

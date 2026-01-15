@@ -45,6 +45,11 @@ const PARTNER_LOGOS = [
     alt: "Contas Prime Vídeo",
     href: "https://sub-mind-sand.vercel.app/streamings/prime-video",
   },
+  {
+    src: "/images/icons/disney.svg",
+    alt: "Contas Prime Vídeo",
+    href: "https://sub-mind-sand.vercel.app/streamings/prime-video",
+  },
 ];
 
 export default function HeroSection() {
@@ -150,8 +155,9 @@ export default function HeroSection() {
           <p>Contas e Serviços:</p>
         </div>
 
-        <div className="mt-4 mb-16 w-full max-w-5xl opacity-50 grayscale invert transition-all duration-500 hover:opacity-100 hover:grayscale-0 hover:invert-0">
+        <div className="mt-4 mb-10 w-full max-w-5xl opacity-50 grayscale invert transition-all duration-500 hover:opacity-100 hover:grayscale-0 hover:invert-0">
           <LogoLoop
+            className="py-2"
             logos={PARTNER_LOGOS} // <--- Usando a constante externa
             speed={60}
             direction="left"

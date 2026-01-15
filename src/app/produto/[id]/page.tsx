@@ -158,11 +158,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
               product={productData}
               categoryNames={categoryNames}
             />
-            <div className="lg:col-span-5 xl:col-span-4">
-              <div className="sticky top-24">
-                <ProductReviewForm productId={productData.id} />
-              </div>
-            </div>
           </div>
         </div>
 

@@ -18,6 +18,8 @@ import { redirect } from "next/navigation";
 import { DeleteOrderButton } from "@/components/delete-order-button";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+// Importe o novo Dialog de Avaliação
+import { ReviewDialog } from "@/components/review-dialog";
 import {
   Accordion,
   AccordionContent,
@@ -31,7 +33,7 @@ import { db } from "@/db";
 import { order, orderItem, product } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
-// --- HELPERS ---
+// ... (formatCurrency e getStatusBadge mantidos iguais) ...
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -40,10 +42,9 @@ const formatCurrency = (value: number) => {
 };
 
 const getStatusBadge = (status: string) => {
-  // Ajuste aqui: Tratamos "completed" igual a "paid"
   switch (status) {
     case "paid":
-    case "completed": // <--- ADICIONADO PARA PEDIDOS GRATUITOS
+    case "completed":
       return (
         <Badge className="gap-1 border-green-800/20 bg-green-900/10 px-2 py-0.5 text-xs font-normal text-green-700 hover:bg-green-900/20">
           <CheckCircle2 className="h-3 w-3" /> Aprovado
@@ -67,7 +68,6 @@ const getStatusBadge = (status: string) => {
   }
 };
 
-// --- PÁGINA PRINCIPAL ---
 export default async function MyPurchasesPage() {
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -126,7 +126,7 @@ export default async function MyPurchasesPage() {
             Minhas Compras
           </h1>
           <p className="text-neutral-400">
-            Clique no pedido para ver os detalhes e baixar seus arquivos.
+            Clique no pedido para ver os detalhes, baixar arquivos e avaliar.
           </p>
         </div>
 
@@ -159,30 +159,19 @@ export default async function MyPurchasesPage() {
                 value={order.id}
                 className="overflow-hidden rounded-lg border border-white/10 bg-[#0A0A0A] px-0"
               >
-                {/* CONTAINER DO CABEÇALHO */}
                 <div className="flex w-full items-center justify-between bg-[#0A0A0A] pr-4 transition-colors hover:bg-white/5">
-                  {/* TRIGGER (CLICÁVEL) */}
                   <AccordionTrigger className="group flex flex-1 items-center justify-between !bg-transparent px-6 py-4 hover:no-underline">
-                    {/* ESQUERDA: ID e DATA */}
                     <div className="flex items-center gap-4">
                       <span className="font-mono text-xs font-bold text-neutral-500">
                         #{order.id.slice(0, 8).toUpperCase()}
                       </span>
-
                       <div className="hidden h-1 w-1 rounded-full bg-white/20 sm:block" />
-
                       <span className="text-sm text-neutral-400">
                         {format(new Date(order.createdAt), "dd MMM yyyy", {
                           locale: ptBR,
                         })}
-                        <span className="mx-2 text-white/20">•</span>
-                        {format(new Date(order.createdAt), "HH:mm", {
-                          locale: ptBR,
-                        })}
                       </span>
                     </div>
-
-                    {/* DIREITA: VALOR e STATUS */}
                     <div className="flex items-end gap-6 md:gap-[300px]">
                       <span className="font-mono text-sm font-bold text-[#D00000]">
                         {formatCurrency(order.amount)}
@@ -190,14 +179,11 @@ export default async function MyPurchasesPage() {
                       {getStatusBadge(order.status)}
                     </div>
                   </AccordionTrigger>
-
-                  {/* BOTÃO DE LIXEIRA (SEPARADO) */}
                   <div className="flex h-8 items-center border-l border-white/10 pl-2">
                     <DeleteOrderButton orderId={order.id} />
                   </div>
                 </div>
 
-                {/* CONTEÚDO (PRODUTOS) */}
                 <AccordionContent className="border-t border-white/5 bg-[#050505]/50 px-6 py-6">
                   <div className="flex flex-col gap-6">
                     {order.items.map((item, index) => (
@@ -234,7 +220,16 @@ export default async function MyPurchasesPage() {
 
                           {/* Botões de Ação */}
                           <div className="flex items-center gap-2">
-                            {/* --- AJUSTE AQUI: Verifica "paid" OU "completed" --- */}
+                            {/* AVALIAÇÃO: Só aparece se pago/completado */}
+                            {(order.status === "paid" ||
+                              order.status === "completed") && (
+                              <ReviewDialog
+                                productId={item.productId}
+                                productName={item.productName}
+                              />
+                            )}
+
+                            {/* DOWNLOAD / PAGAMENTO */}
                             {order.status === "paid" ||
                             order.status === "completed" ? (
                               item.downloadUrl && item.downloadUrl !== "#" ? (

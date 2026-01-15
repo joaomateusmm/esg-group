@@ -9,7 +9,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-// Aqui estão as perguntas e respostas que me passaste
 const faqData = [
   {
     value: "item-1",
@@ -41,11 +40,10 @@ const FaqSection = () => {
   return (
     <section className="relative my-20 bg-[#010000] py-10">
       <div className="container mx-auto px-4">
-        {/* Cabeçalho da Secção (Título e Subtítulo) */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
           viewport={{ once: true }}
           className="mx-auto mb-12 flex max-w-[600px] flex-col items-center text-center"
         >
@@ -57,11 +55,10 @@ const FaqSection = () => {
           </p>
         </motion.div>
 
-        {/* O Accordion (As perguntas) */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
+          transition={{ duration: 0.5, delay: 0.7 }}
           viewport={{ once: true }}
           className="mx-auto max-w-2xl"
         >
