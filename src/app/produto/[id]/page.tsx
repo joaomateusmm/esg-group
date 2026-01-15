@@ -13,7 +13,6 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductPurchaseCard } from "@/components/product-purchase-card";
-import { ProductReviewForm } from "@/components/product-review-form";
 import { db } from "@/db";
 import { category, product, review, user as userTable } from "@/db/schema";
 import { auth } from "@/lib/auth"; // <--- Importante para auth

@@ -22,6 +22,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { checkAffiliateStatus } from "@/actions/check-affiliate-status";
+import { checkStockAvailability } from "@/actions/check-stock";
 import { createCheckoutSession } from "@/actions/checkout";
 import { getAllCategories } from "@/actions/get-all-categories";
 import { getAllGames } from "@/actions/get-all-games";
@@ -187,6 +188,28 @@ export function Header() {
 
     fetchData();
   }, [session]);
+
+  useEffect(() => {
+    const verifyStock = async () => {
+      if (cartItems.length === 0) return;
+      try {
+        const { outOfStockItems } = await checkStockAvailability(
+          cartItems.map((i) => ({ id: i.id, quantity: i.quantity })),
+        );
+
+        if (outOfStockItems.length > 0) {
+          outOfStockItems.forEach((item) => removeCartItem(item.id));
+          toast.error(
+            `Item removido por falta de estoque: ${outOfStockItems[0].name}`,
+          );
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    verifyStock();
+  }, []);
 
   // --- LÓGICA DE PESQUISA (DEBOUNCE) ---
   useEffect(() => {

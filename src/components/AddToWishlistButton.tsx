@@ -55,7 +55,7 @@ export function AddToWishlistButton({
       size="lg"
       onClick={handleFavorite}
       className={cn(
-        "text-md h-14 flex-1 font-bold transition-all duration-300",
+        "text-md h-14 flex-1 font-bold transition-all duration-300 hover:scale-105 active:scale-95",
         // Estilo quando NÃO é favorito (igual ao teu original)
         !isFavorite &&
           "border-white/10 bg-transparent text-white hover:bg-white/5",

@@ -19,6 +19,9 @@ interface ProductCardProps {
     price: number;
     discountPrice?: number | null;
     images: string[] | null;
+    // --- NOVAS PROPS ---
+    stock: number | null;
+    isStockUnlimited: boolean;
   };
   categoryName: string;
 }
@@ -50,8 +53,10 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
 
   const finalPrice = data.discountPrice || data.price;
 
-  // VERIFICA SE É GRATUITO
   const isFree = finalPrice === 0;
+
+  // Lógica de Estoque
+  const isOutOfStock = !data.isStockUnlimited && (data.stock ?? 0) <= 0;
 
   const productImage =
     data.images && data.images.length > 0
@@ -100,6 +105,8 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
       className={cn(
         "group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-white/5 bg-white/5 transition-all duration-300 hover:border-white/20 hover:bg-white/10",
         isPending && "pointer-events-none cursor-wait opacity-80",
+        // Se esgotado, diminui um pouco a opacidade geral para indicar indisponibilidade
+        isOutOfStock && "opacity-70",
       )}
     >
       {isPending && (
@@ -117,10 +124,17 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
             "bg-white/5 object-cover transition-transform duration-500 group-hover:scale-105",
             isPending && "scale-100 blur-[2px]",
           )}
-          // --- CORREÇÃO AQUI ---
-          // Define os tamanhos baseados no seu grid (2 cols mobile, 3 cols tablet, 4 cols desktop)
           sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
         />
+
+        {/* OVERLAY ESGOTADO */}
+        {isOutOfStock && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/10 backdrop-blur-[1px]">
+            <span className="rotate-[-10deg] rounded-md border-2 border-red-500 px-4 py-2 text-xl font-bold tracking-widest text-red-500 uppercase shadow-lg backdrop-blur-[15px]">
+              Esgotado
+            </span>
+          </div>
+        )}
 
         <div className="absolute right-4 bottom-4 z-20 flex translate-y-4 flex-col gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
           <Button
@@ -135,13 +149,16 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
           >
             <Heart className={cn("h-5 w-5", isFavorite && "fill-current")} />
           </Button>
-          <Button
-            size="icon"
-            onClick={handleAddToCart}
-            className="h-10 w-10 rounded-full bg-red-800 text-white shadow-md backdrop-blur-md duration-300 hover:bg-red-600 hover:active:scale-95"
-          >
-            <ShoppingCart className="h-5 w-5" />
-          </Button>
+
+          {!isOutOfStock && (
+            <Button
+              size="icon"
+              onClick={handleAddToCart}
+              className="h-10 w-10 rounded-full bg-red-800 text-white shadow-md backdrop-blur-md duration-300 hover:bg-red-600 hover:active:scale-95"
+            >
+              <ShoppingCart className="h-5 w-5" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -154,14 +171,18 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
         </h3>
 
         <div className="mt-auto flex flex-col pt-4">
-          {data.discountPrice && !isFree && (
+          {data.discountPrice && !isFree && !isOutOfStock && (
             <span className="text-xs text-neutral-500 line-through">
               {formatPrice(data.price)}
             </span>
           )}
 
           <div className="flex items-center justify-between">
-            {isFree ? (
+            {isOutOfStock ? (
+              <span className="font-montserrat text-xl font-bold text-white">
+                {formatPrice(finalPrice)}
+              </span>
+            ) : isFree ? (
               <span className="font-montserrat text-xl font-bold text-white uppercase">
                 Grátis
               </span>
@@ -171,7 +192,7 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
               </span>
             )}
 
-            {discountPercentage > 0 && !isFree && (
+            {discountPercentage > 0 && !isFree && !isOutOfStock && (
               <span className="flex items-center justify-center gap-1 rounded-md border border-green-500/20 bg-green-500/10 p-1.5 text-xs font-bold text-green-500 shadow-md">
                 <TrendingDown className="h-3 w-3" />
                 {discountPercentage}%
@@ -180,7 +201,11 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
           </div>
 
           <span className="mt-1 text-xs text-neutral-500">
-            {isFree ? "Download Imediato" : "À vista no PIX"}
+            {isOutOfStock
+              ? "À vista no PIX"
+              : isFree
+                ? "Download Imediato"
+                : "À vista no PIX"}
           </span>
         </div>
       </div>

@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   Ticket,
   X,
+  XCircle,
   Zap,
 } from "lucide-react";
 import { useState } from "react";
@@ -100,6 +101,9 @@ export function ProductPurchaseCard({
 
   const productImage = product.images?.[0] || "";
 
+  // Tratamento seguro para isStockUnlimited (caso venha null do banco)
+  const isStockUnlimitedSafe = product.isStockUnlimited ?? false;
+
   return (
     <>
       {/* --- CARD 1: INFORMAÇÕES DE COMPRA --- */}
@@ -170,8 +174,11 @@ export function ProductPurchaseCard({
               product={{
                 id: product.id,
                 name: product.name,
-                price: initialPrice, // Envia preço original para o backend calcular
+                price: initialPrice,
                 image: productImage,
+                // --- CORREÇÃO AQUI ---
+                stock: product.stock,
+                isStockUnlimited: isStockUnlimitedSafe,
               }}
               couponCode={appliedCoupon?.code}
             />
@@ -184,6 +191,9 @@ export function ProductPurchaseCard({
                   price: product.price,
                   discountPrice: product.discountPrice,
                   images: product.images,
+                  // --- ADICIONE ISSO ---
+                  stock: product.stock,
+                  isStockUnlimited: isStockUnlimitedSafe, // Use a variável segura que criamos antes
                 }}
                 variant="outline"
                 size="lg"
@@ -259,15 +269,20 @@ export function ProductPurchaseCard({
               <span>Compra 100% Segura</span>
             </div>
             <div className="flex flex-col items-center justify-center gap-1 rounded bg-white/5 p-2 text-center">
-              {product.isStockUnlimited ? (
+              {isStockUnlimitedSafe ? (
                 <>
                   <Check className="h-5 w-5 text-green-500" />
                   <span className="text-green-500">Estoque Ilimitado</span>
                 </>
-              ) : (
+              ) : (product.stock || 0) > 0 ? (
                 <>
                   <Lock className="h-5 w-5 text-neutral-300" />
                   <span>Restam {product.stock} unidades.</span>
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-5 w-5 text-red-600" />
+                  <span className="text-red-800">Produto Esgotado</span>
                 </>
               )}
             </div>

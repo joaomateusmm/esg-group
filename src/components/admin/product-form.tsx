@@ -79,20 +79,15 @@ const PAYMENT_METHODS_OPTIONS = [
   { id: "boleto", label: "Boleto" },
 ];
 
-// --- SCHEMA CORRIGIDO PARA URL ---
 const formSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   description: z.string().optional(),
-
-  // CORREÇÃO: Aceita string vazia "" OU uma URL válida.
-  // Isso impede que textos inválidos cheguem ao servidor.
   paymentLink: z
     .union([z.literal(""), z.string().url("URL inválida. Inclua https://")])
     .optional(),
   downloadUrl: z
     .union([z.literal(""), z.string().url("URL inválida. Inclua https://")])
     .optional(),
-
   price: z.number().min(0.01, "O preço deve ser maior que R$ 0,00"),
   discountPrice: z.number().optional(),
   categories: z.array(z.string()),
@@ -114,7 +109,6 @@ interface OptionData {
   name: string;
 }
 
-// Interface para os dados vindos do banco
 interface ProductData {
   id: string;
   name: string;
@@ -141,7 +135,6 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-// --- PROPS DO COMPONENTE ---
 interface ProductFormProps {
   initialData?: ProductData | null;
 }
@@ -150,7 +143,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
   const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
 
-  // Inicializa imagens com as do banco se for edição
   const [uploadedImages, setUploadedImages] = useState<string[]>(
     initialData?.images || [],
   );
@@ -183,12 +175,10 @@ export function ProductForm({ initialData }: ProductFormProps) {
     loadData();
   }, []);
 
-  // --- PREPARAÇÃO DOS DADOS PADRÃO ---
   const defaultValues: ProductFormValues = initialData
     ? {
         name: initialData.name,
         description: initialData.description || undefined,
-        // Garante que se for null no banco, vire "" para o input não reclamar
         paymentLink: initialData.paymentLink || "",
         downloadUrl: initialData.downloadUrl || "",
         status:
@@ -237,6 +227,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
   const watchDiscountPrice = form.watch("discountPrice");
   const watchDeliveryMode = form.watch("deliveryMode");
 
+  // --- ADICIONADO: Watch para mostrar/ocultar input de quantidade ---
+  const watchIsStockUnlimited = form.watch("isStockUnlimited");
+
   const handlePriceChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     onChange: (value: number) => void,
@@ -284,7 +277,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
         categories: data.categories,
         status: data.status,
         deliveryMode: data.deliveryMode,
-        // CORREÇÃO: Se a string for vazia "", envia undefined para o banco
         paymentLink: data.paymentLink === "" ? undefined : data.paymentLink,
         downloadUrl: data.downloadUrl === "" ? undefined : data.downloadUrl,
         paymentMethods: data.paymentMethods,
@@ -293,14 +285,12 @@ export function ProductForm({ initialData }: ProductFormProps) {
       };
 
       if (initialData) {
-        // MODO EDIÇÃO
         const res = await updateProduct(initialData.id, formattedData);
         if (res.success) {
           toast.success("Produto atualizado com sucesso!");
           router.push("/admin/produtos");
           router.refresh();
         } else {
-          // Exibe o erro específico vindo do servidor, se houver
           const errorMsg =
             typeof res.message === "string"
               ? res.message
@@ -309,7 +299,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
           console.error("Erro update:", res);
         }
       } else {
-        // MODO CRIAÇÃO
         await createProduct(formattedData);
         toast.success("Produto criado com sucesso!");
       }
@@ -399,7 +388,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
                   )}
                 />
 
-                {/* PAYMENT LINK - NOVO CAMPO NO GERAL */}
                 <FormField
                   control={form.control}
                   name="paymentLink"
@@ -925,6 +913,76 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     </FormItem>
                   )}
                 />
+              </CardContent>
+            </Card>
+
+            {/* ESTOQUE (ADICIONADO) */}
+            <Card className="border-white/10 bg-[#0A0A0A]">
+              <CardHeader>
+                <CardTitle className="text-white">Estoque</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="isStockUnlimited"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-y-0 space-x-3 rounded-md border border-white/10 p-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          className="border-white/50 data-[state=checked]:border-[#D00000] data-[state=checked]:bg-[#D00000]"
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-white">
+                          Estoque Ilimitado
+                        </FormLabel>
+                        <FormDescription className="text-xs text-neutral-400">
+                          O produto é &quot;infinito&quot;.
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                {!watchIsStockUnlimited && (
+                  <FormField
+                    control={form.control}
+                    name="stock"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white">Quantidade</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            className="border-white/10 bg-white/5 text-white [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            {...field}
+                            value={field.value === 0 ? "" : field.value}
+                            onKeyDown={(e) => {
+                              if (
+                                ["e", "E", "+", "-", ",", "."].includes(e.key)
+                              ) {
+                                e.preventDefault();
+                              }
+                            }}
+                            onChange={(e) => {
+                              const rawValue = e.target.value.replace(
+                                /\D/g,
+                                "",
+                              );
+                              field.onChange(
+                                rawValue === "" ? 0 : Number(rawValue),
+                              );
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
               </CardContent>
             </Card>
 

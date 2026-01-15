@@ -4,6 +4,7 @@ import { ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils"; // Import útil para garantir que classes extras funcionem bem
 import { useCartStore } from "@/store/cart-store";
 
 interface AddToCartButtonProps {
@@ -11,8 +12,11 @@ interface AddToCartButtonProps {
     id: string;
     name: string;
     price: number;
-    discountPrice?: number | null; // Adicionado para lidar com desconto
+    discountPrice?: number | null;
     images: string[] | null;
+    // --- NOVAS PROPS DE ESTOQUE ---
+    stock: number | null;
+    isStockUnlimited: boolean;
   };
   className?: string;
   variant?: "default" | "outline" | "secondary" | "ghost";
@@ -29,18 +33,22 @@ export function AddToCartButton({
 }: AddToCartButtonProps) {
   const addItem = useCartStore((state) => state.addItem);
 
+  // Lógica de estoque
+  const isOutOfStock = !product.isStockUnlimited && (product.stock ?? 0) <= 0;
+
   const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault(); // Evita navegar se estiver dentro de um Link
+    e.preventDefault();
     e.stopPropagation();
 
-    // Usa o preço promocional se existir, senão o preço normal
+    if (isOutOfStock) return; // Bloqueio extra de segurança
+
     const finalPrice = product.discountPrice ?? product.price;
 
     addItem({
       id: product.id,
       name: product.name,
       price: finalPrice,
-      image: product.images?.[0] || "", // Pega a primeira imagem
+      image: product.images?.[0] || "",
       quantity: 1,
     });
 
@@ -52,7 +60,12 @@ export function AddToCartButton({
       onClick={handleAddToCart}
       variant={variant}
       size={size}
-      className={className}
+      disabled={isOutOfStock} // Desabilita visualmente e funcionalmente
+      className={cn(
+        className,
+        // Estilo opcional para quando estiver desabilitado (caso o disabled padrão não seja suficiente)
+        isOutOfStock && "cursor-not-allowed opacity-50",
+      )}
     >
       <ShoppingCart className={showText ? "mr-2 h-4 w-4" : "h-4 w-4"} />
       {showText && "Adicionar"}

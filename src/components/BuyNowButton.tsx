@@ -24,12 +24,15 @@ interface BuyNowButtonProps {
     name: string;
     price: number;
     image?: string;
+    // --- NOVAS PROPS ---
+    stock: number | null;
+    isStockUnlimited: boolean;
   };
   user?: {
     name: string | null;
     email: string | null;
   } | null;
-  couponCode?: string; // Prop opcional
+  couponCode?: string;
 }
 
 export function BuyNowButton({
@@ -46,6 +49,9 @@ export function BuyNowButton({
   const [guestEmail, setGuestEmail] = useState("");
   const isFree = product.price === 0;
 
+  // VERIFICAÇÃO DE ESTOQUE
+  const isOutOfStock = !product.isStockUnlimited && (product.stock ?? 0) <= 0;
+
   const itemToCheckout = [
     {
       id: product.id,
@@ -57,6 +63,8 @@ export function BuyNowButton({
   ];
 
   const handleBuyNow = async () => {
+    if (isOutOfStock) return; // Segurança extra no clique
+
     if (!user) {
       setShowGuestModal(true);
       return;
@@ -76,14 +84,12 @@ export function BuyNowButton({
         toast.success("Produto resgatado com sucesso! Verifique seu e-mail.");
         router.push("/checkout/success");
       } else {
-        // Fluxo Pago
         const result = await createCheckoutSession(
           itemToCheckout,
           guestData,
           couponCode,
         );
 
-        // Verificação de tipo segura para o TypeScript
         if ("url" in result && result.url) {
           window.location.href = result.url;
         } else if ("success" in result && result.success) {
@@ -120,15 +126,22 @@ export function BuyNowButton({
     <>
       <Button
         size="lg"
-        className="mb-4 h-14 w-full bg-[#D00000] text-lg font-bold text-white shadow-[0_0_20px_rgba(208,0,0,0.15)] transition-all hover:-translate-y-0.5 hover:bg-[#a00000] hover:shadow-[0_0_30px_rgba(208,0,0,0.4)]"
+        // --- ESTILOS CONDICIONAIS PARA ESTOQUE ---
+        className={`mb-4 h-14 w-full text-lg font-bold text-white shadow-[0_0_20px_rgba(208,0,0,0.15)] transition-all ${
+          isOutOfStock
+            ? "bg-[#d00000c9] hover:-translate-y-0.5 hover:bg-[#a00000] hover:shadow-[0_0_30px_rgba(208,0,0,0.4)]"
+            : "bg-[#D00000] hover:-translate-y-0.5 hover:bg-[#a00000] hover:shadow-[0_0_30px_rgba(208,0,0,0.4)]"
+        }`}
         onClick={handleBuyNow}
-        disabled={loading}
+        disabled={loading || isOutOfStock} // Desabilita se carregando OU sem estoque
       >
         {loading ? (
           <>
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             PROCESSANDO...
           </>
+        ) : isOutOfStock ? (
+          "COMPRAR AGORA" // Texto quando sem estoque
         ) : isFree ? (
           "BAIXAR AGORA"
         ) : (

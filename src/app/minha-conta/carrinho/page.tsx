@@ -14,26 +14,58 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { createCheckoutSession } from "@/actions/checkout"; // Server Action
+// IMPORTANTE: Importe a nova action
+import { checkStockAvailability } from "@/actions/check-stock";
+import { createCheckoutSession } from "@/actions/checkout";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { authClient } from "@/lib/auth-client"; // Para verificar login
+import { authClient } from "@/lib/auth-client";
 import { useCartStore } from "@/store/cart-store";
 
 export default function CartPage() {
   const [mounted, setMounted] = useState(false);
-  const [isCheckingOut, setIsCheckingOut] = useState(false); // Estado de loading
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   const router = useRouter();
-  const { data: session } = authClient.useSession(); // Verifica sessão
+  const { data: session } = authClient.useSession();
   const { items, removeItem, updateQuantity, getTotalPrice } = useCartStore();
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+
+    // --- LÓGICA DE VERIFICAÇÃO DE ESTOQUE ---
+    const verifyStock = async () => {
+      if (items.length === 0) return;
+
+      try {
+        const { outOfStockItems } = await checkStockAvailability(
+          items.map((i) => ({ id: i.id, quantity: i.quantity })),
+        );
+
+        if (outOfStockItems.length > 0) {
+          // Remove os itens esgotados da store
+          outOfStockItems.forEach((item) => {
+            removeItem(item.id);
+          });
+
+          // Avisa o usuário
+          toast.error(
+            `Alguns itens foram removidos do seu carrinho pois esgotaram: ${outOfStockItems
+              .map((i) => i.name)
+              .join(", ")}`,
+          );
+        }
+      } catch (error) {
+        console.error("Erro ao verificar estoque:", error);
+      }
+    };
+
+    verifyStock();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Executa apenas na montagem
 
   const formatPrice = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -42,20 +74,32 @@ export default function CartPage() {
     }).format(value / 100);
   };
 
-  // --- FUNÇÃO DE CHECKOUT ---
   async function handleCheckout() {
-    // 1. Verifica login
     if (!session) {
       toast.error("Você precisa estar logado para finalizar a compra.");
-      router.push("/authentication"); // Redireciona para login
+      router.push("/authentication");
       return;
     }
 
-    // 2. Inicia processo
     try {
       setIsCheckingOut(true);
 
-      // Mapeia itens para o formato da API
+      // --- VERIFICAÇÃO FINAL ANTES DO CHECKOUT ---
+      // Garante que nada esgotou enquanto o user estava na página
+      const { outOfStockItems } = await checkStockAvailability(
+        items.map((i) => ({ id: i.id, quantity: i.quantity })),
+      );
+
+      if (outOfStockItems.length > 0) {
+        outOfStockItems.forEach((item) => removeItem(item.id));
+        toast.error(
+          `Ops! O item "${outOfStockItems[0].name}" acabou de esgotar.`,
+        );
+        setIsCheckingOut(false);
+        return; // Interrompe o checkout
+      }
+      // ------------------------------------------
+
       const checkoutItems = items.map((item) => ({
         id: item.id,
         name: item.name,
@@ -64,20 +108,14 @@ export default function CartPage() {
         image: item.image,
       }));
 
-      // Chama o Backend
-      // O retorno pode ser { url: string } OU { success: true }
       const result = await createCheckoutSession(checkoutItems);
 
-      // Verificação segura de tipos
-      // Verifica se a propriedade 'url' existe no objeto retornado
       if ("url" in result && result.url) {
         window.location.href = result.url;
       } else if ("success" in result && result.success) {
-        // Verifica se a propriedade 'success' existe (fluxo gratuito)
         toast.success("Pedido realizado com sucesso!");
         router.push("/checkout/success");
       } else {
-        // Caso genérico de erro ou retorno inesperado
         throw new Error("Erro desconhecido ao processar pedido.");
       }
     } catch (error) {
@@ -92,7 +130,6 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-[#010000]">
-      {/* --- HEADER --- */}
       <Header />
 
       <div className="mx-auto max-w-6xl px-4 pt-40 pb-20 md:px-8">
@@ -122,14 +159,12 @@ export default function CartPage() {
           </div>
         ) : (
           <div className="grid gap-8 lg:grid-cols-3">
-            {/* Lista de Itens */}
             <div className="space-y-4 lg:col-span-2">
               {items.map((item) => (
                 <div
                   key={item.id}
                   className="flex flex-col gap-4 rounded-xl border border-white/10 bg-[#0A0A0A] p-4 sm:flex-row sm:items-center"
                 >
-                  {/* Imagem */}
                   <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/5">
                     {item.image ? (
                       <Image
@@ -145,7 +180,6 @@ export default function CartPage() {
                     )}
                   </div>
 
-                  {/* Detalhes */}
                   <div className="flex flex-1 flex-col justify-between gap-4 sm:flex-row sm:items-center">
                     <div className="space-y-1">
                       <h3 className="font-medium text-white md:text-lg">
@@ -157,7 +191,6 @@ export default function CartPage() {
                     </div>
 
                     <div className="flex items-center justify-between gap-6 sm:justify-end">
-                      {/* Qtd */}
                       <div className="flex items-center rounded-md border border-white/10 bg-white/5">
                         <button
                           onClick={() => updateQuantity(item.id, "decrease")}
@@ -177,7 +210,6 @@ export default function CartPage() {
                         </button>
                       </div>
 
-                      {/* Preço */}
                       <div className="text-right">
                         <p className="font-mono text-lg font-bold text-white">
                           {formatPrice(item.price * item.quantity)}
@@ -189,7 +221,6 @@ export default function CartPage() {
                         )}
                       </div>
 
-                      {/* Remover */}
                       <button
                         onClick={() => removeItem(item.id)}
                         className="rounded-full p-2 text-neutral-500 transition-colors hover:bg-red-500/10 hover:text-red-500"
@@ -202,7 +233,6 @@ export default function CartPage() {
               ))}
             </div>
 
-            {/* Resumo do Pedido */}
             <div className="h-fit lg:sticky lg:top-32">
               <Card className="border-white/10 bg-[#0A0A0A]">
                 <CardContent className="p-6">
@@ -229,7 +259,6 @@ export default function CartPage() {
                     </div>
                   </div>
 
-                  {/* BOTÃO DE PAGAMENTO ATUALIZADO */}
                   <Button
                     onClick={handleCheckout}
                     disabled={isCheckingOut}
