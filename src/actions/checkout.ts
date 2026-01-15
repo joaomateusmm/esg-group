@@ -31,7 +31,6 @@ async function calculateOrderTotals(
   items: CartItemInput[],
   couponCode?: string,
 ) {
-  // 1. Total bruto
   const subtotal = Math.round(
     items.reduce((acc, item) => acc + item.price * item.quantity, 0),
   );
@@ -39,7 +38,6 @@ async function calculateOrderTotals(
   let discountAmount = 0;
   let activeCouponId: string | null = null;
 
-  // 2. Lógica do Cupom
   if (couponCode) {
     const foundCoupon = await db.query.coupon.findFirst({
       where: eq(coupon.code, couponCode.toUpperCase()),
@@ -59,7 +57,6 @@ async function calculateOrderTotals(
         discountAmount = foundCoupon.value;
       }
 
-      // Trava de segurança para desconto não exceder total
       if (discountAmount > subtotal) discountAmount = subtotal;
 
       activeCouponId = foundCoupon.id;
@@ -133,13 +130,36 @@ export async function createCheckoutSession(
   guestInfo?: { email: string; name: string },
   couponCode?: string,
 ) {
+  // --- VERIFICAÇÃO DE ESTOQUE (PRÉ-VENDA) ---
+  // Impede que o usuário crie um link de pagamento se não houver estoque
+  for (const item of items) {
+    const productInDb = await db.query.product.findFirst({
+      where: eq(product.id, item.id),
+    });
+
+    if (!productInDb) {
+      throw new Error(`Produto ${item.name} não encontrado.`);
+    }
+
+    // Se estoque limitado E quantidade pedida > estoque disponível
+    if (
+      !productInDb.isStockUnlimited &&
+      productInDb.stock !== null &&
+      productInDb.stock < item.quantity
+    ) {
+      throw new Error(
+        `O produto "${productInDb.name}" esgotou ou não tem a quantidade solicitada (Restam: ${productInDb.stock}).`,
+      );
+    }
+  }
+  // ------------------------------------------
+
   const session = await auth.api.getSession({ headers: await headers() });
 
   let userId: string;
   let userEmail: string;
   let userName: string;
 
-  // Identificação do Usuário
   if (session) {
     userId = session.user.id;
     userEmail = session.user.email;
@@ -176,24 +196,19 @@ export async function createCheckoutSession(
     }
   }
 
-  // --- CÁLCULO DE TOTAIS COM CUPOM ---
   const { finalTotal, discountAmount, activeCouponId } =
     await calculateOrderTotals(items, couponCode);
 
-  // Se o total for ZERO, redireciona para fluxo gratuito
   if (finalTotal === 0) {
     return await createFreeOrder(items, guestInfo, couponCode);
   }
 
-  // --- CORREÇÃO: Restaurando limite de R$ 1,00 ---
-  // A InfinitePay REJEITA transações abaixo de 100 centavos.
   if (finalTotal < 100) {
     throw new Error(
       "O valor final da compra deve ser de no mínimo R$ 1,00 para processamento bancário.",
     );
   }
 
-  // Afiliados
   const cookieStore = await cookies();
   const affiliateCode = cookieStore.get("affiliate_code")?.value;
   let activeAffiliate = null;
@@ -205,7 +220,6 @@ export async function createCheckoutSession(
       activeAffiliate = null;
   }
 
-  // Criar Pedido
   const [newOrder] = await db
     .insert(order)
     .values({
@@ -217,7 +231,6 @@ export async function createCheckoutSession(
     })
     .returning();
 
-  // Salvar Itens
   await db.insert(orderItem).values(
     items.map((item) => ({
       orderId: newOrder.id,
@@ -229,7 +242,6 @@ export async function createCheckoutSession(
     })),
   );
 
-  // Comissões
   if (activeAffiliate) {
     try {
       const productIds = items.map((i) => i.id);
@@ -267,11 +279,8 @@ export async function createCheckoutSession(
     }
   }
 
-  // InfinitePay Payload
-  // Ajuste para evitar erros de arredondamento: Enviamos o total exato e itens ajustados
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-  // Calcula o preço proporcional dos itens para a API
   const apiItems = items.map((item) => ({
     quantity: item.quantity,
     price: Math.round(
@@ -280,11 +289,9 @@ export async function createCheckoutSession(
     description: item.name.substring(0, 250),
   }));
 
-  // Validação extra: A soma dos itens bate com o total? (InfinitePay exige isso)
   const itemsSum = apiItems.reduce((acc, i) => acc + i.price * i.quantity, 0);
   const diff = finalTotal - itemsSum;
 
-  // Se houver diferença de centavos pelo arredondamento, ajusta no primeiro item
   if (diff !== 0 && apiItems.length > 0) {
     apiItems[0].price += diff;
   }
@@ -315,7 +322,6 @@ export async function createCheckoutSession(
     );
     const data = await res.json();
 
-    // Log para debug em caso de erro
     if (!res.ok) {
       console.error("Erro InfinitePay:", JSON.stringify(data, null, 2));
       throw new Error(data.message || "Erro ao gerar link de pagamento");
@@ -350,6 +356,28 @@ export async function createFreeOrder(
   guestInfo?: { email: string; name: string },
   couponCode?: string,
 ) {
+  // --- VERIFICAÇÃO DE ESTOQUE (PRÉ-VENDA - GRATUITO) ---
+  for (const item of items) {
+    const productInDb = await db.query.product.findFirst({
+      where: eq(product.id, item.id),
+    });
+
+    if (!productInDb) {
+      throw new Error(`Produto ${item.name} não encontrado.`);
+    }
+
+    if (
+      !productInDb.isStockUnlimited &&
+      productInDb.stock !== null &&
+      productInDb.stock < item.quantity
+    ) {
+      throw new Error(
+        `O produto "${productInDb.name}" esgotou (Restam: ${productInDb.stock}).`,
+      );
+    }
+  }
+  // ----------------------------------------------------
+
   const session = await auth.api.getSession({ headers: await headers() });
 
   let userId: string;
@@ -421,16 +449,20 @@ export async function createFreeOrder(
     })),
   );
 
+  // --- ATUALIZAÇÃO DE ESTOQUE (GRATUITO - SÍNCRONO) ---
   for (const item of items) {
     await db
       .update(product)
       .set({ sales: sql`${product.sales} + ${item.quantity}` })
       .where(eq(product.id, item.id));
+
+    // Atualiza estoque APENAS se não for ilimitado
     await db
       .update(product)
       .set({ stock: sql`${product.stock} - ${item.quantity}` })
       .where(and(eq(product.id, item.id), eq(product.isStockUnlimited, false)));
   }
+  // ----------------------------------------------------
 
   if (activeCouponId) {
     await db

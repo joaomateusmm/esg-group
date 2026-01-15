@@ -1,9 +1,9 @@
-import { eq, sql } from "drizzle-orm"; // Adicionei 'sql' para somar o saldo
+import { eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
+import { decreaseProductStock } from "@/actions/stock";
 import { db } from "@/db";
-// Adicionei 'commission' e 'affiliate' aos imports
 import {
   affiliate,
   commission,
@@ -55,26 +55,33 @@ export async function POST(request: Request) {
       })
       .where(eq(order.id, orderId));
 
-    // --- NOVA LÓGICA: PROCESSAR COMISSÃO DE AFILIADO ---
+    // --- NOVA LÓGICA: BAIXAR ESTOQUE ---
     try {
-      // Verifica se existe uma comissão pendente para este pedido
+      console.log(`📉 Baixando estoque para o pedido ${orderId}...`);
+      await decreaseProductStock(orderId);
+      console.log("✅ Estoque atualizado com sucesso!");
+    } catch (stockError) {
+      console.error("❌ Erro ao atualizar estoque:", stockError);
+      // Não interrompemos o fluxo, pois o pagamento já foi confirmado
+    }
+    // -----------------------------------
+
+    // --- PROCESSAR COMISSÃO DE AFILIADO ---
+    try {
       const pendingCommission = await db.query.commission.findFirst({
         where: eq(commission.orderId, orderId),
       });
 
-      // Se existir e estiver pendente, liberamos o dinheiro
       if (pendingCommission && pendingCommission.status === "pending") {
         console.log(
           `💰 Processando comissão de: R$ ${(pendingCommission.amount / 100).toFixed(2)}`,
         );
 
-        // A. Marca a comissão como disponível
         await db
           .update(commission)
           .set({ status: "paid" })
           .where(eq(commission.id, pendingCommission.id));
 
-        // B. Atualiza o saldo do afiliado (Soma atômica para evitar erros de cálculo)
         await db
           .update(affiliate)
           .set({
@@ -86,11 +93,8 @@ export async function POST(request: Request) {
         console.log("✅ Saldo do afiliado atualizado!");
       }
     } catch (commError) {
-      // Se der erro na comissão, não queremos travar o envio do produto (email)
-      // Apenas logamos o erro para resolver manualmente depois se necessário
       console.error("❌ Erro ao processar comissão:", commError);
     }
-    // ---------------------------------------------------
 
     // 3. Buscar os produtos e seus links de download
     const orderItemsList = await db
