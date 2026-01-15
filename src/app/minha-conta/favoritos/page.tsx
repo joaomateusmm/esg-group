@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart, ShoppingBag, ShoppingCart, Trash2 } from "lucide-react"; // REMOVIDO 'X'
+import { Heart, ShoppingBag, ShoppingCart, Trash2 } from "lucide-react"; 
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -10,7 +10,7 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart-store";
-import { useWishlistStore, WishlistItem } from "@/store/wishlist-store"; // IMPORTAMOS O TIPO 'WishlistItem'
+import { useWishlistStore, WishlistItem } from "@/store/wishlist-store"; 
 
 export default function WishlistPage() {
   const [mounted, setMounted] = useState(false);

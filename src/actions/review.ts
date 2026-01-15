@@ -6,8 +6,11 @@ import { headers } from "next/headers";
 import { z } from "zod";
 
 import { db } from "@/db";
-import { review } from "@/db/schema";
+// Adicionei 'product' aos imports para podermos buscar o nome dele
+import { product, review } from "@/db/schema";
 import { auth } from "@/lib/auth";
+// Importe a função de envio para o Discord
+import { sendReviewToDiscord } from "@/lib/discord";
 
 // 1. Definição do Tipo de Retorno (Estado)
 export type ReviewState = {
@@ -23,16 +26,16 @@ const createReviewSchema = z.object({
   rating: z.number().int().min(1).max(5, "A nota deve ser entre 1 e 5"),
   comment: z
     .string()
-    .trim() // Remove espaços em branco no início e fim
-    .min(3, "O comentário deve ter pelo menos 3 caracteres.") // <--- AQUI ESTÁ A TRAVA
-    .max(500, "O comentário não pode ter mais de 500 caracteres"),
+    .trim()
+    .max(155, "O comentário não pode ter mais de 155 caracteres")
+    .optional()
+    .or(z.literal("")),
 });
 
 export async function createReviewAction(
   prevState: ReviewState,
   formData: FormData,
 ): Promise<ReviewState> {
-  // Também tipamos o retorno para garantir consistência
   try {
     // Verificar Autenticação
     const session = await auth.api.getSession({
@@ -66,13 +69,39 @@ export async function createReviewAction(
 
     const { productId, rating, comment } = validatedFields.data;
 
-    // Inserir no Banco de Dados
+    // Garante que o comentário seja uma string (se undefined, vira "")
+    const safeComment = comment || "";
+
+    // 1. Inserir no Banco de Dados
     await db.insert(review).values({
       userId: session.user.id,
       productId: productId,
       rating: rating,
-      comment: comment || "",
+      comment: safeComment, // <--- CORREÇÃO AQUI (Banco)
     });
+
+    // --- NOVA LÓGICA DE DISCORD ---
+    // Buscamos o nome do produto para a mensagem ficar bonita no Discord
+    try {
+      const productData = await db.query.product.findFirst({
+        where: eq(product.id, productId),
+        columns: { name: true },
+      });
+
+      const productName = productData?.name || "Produto da Loja";
+
+      // Enviamos para o webhook (sem travar a resposta se der erro no Discord)
+      await sendReviewToDiscord(
+        session.user.name,
+        productName,
+        rating,
+        safeComment, // <--- CORREÇÃO AQUI (Discord)
+      );
+    } catch (discordError) {
+      // Apenas logamos o erro, não impedimos o sucesso da action
+      console.error("Falha ao enviar webhook para o Discord:", discordError);
+    }
+    // ------------------------------
 
     // Revalidar a página
     revalidatePath(`/produto/${productId}`);
@@ -103,12 +132,7 @@ export async function deleteReviewAction(reviewId: string, productId: string) {
     // Deleta APENAS se o ID bater E o userId for o mesmo da sessão
     const deleted = await db
       .delete(review)
-      .where(
-        and(
-          eq(review.id, reviewId),
-          eq(review.userId, session.user.id)
-        )
-      )
+      .where(and(eq(review.id, reviewId), eq(review.userId, session.user.id)))
       .returning();
 
     if (!deleted.length) {
@@ -116,7 +140,7 @@ export async function deleteReviewAction(reviewId: string, productId: string) {
     }
 
     revalidatePath(`/produto/${productId}`);
-    
+
     return { success: true, message: "Avaliação removida." };
   } catch (error) {
     console.error("Erro ao deletar review:", error);

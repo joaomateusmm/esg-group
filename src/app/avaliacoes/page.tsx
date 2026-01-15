@@ -1,19 +1,17 @@
 import { desc, eq } from "drizzle-orm";
-import { Star, User } from "lucide-react"; // Ícones
+import { Star, User } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { db } from "@/db";
-// IMPORTANTE: Renomeamos as tabelas para evitar conflitos e fazer os joins
 import {
   product as productTable,
   review,
   user as userTable,
 } from "@/db/schema";
 
-// Formatação de data
 const formatDate = (date: Date) =>
   new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
@@ -22,8 +20,6 @@ const formatDate = (date: Date) =>
   }).format(date);
 
 export default async function AvaliacoesPage() {
-  // 1. Buscar avaliações usando db.select + leftJoin
-  // Isso evita o erro 'referencedTable' e é mais seguro
   const rows = await db
     .select({
       review: review,
@@ -35,7 +31,6 @@ export default async function AvaliacoesPage() {
     .leftJoin(productTable, eq(review.productId, productTable.id))
     .orderBy(desc(review.createdAt));
 
-  // 2. Transformar o resultado no formato que o JSX espera
   const reviews = rows.map((row) => ({
     ...row.review,
     user: row.user,
@@ -46,19 +41,17 @@ export default async function AvaliacoesPage() {
     <main className="min-h-screen bg-[#010000] text-white">
       <Header />
       <div className="container mx-auto max-w-6xl px-6 py-32">
-        {/* Cabeçalho da Página */}
+        {/* Cabeçalho */}
         <div className="animate-in fade-in slide-in-from-bottom-4 mb-16 flex w-full flex-col items-start justify-between gap-6 duration-700 md:flex-row md:items-end">
           <div className="mt-12 flex max-w-2xl flex-col items-start">
             <h1 className="mb-4 text-left text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
               Mural de Avaliações
             </h1>
-
             <p className="text-left text-lg text-neutral-400">
               Veja o que a comunidade diz sobre os nossos produtos.
               Transparência e qualidade em primeiro lugar.
             </p>
           </div>
-
           <div className="inline-flex shrink-0 items-center">
             <span className="text-sm font-medium text-neutral-700">
               Total de avaliações:{" "}
@@ -69,59 +62,60 @@ export default async function AvaliacoesPage() {
           </div>
         </div>
 
-        {/* A Grade (Grid) de Avaliações */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Grid de Avaliações */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {reviews.length > 0 ? (
             reviews.map((item, i) => (
               <div
                 key={item.id}
-                // Usamos classes Tailwind 'animate-in' para animação no servidor
-                className="animate-in fade-in zoom-in fill-mode-backwards flex w-full flex-col justify-between rounded-3xl border border-white/10 bg-[#0a0a0a] p-8 transition-colors duration-500 hover:border-white/20"
-                style={{ animationDelay: `${i * 100}ms` }}
+                className="animate-in fade-in zoom-in fill-mode-backwards flex w-full flex-col justify-between rounded-2xl border border-white/5 bg-[#0A0A0A] p-5 transition-all duration-300 hover:border-white/10 hover:bg-white/[0.02]"
+                style={{ animationDelay: `${i * 50}ms` }}
               >
                 <div>
                   {/* Estrelas */}
-                  <div className="mb-4 flex gap-1">
+                  <div className="mb-3 flex gap-0.5">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <Star
                         key={star}
-                        className={`h-4 w-4 ${
+                        className={`h-3.5 w-3.5 ${
                           item.rating >= star
-                            ? "fill-yellow-500 text-yellow-500"
-                            : "fill-transparent text-neutral-700"
+                            ? "fill-[#F0B100] text-[#F0B100]"
+                            : "fill-neutral-800 text-neutral-800"
                         }`}
                       />
                     ))}
                   </div>
 
-                  {/* Texto da Avaliação */}
-                  <div className="min-h-[60px] text-lg leading-relaxed text-gray-200">
-                    &quot;{item.comment}&quot;
+                  {/* Texto da Avaliação com Clamp */}
+                  <div className="mb-4 min-h-[40px]">
+                    <p className="line-clamp-3 text-sm leading-relaxed text-neutral-300">
+                      &quot;{item.comment || "Avaliação sem comentário."}&quot;
+                    </p>
                   </div>
                 </div>
 
-                <div className="space-y-4 border-t border-white/5 pt-4">
-                  {/* Produto Avaliado (Linkável) */}
+                <div className="mt-auto space-y-3 border-t border-white/5 pt-3">
+                  {/* Produto */}
                   {item.product && (
                     <Link
                       href={`/produto/${item.product.id}`}
-                      className="flex items-center gap-3 rounded-xl bg-white/5 p-2 transition-colors hover:bg-white/10"
+                      className="group flex items-center gap-2 rounded-lg bg-white/[0.03] p-1.5 transition-colors hover:bg-white/[0.06]"
                     >
-                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-neutral-800">
+                      <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-md bg-neutral-900">
                         {item.product.images?.[0] && (
                           <Image
                             src={item.product.images[0]}
                             alt={item.product.name}
                             fill
-                            className="object-cover"
+                            className="object-cover opacity-80 transition-opacity group-hover:opacity-100"
                           />
                         )}
                       </div>
-                      <div className="flex flex-col overflow-hidden">
-                        <span className="truncate text-xs text-neutral-500">
-                          Avaliou o produto:
+                      <div className="flex min-w-0 flex-col">
+                        <span className="truncate text-[10px] tracking-wider text-neutral-500 uppercase">
+                          Avaliou
                         </span>
-                        <span className="truncate text-sm font-medium text-white">
+                        <span className="truncate text-xs font-medium text-neutral-300 group-hover:text-white">
                           {item.product.name}
                         </span>
                       </div>
@@ -129,8 +123,8 @@ export default async function AvaliacoesPage() {
                   )}
 
                   {/* Usuário */}
-                  <div className="flex items-center gap-4">
-                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-white/10 bg-neutral-800">
+                  <div className="flex items-center gap-3">
+                    <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full bg-neutral-800 ring-1 ring-white/10">
                       {item.user?.image ? (
                         <Image
                           src={item.user.image}
@@ -140,17 +134,17 @@ export default async function AvaliacoesPage() {
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center">
-                          <User className="h-6 w-6 text-neutral-500" />
+                          <User className="h-4 w-4 text-neutral-600" />
                         </div>
                       )}
                     </div>
                     <div className="flex flex-col">
-                      <div className="font-semibold tracking-tight text-white">
+                      <span className="text-sm font-medium text-white">
                         {item.user?.name || "Anônimo"}
-                      </div>
-                      <div className="text-sm text-gray-500">
+                      </span>
+                      <span className="text-[10px] text-neutral-600">
                         {formatDate(item.createdAt)}
-                      </div>
+                      </span>
                     </div>
                   </div>
                 </div>

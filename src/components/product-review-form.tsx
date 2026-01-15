@@ -21,50 +21,37 @@ const initialState = {
   errors: undefined,
 };
 
-const MAX_CHARS = 155; // Limite máximo de caracteres
+const MAX_CHARS = 155;
 
 export function ProductReviewForm({ productId }: ProductReviewFormProps) {
-  // Estado da Server Action
   const [state, action, isPending] = useActionState(
     createReviewAction,
     initialState,
   );
 
-  // Estados locais
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
   const [localError, setLocalError] = useState("");
-
-  // Novo estado para controlar o texto e contagem
   const [commentText, setCommentText] = useState("");
 
-  // Efeito para mostrar toast de sucesso ou erro vindo do servidor
   useEffect(() => {
     if (state?.message) {
       if (state.success) {
         toast.success(state.message);
         setLocalError("");
-        setCommentText(""); // Limpa o campo após sucesso
+        setCommentText("");
       } else if (!state.success && state.message) {
         toast.error(state.message);
       }
     }
   }, [state]);
 
-  // Função para validar no cliente antes de enviar
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    // A validação de required já bloqueia envio vazio,
-    // mas verificamos o tamanho mínimo e máximo manualmente também
-
     setLocalError("");
 
-    if (!commentText || commentText.trim().length < 3) {
-      e.preventDefault();
-      const msg = "O comentário precisa ter pelo menos 3 caracteres.";
-      toast.warning(msg);
-      setLocalError(msg);
-      return;
-    }
+    // --- MUDANÇA AQUI: Comentário agora é opcional ---
+    // Se tiver texto, validamos o tamanho máximo.
+    // Se não tiver, deixamos passar.
 
     if (commentText.length > MAX_CHARS) {
       e.preventDefault();
@@ -73,6 +60,8 @@ export function ProductReviewForm({ productId }: ProductReviewFormProps) {
       setLocalError(msg);
       return;
     }
+
+    // Removida a validação de tamanho mínimo obrigatório.
   };
 
   return (
@@ -85,7 +74,12 @@ export function ProductReviewForm({ productId }: ProductReviewFormProps) {
       {state?.success ? (
         <div className="animate-in fade-in zoom-in flex flex-col items-center justify-center gap-2 rounded-lg border border-neutral-500/20 bg-neutral-500/10 p-6 text-center text-sm text-green-500 duration-300">
           <div className="rounded-full bg-neutral-800/40 p-2 shadow-md duration-500 hover:scale-110">
-            <Star className="h-6 w-6 fill-current text-[#F0B100]" />
+            <div className="flex gap-1">
+              {/* Exibe a quantidade de estrelas que a pessoa deu */}
+              {Array.from({ length: rating }).map((_, i) => (
+                <Star key={i} className="h-4 w-4 fill-current text-[#F0B100]" />
+              ))}
+            </div>
           </div>
           <div>
             <p className="font-semibold text-white">Obrigado por Avaliar</p>
@@ -128,13 +122,13 @@ export function ProductReviewForm({ productId }: ProductReviewFormProps) {
             <input type="hidden" name="rating" value={rating} />
           </div>
 
-          {/* Comentário */}
+          {/* Comentário (Opcional) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="comment" className="text-xs text-neutral-400">
-                Seu comentário:
+                Seu comentário:{" "}
+                <span className="text-neutral-600">(Opcional)</span>
               </Label>
-              {/* CONTADOR DE CARACTERES */}
               <span
                 className={cn(
                   "text-[10px] transition-colors",
@@ -155,7 +149,7 @@ export function ProductReviewForm({ productId }: ProductReviewFormProps) {
                 "min-h-[80px] resize-none border-white/10 bg-white/5 text-sm text-white placeholder:text-neutral-600 focus:border-[#D00000]/50 focus:ring-0",
                 localError && "border-red-500/50 focus:border-red-500",
               )}
-              maxLength={MAX_CHARS} // Limite nativo do HTML
+              maxLength={MAX_CHARS}
               value={commentText}
               onChange={(e) => {
                 setCommentText(e.target.value);
@@ -163,7 +157,6 @@ export function ProductReviewForm({ productId }: ProductReviewFormProps) {
               }}
             />
 
-            {/* --- MENSAGENS DE ERRO --- */}
             {localError && (
               <p className="animate-in slide-in-from-left-1 text-xs font-medium text-red-500">
                 {localError}
@@ -175,7 +168,6 @@ export function ProductReviewForm({ productId }: ProductReviewFormProps) {
             )}
           </div>
 
-          {/* Mensagem de Erro Geral do Servidor */}
           {state?.message && !state.success && (
             <p className="text-xs text-red-500">{state.message}</p>
           )}
