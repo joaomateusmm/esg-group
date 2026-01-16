@@ -27,7 +27,7 @@ interface StreamingData {
 
 export function StreamingsTable({ data }: { data: StreamingData[] }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const filteredData = data.filter((s) =>
