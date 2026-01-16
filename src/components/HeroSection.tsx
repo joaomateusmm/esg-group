@@ -69,7 +69,7 @@ export default function HeroSection() {
         <Silk
           speed={12}
           scale={1}
-          color="#190000"
+          color="#3D0000"
           noiseIntensity={0.8}
           rotation={0}
         />
