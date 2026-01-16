@@ -11,6 +11,7 @@ import {
   Search,
   Undo2, // Ícone para desfazer
 } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -258,9 +259,21 @@ export function AffiliatesTable({ data }: AffiliatesTableProps) {
                 <TableRow>
                   <TableCell
                     colSpan={7}
-                    className="h-24 text-center text-neutral-500"
+                    className="h-96 text-center text-neutral-500"
                   >
-                    Nenhum afiliado encontrado.
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-4 py-10">
+                      <Image
+                        src="/images/illustration.svg"
+                        alt="Sem produtos"
+                        width={300}
+                        height={300}
+                        className="opacity-40 grayscale"
+                      />
+
+                      <p className="text-lg font-light text-neutral-400">
+                        Nenhum afiliado encontrado.
+                      </p>
+                    </div>
                   </TableCell>
                 </TableRow>
               )}

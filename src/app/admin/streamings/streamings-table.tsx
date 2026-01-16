@@ -1,12 +1,12 @@
 "use client";
 
-import { Search, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import Image from "next/image";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -58,15 +58,6 @@ export function StreamingsTable({ data }: { data: StreamingData[] }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
-        <div className="relative w-64">
-          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-500" />
-          <Input
-            placeholder="Buscar..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="border-white/10 bg-white/5 pl-10 text-white"
-          />
-        </div>
         {selectedIds.length > 0 && (
           <Button
             variant="destructive"
@@ -104,10 +95,22 @@ export function StreamingsTable({ data }: { data: StreamingData[] }) {
             {filteredData.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={4}
-                  className="h-24 text-center text-neutral-500"
+                  colSpan={7}
+                  className="h-96 text-center text-neutral-500"
                 >
-                  Nenhum streaming encontrado.
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-4 py-10">
+                    <Image
+                      src="/images/illustration.svg"
+                      alt="Sem produtos"
+                      width={300}
+                      height={300}
+                      className="opacity-40 grayscale"
+                    />
+
+                    <p className="text-lg font-light text-neutral-400">
+                      Nenhum streaming encontrado.
+                    </p>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (

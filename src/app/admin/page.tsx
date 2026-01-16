@@ -1,7 +1,6 @@
 import { count, eq, sql, sum } from "drizzle-orm";
 import {
   Activity,
-  Archive,
   DollarSign,
   Gamepad2,
   Layers,
@@ -12,6 +11,9 @@ import {
   Users,
 } from "lucide-react";
 
+import { RevenueChart } from "@/components/admin/revenue-chart";
+// IMPORTANTE: Importe o novo gráfico de vendas
+import { SalesChart } from "@/components/admin/sales-chart";
 import { db } from "@/db";
 import {
   category,
@@ -23,7 +25,6 @@ import {
   user,
 } from "@/db/schema";
 
-// Função auxiliar para formatar dinheiro
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -32,7 +33,6 @@ const formatCurrency = (value: number) => {
 };
 
 export default async function AdminDashboard() {
-  // --- 1. BUSCAR DADOS REAIS DO BANCO (PARALELO) ---
   const [
     totalRevenueRes,
     totalSalesRes,
@@ -43,36 +43,35 @@ export default async function AdminDashboard() {
     totalGamesRes,
     totalReviewsRes,
     totalStreamingsRes,
+    ordersForChart,
   ] = await Promise.all([
-    // Receita Total (Soma de pedidos pagos)
     db
       .select({ value: sum(order.amount) })
       .from(order)
       .where(eq(order.status, "paid")),
 
-    // Vendas Totais (Contagem de pedidos pagos)
     db.select({ count: count() }).from(order).where(eq(order.status, "paid")),
 
-    // Produtos Ativos
     db
       .select({ count: count() })
       .from(product)
-      .where(eq(product.status, "active")), // Assumindo status 'active' ou similar
+      .where(eq(product.status, "active")),
 
-    // Contas Criadas
     db.select({ count: count() }).from(user),
 
-    // Média de Avaliações
     db.select({ avg: sql<number>`avg(${review.rating})` }).from(review),
 
-    // Contagens Simples
     db.select({ count: count() }).from(category),
     db.select({ count: count() }).from(game),
     db.select({ count: count() }).from(review),
     db.select({ count: count() }).from(streaming),
+
+    db
+      .select({ amount: order.amount, createdAt: order.createdAt })
+      .from(order)
+      .where(eq(order.status, "paid")),
   ]);
 
-  // Processar os dados
   const totalRevenue = totalRevenueRes[0]?.value
     ? Number(totalRevenueRes[0].value)
     : 0;
@@ -80,7 +79,6 @@ export default async function AdminDashboard() {
   const activeProducts = activeProductsRes[0]?.count || 0;
   const totalUsers = totalUsersRes[0]?.count || 0;
 
-  // Média de nota (trata null se não houver reviews)
   const rawAvg = avgRatingRes[0]?.avg || 0;
   const avgRating = Number(rawAvg).toFixed(1);
 
@@ -89,10 +87,46 @@ export default async function AdminDashboard() {
     games: totalGamesRes[0]?.count || 0,
     reviews: totalReviewsRes[0]?.count || 0,
     streamings: totalStreamingsRes[0]?.count || 0,
-    // Mockados pois não temos tabela de carrinho/favoritos ainda
     cartItems: 0,
     favorites: 0,
   };
+
+  // --- LÓGICA DOS GRÁFICOS (Revenue + Sales) ---
+  const dailyRevenueMap = new Map<string, number>();
+  const dailySalesMap = new Map<string, number>(); // Mapa para contagem de vendas
+
+  ordersForChart.forEach((o) => {
+    const dateKey = new Date(o.createdAt).toISOString().split("T")[0];
+
+    // Receita
+    const currentRev = dailyRevenueMap.get(dateKey) || 0;
+    dailyRevenueMap.set(dateKey, currentRev + o.amount / 100);
+
+    // Vendas (Quantidade)
+    const currentSales = dailySalesMap.get(dateKey) || 0;
+    dailySalesMap.set(dateKey, currentSales + 1);
+  });
+
+  const revenueChartData = [];
+  const salesChartData = [];
+  const today = new Date();
+
+  // Loop para preencher os últimos 95 dias (incluindo dias zerados)
+  for (let i = 95; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(today.getDate() - i);
+    const dateKey = d.toISOString().split("T")[0];
+
+    revenueChartData.push({
+      date: dateKey,
+      revenue: dailyRevenueMap.get(dateKey) || 0,
+    });
+
+    salesChartData.push({
+      date: dateKey,
+      sales: dailySalesMap.get(dateKey) || 0,
+    });
+  }
 
   return (
     <div className="space-y-8 p-8">
@@ -114,10 +148,7 @@ export default async function AdminDashboard() {
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-neutral-400">
               Receita Total{" "}
-              <span className="text-xs text-neutral-500">
-                {" "}
-                (valor estimado)
-              </span>
+              <span className="text-xs text-neutral-500">(valor real)</span>
             </span>
             <div className="rounded-full bg-[#D00000]/10 p-2 text-[#D00000]">
               <DollarSign className="h-5 w-5" />
@@ -127,7 +158,6 @@ export default async function AdminDashboard() {
             <span className="text-3xl font-bold text-white">
               {formatCurrency(totalRevenue)}
             </span>
-            {/* Exemplo de indicador de crescimento (fictício) */}
             <span className="text-xs font-medium text-green-500">
               +12% este mês
             </span>
@@ -182,7 +212,6 @@ export default async function AdminDashboard() {
           Detalhes Operacionais
         </h3>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-5">
-          {/* Média Avaliações */}
           <div className="flex flex-col justify-center rounded-lg border border-white/5 bg-white/[0.02] p-4 hover:bg-white/[0.04]">
             <div className="mb-2 flex items-center gap-2 text-[#D00000]">
               <Star className="h-4 w-4 fill-current" />
@@ -192,7 +221,6 @@ export default async function AdminDashboard() {
             <span className="text-[10px] text-neutral-500">Geral da loja</span>
           </div>
 
-          {/* Categorias */}
           <div className="flex flex-col justify-center rounded-lg border border-white/5 bg-white/[0.02] p-4 hover:bg-white/[0.04]">
             <div className="mb-2 text-neutral-400">
               <Layers className="h-4 w-4" />
@@ -203,7 +231,6 @@ export default async function AdminDashboard() {
             <span className="text-[10px] text-neutral-500">Categorias</span>
           </div>
 
-          {/* Jogos */}
           <div className="flex flex-col justify-center rounded-lg border border-white/5 bg-white/[0.02] p-4 hover:bg-white/[0.04]">
             <div className="mb-2 text-neutral-400">
               <Gamepad2 className="h-4 w-4" />
@@ -212,7 +239,6 @@ export default async function AdminDashboard() {
             <span className="text-[10px] text-neutral-500">Jogos</span>
           </div>
 
-          {/* Streamings */}
           <div className="flex flex-col justify-center rounded-lg border border-white/5 bg-white/[0.02] p-4 hover:bg-white/[0.04]">
             <div className="mb-2 text-neutral-400">
               <MonitorPlay className="h-4 w-4" />
@@ -223,7 +249,6 @@ export default async function AdminDashboard() {
             <span className="text-[10px] text-neutral-500">Streamings</span>
           </div>
 
-          {/* Total Avaliações */}
           <div className="flex flex-col justify-center rounded-lg border border-white/5 bg-white/[0.02] p-4 hover:bg-white/[0.04]">
             <div className="mb-2 text-neutral-400">
               <MessageSquare className="h-4 w-4" />
@@ -236,36 +261,16 @@ export default async function AdminDashboard() {
         </div>
       </div>
 
-      {/* --- SEÇÃO 3: GRÁFICOS (Placeholder) --- */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* Espaço Grande para Gráfico Principal */}
-        <div className="col-span-2 min-h-[400px] rounded-xl border border-white/10 bg-[#0A0A0A] p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="font-semibold text-white">Visão Geral de Receita</h3>
-            <select className="rounded bg-white/5 px-2 py-1 text-xs text-neutral-400 outline-none">
-              <option>Últimos 30 dias</option>
-              <option>Este Ano</option>
-            </select>
-          </div>
-          <div className="flex h-[300px] w-full items-center justify-center rounded-lg border border-dashed border-white/10 bg-white/5">
-            <span className="flex items-center gap-2 text-sm text-neutral-500">
-              <Activity className="h-4 w-4" />
-              Gráfico de Linha (Receita x Tempo) virá aqui
-            </span>
-          </div>
+      {/* --- SEÇÃO 3: GRÁFICOS --- */}
+      <div className="flex w-full flex-col gap-5 md:flex-row">
+        {/* GRÁFICO 1: RECEITA */}
+        <div className="w-full rounded-xl border border-white/10 bg-[#0A0A0A] p-6">
+          <RevenueChart data={revenueChartData} />
         </div>
 
-        {/* Espaço Menor para Gráfico Secundário */}
-        <div className="col-span-1 min-h-[400px] rounded-xl border border-white/10 bg-[#0A0A0A] p-6">
-          <h3 className="mb-4 font-semibold text-white">
-            Vendas por Categoria
-          </h3>
-          <div className="flex h-[300px] w-full items-center justify-center rounded-lg border border-dashed border-white/10 bg-white/5">
-            <span className="flex items-center gap-2 text-sm text-neutral-500">
-              <Archive className="h-4 w-4" />
-              Gráfico de Pizza/Donut virá aqui
-            </span>
-          </div>
+        {/* GRÁFICO 2: VENDAS (Agora funcional!) */}
+        <div className="w-full rounded-xl border border-white/10 bg-[#0A0A0A] p-6">
+          <SalesChart data={salesChartData} />
         </div>
       </div>
     </div>

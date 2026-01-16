@@ -45,7 +45,7 @@ export default async function AdminReviewsPage() {
   return (
     <div className="space-y-6 p-2">
       <div>
-        <h1 className="flex items-center gap-2 text-3xl font-bold text-white">
+        <h1 className="font-clash-display flex items-center gap-3 text-3xl font-medium text-white">
           Gerenciar Avaliações
         </h1>
         <p className="text-neutral-400">
@@ -74,10 +74,22 @@ export default async function AdminReviewsPage() {
             {reviews.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
-                  className="h-32 text-center text-neutral-500"
+                  colSpan={7}
+                  className="h-96 text-center text-neutral-500"
                 >
-                  Nenhuma avaliação encontrada.
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-4 py-10">
+                    <Image
+                      src="/images/illustration.svg"
+                      alt="Sem produtos"
+                      width={300}
+                      height={300}
+                      className="opacity-40 grayscale"
+                    />
+
+                    <p className="text-lg font-light text-neutral-400">
+                      Nenhuma avaliação encontrada.
+                    </p>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (

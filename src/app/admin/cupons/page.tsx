@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { desc } from "drizzle-orm";
 import { headers } from "next/headers";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
@@ -154,10 +155,22 @@ export default async function AdminCouponsPage() {
                 {coupons.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
-                      className="py-10 text-center text-neutral-500"
+                      colSpan={7}
+                      className="h-96 text-center text-neutral-500"
                     >
-                      Nenhum cupom criado ainda.
+                      <div className="flex h-full w-full flex-col items-center justify-center gap-4 py-10">
+                        <Image
+                          src="/images/illustration.svg"
+                          alt="Sem produtos"
+                          width={300}
+                          height={300}
+                          className="opacity-40 grayscale"
+                        />
+
+                        <p className="text-lg font-light text-neutral-400">
+                          Nenhum cupom encontrado.
+                        </p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )}
