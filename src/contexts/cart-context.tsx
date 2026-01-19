@@ -33,7 +33,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // 1. Carregar do LocalStorage ao iniciar
   useEffect(() => {
-    const savedCart = localStorage.getItem("@submind:cart");
+    const savedCart = localStorage.getItem("@ESG-Group:cart");
     if (savedCart) {
       setItems(JSON.parse(savedCart));
     }
@@ -41,7 +41,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // 2. Salvar no LocalStorage sempre que mudar
   useEffect(() => {
-    localStorage.setItem("@submind:cart", JSON.stringify(items));
+    localStorage.setItem("@ESG-Group:cart", JSON.stringify(items));
   }, [items]);
 
   // Adicionar item

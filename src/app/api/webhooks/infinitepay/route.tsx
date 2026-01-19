@@ -156,12 +156,12 @@ export async function POST(request: Request) {
           <a href="${process.env.NEXT_PUBLIC_APP_URL}/minha-conta/compras" style="color: #D00000; text-decoration: underline;">Acessar Minhas Compras</a>
           
           <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;" />
-          <p style="font-size: 12px; color: #999;">Obrigado por comprar na SubMind.</p>
+          <p style="font-size: 12px; color: #999;">Obrigado por comprar na ESG-Group.</p>
         </div>
       `;
 
       await resend.emails.send({
-        from: "SubMind Store <onboarding@resend.dev>",
+        from: "ESG-Group Store <onboarding@resend.dev>",
         to: [customer.email],
         subject: "Seu pedido está aqui! 📦",
         html: emailHtml,

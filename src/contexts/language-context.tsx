@@ -14,7 +14,7 @@ const translations = {
     header: {
       searchPlaceholder: "O que você procura?",
       categories: "Categorias",
-      games: "Jogos",
+      games: "moveis",
       affiliate: "Seja Afiliado",
       panel: "Painel Afiliado",
       faq: "Ajuda & FAQ",

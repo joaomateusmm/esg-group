@@ -115,7 +115,7 @@ async function sendProductEmail(
     `;
 
   await resend.emails.send({
-    from: "SubMind Store <onboarding@resend.dev>",
+    from: "ESG-Group Store <onboarding@resend.dev>",
     to: [to],
     subject: "Seu pedido está aqui! 📦",
     html: emailHtml,
@@ -305,7 +305,7 @@ export async function createCheckoutSession(
     items: apiItems,
     customer: { name: userName, email: userEmail },
     metadata: {
-      source: "submind",
+      source: "ESG-Group",
       user_id: userId,
       affiliate_id: activeAffiliate?.id || "",
     },

@@ -46,7 +46,7 @@ export const useWishlistStore = create<WishlistState>()(
       },
     }),
     {
-      name: "submind-wishlist-storage",
+      name: "ESG-Group-wishlist-storage",
     },
   ),
 );

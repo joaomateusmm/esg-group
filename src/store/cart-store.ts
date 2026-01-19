@@ -82,7 +82,7 @@ export const useCartStore = create<CartState>()(
       },
     }),
     {
-      name: "submind-cart-storage", // Nome da chave no LocalStorage
+      name: "ESG-Group-cart-storage", // Nome da chave no LocalStorage
     },
   ),
 );

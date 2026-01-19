@@ -77,7 +77,7 @@ export default function NotFound() {
 
         {/* Footer simples */}
         <div className="absolute bottom-8 text-xs text-neutral-600">
-          Erro: 404_NOT_FOUND • SubMind Store
+          Erro: 404_NOT_FOUND • ESG-Group Store
         </div>
       </div>
     </div>

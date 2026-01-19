@@ -40,7 +40,7 @@ export async function sendReviewToDiscord(
       },
     ],
     footer: {
-      text: "SubMind • Sistema de Avaliação",
+      text: "ESG-Group • Sistema de Avaliação",
     },
     timestamp: new Date().toISOString(),
   };

@@ -1,11 +1,11 @@
 "use client";
 
-import { Loader2, Lock } from "lucide-react";
+import { Loader2, Lock, ShoppingCart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { createCheckoutSession, createFreeOrder } from "@/actions/checkout";
+import { createFreeOrder } from "@/actions/checkout";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
+import { useCartStore } from "@/store/cart-store"; // Importamos a store do carrinho
 
 interface BuyNowButtonProps {
   product: {
@@ -24,7 +25,6 @@ interface BuyNowButtonProps {
     name: string;
     price: number;
     image?: string;
-    // --- NOVAS PROPS ---
     stock: number | null;
     isStockUnlimited: boolean;
   };
@@ -43,60 +43,83 @@ export function BuyNowButton({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showGuestModal, setShowGuestModal] = useState(false);
+
   const { data: session } = authClient.useSession();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const user = session?.user || initialUser;
+
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
-  const isFree = product.price === 0;
 
-  // VERIFICAÇÃO DE ESTOQUE
+  // Ações do Carrinho
+  const { clearCart, addItem } = useCartStore();
+
+  const isFree = product.price === 0;
+  // Se o estoque for 0 e não for ilimitado, está esgotado
   const isOutOfStock = !product.isStockUnlimited && (product.stock ?? 0) <= 0;
 
-  const itemToCheckout = [
-    {
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      quantity: 1,
-      image: product.image,
-    },
-  ];
-
   const handleBuyNow = async () => {
-    if (isOutOfStock) return; // Segurança extra no clique
+    if (isOutOfStock) return;
 
+    // Se for produto pago, o fluxo é: Carrinho -> Checkout Page
+    if (!isFree) {
+      setLoading(true);
+      try {
+        // 1. Limpa o carrinho atual (compra direta substitui o carrinho)
+        clearCart();
+
+        // 2. Adiciona o produto atual
+        addItem({
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          quantity: 1,
+          image: product.image,
+        });
+
+        // 3. Redireciona para a página de checkout
+        router.push("/checkout");
+      } catch (error) {
+        console.error(error);
+        toast.error("Erro ao redirecionar para o checkout.");
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Se for GRATUITO, mantém a lógica de modal para capturar lead
     if (!user) {
       setShowGuestModal(true);
       return;
     }
-    await processCheckout();
+
+    await processFreeCheckout();
   };
 
-  const processCheckout = async (guestData?: {
+  const processFreeCheckout = async (guestData?: {
     name: string;
     email: string;
   }) => {
     try {
       setLoading(true);
 
-      if (isFree) {
-        await createFreeOrder(itemToCheckout, guestData, couponCode);
-        toast.success("Produto resgatado com sucesso! Verifique seu e-mail.");
-        router.push("/checkout/success");
-      } else {
-        const result = await createCheckoutSession(
-          itemToCheckout,
-          guestData,
-          couponCode,
-        );
+      // Lógica de pedido gratuito (Server Action)
+      await createFreeOrder(
+        [
+          {
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            quantity: 1,
+            image: product.image,
+          },
+        ],
+        guestData,
+        couponCode,
+      );
 
-        if ("url" in result && result.url) {
-          window.location.href = result.url;
-        } else if ("success" in result && result.success) {
-          toast.success("Produto resgatado com sucesso!");
-          router.push("/checkout/success");
-        }
-      }
+      toast.success("Produto resgatado com sucesso! Verifique seu e-mail.");
+      router.push("/checkout/success");
     } catch (error) {
       console.error(error);
       if (error instanceof Error) {
@@ -116,7 +139,7 @@ export function BuyNowButton({
       return;
     }
 
-    await processCheckout({
+    await processFreeCheckout({
       name: guestName || "Visitante",
       email: guestEmail,
     });
@@ -126,14 +149,13 @@ export function BuyNowButton({
     <>
       <Button
         size="lg"
-        // --- ESTILOS CONDICIONAIS PARA ESTOQUE ---
-        className={`mb-4 h-14 w-full text-lg font-bold text-white shadow-[0_0_20px_rgba(208,0,0,0.15)] transition-all ${
+        className={`mb-4 h-14 w-full text-lg font-bold text-white shadow-lg transition-all ${
           isOutOfStock
-            ? "bg-[#d00000c9] hover:-translate-y-0.5 hover:bg-[#a00000] hover:shadow-[0_0_30px_rgba(208,0,0,0.4)]"
-            : "bg-[#D00000] hover:-translate-y-0.5 hover:bg-[#a00000] hover:shadow-[0_0_30px_rgba(208,0,0,0.4)]"
+            ? "cursor-not-allowed bg-neutral-400 hover:bg-neutral-400"
+            : "bg-orange-600 hover:-translate-y-0.5 hover:bg-orange-700 hover:shadow-xl"
         }`}
         onClick={handleBuyNow}
-        disabled={loading || isOutOfStock} // Desabilita se carregando OU sem estoque
+        disabled={loading || isOutOfStock}
       >
         {loading ? (
           <>
@@ -141,36 +163,37 @@ export function BuyNowButton({
             PROCESSANDO...
           </>
         ) : isOutOfStock ? (
-          "COMPRAR AGORA" // Texto quando sem estoque
+          "ESGOTADO"
         ) : isFree ? (
           "BAIXAR AGORA"
         ) : (
-          "COMPRAR AGORA"
+          <span className="flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5" /> COMPRAR AGORA
+          </span>
         )}
       </Button>
 
+      {/* MODAL APENAS PARA PRODUTOS GRATUITOS (LEAD CAPTURE) */}
       <Dialog open={showGuestModal} onOpenChange={setShowGuestModal}>
-        <DialogContent className="max-w-[80vw] border-white/10 bg-[#0A0A0A] text-white">
+        <DialogContent className="max-w-[90vw] border-neutral-200 bg-white text-neutral-900 sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-white">
-              {isFree ? "Resgatar Produto" : "Quase lá!"}
+            <DialogTitle className="text-xl font-bold">
+              Resgatar Produto Gratuito
             </DialogTitle>
-            <DialogDescription className="text-neutral-400">
-              {isFree
-                ? "Informe seu e-mail para receber o link de download gratuitamente."
-                : "Você não está logado. Informe seu e-mail para receber o acesso ao produto."}
+            <DialogDescription className="text-neutral-500">
+              Informe seu e-mail para receber o link de download.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleGuestSubmit} className="space-y-4 pt-4">
             <div className="space-y-2">
-              <Label htmlFor="guest-name" className="text-neutral-300">
-                Nome: <span className="text-[#D00000]">*</span>
+              <Label htmlFor="guest-name">
+                Nome: <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="guest-name"
                 placeholder="Ex: João Silva"
-                className="border-white/10 bg-white/5 text-white placeholder:text-neutral-600 focus:border-[#D00000]"
+                className="border-neutral-300 bg-white text-neutral-900 focus:border-orange-500"
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
                 required
@@ -178,38 +201,36 @@ export function BuyNowButton({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="guest-email" className="text-neutral-300">
-                E-mail: <span className="text-[#D00000]">*</span>
+              <Label htmlFor="guest-email">
+                E-mail: <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="guest-email"
                 type="email"
                 placeholder="seu@email.com"
-                className="border-white/10 bg-white/5 text-white placeholder:text-neutral-600 focus:border-[#D00000]"
+                className="border-neutral-300 bg-white text-neutral-900 focus:border-orange-500"
                 value={guestEmail}
                 onChange={(e) => setGuestEmail(e.target.value)}
                 required
               />
               <p className="flex items-center justify-start text-xs text-neutral-500">
                 <Lock className="mr-1 inline h-3 w-3" />
-                Preencha com um e-mail válido.
+                Seus dados estão seguros.
               </p>
             </div>
 
             <Button
               type="submit"
-              className="h-14 w-full bg-[#D00000] text-lg font-bold text-white shadow-[0_0_20px_rgba(208,0,0,0.15)] transition-all hover:-translate-y-0.5 hover:bg-[#a00000] hover:shadow-[0_0_30px_rgba(208,0,0,0.4)]"
+              className="h-12 w-full bg-orange-600 text-lg font-bold text-white hover:bg-orange-700"
               disabled={loading}
             >
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  {isFree ? "Resgatando..." : "Gerando Pagamento..."}
+                  Resgatando...
                 </>
-              ) : isFree ? (
-                "Confirmar Resgate"
               ) : (
-                "Ir para Pagamento"
+                "Confirmar Resgate"
               )}
             </Button>
           </form>

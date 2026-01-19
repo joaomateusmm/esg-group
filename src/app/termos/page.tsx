@@ -1,4 +1,3 @@
-
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { SpotlightCard } from "@/components/spotlight-card";
@@ -8,12 +7,12 @@ export default function TermsPage() {
     {
       title: "1. Aceitação dos Termos",
       content:
-        "Ao acessar o site SubMind, você concorda em cumprir estes termos de serviço, todas as leis e regulamentos aplicáveis ​​e concorda que é responsável pelo cumprimento de todas as leis locais aplicáveis.",
+        "Ao acessar o site ESG-Group, você concorda em cumprir estes termos de serviço, todas as leis e regulamentos aplicáveis ​​e concorda que é responsável pelo cumprimento de todas as leis locais aplicáveis.",
     },
     {
       title: "2. Licença de Uso",
       content:
-        "É concedida permissão para baixar temporariamente uma cópia dos materiais (informações ou software) no site SubMind, apenas para visualização transitória pessoal e não comercial. Esta é a concessão de uma licença, não uma transferência de título.",
+        "É concedida permissão para baixar temporariamente uma cópia dos materiais (informações ou software) no site ESG-Group, apenas para visualização transitória pessoal e não comercial. Esta é a concessão de uma licença, não uma transferência de título.",
     },
     {
       title: "3. Produtos Digitais e Reembolsos",
@@ -23,12 +22,12 @@ export default function TermsPage() {
     {
       title: "4. Limitações",
       content:
-        "Em nenhum caso a SubMind ou seus fornecedores serão responsáveis ​​por quaisquer danos (incluindo, sem limitação, danos por perda de dados ou lucro ou devido a interrupção dos negócios) decorrentes do uso ou da incapacidade de usar os materiais em nosso site.",
+        "Em nenhum caso a ESG-Group ou seus fornecedores serão responsáveis ​​por quaisquer danos (incluindo, sem limitação, danos por perda de dados ou lucro ou devido a interrupção dos negócios) decorrentes do uso ou da incapacidade de usar os materiais em nosso site.",
     },
     {
       title: "5. Contas e Segurança",
       content:
-        "Você é responsável por manter a confidencialidade de sua conta e senha. A SubMind não se responsabiliza por perdas decorrentes do uso não autorizado de sua conta.",
+        "Você é responsável por manter a confidencialidade de sua conta e senha. A ESG-Group não se responsabiliza por perdas decorrentes do uso não autorizado de sua conta.",
     },
   ];
 
@@ -47,7 +46,7 @@ export default function TermsPage() {
             Termos de Uso
           </h1>
           <p className="text-neutral-400">
-            Regras e diretrizes para uso da plataforma SubMind.
+            Regras e diretrizes para uso da plataforma ESG-Group.
           </p>
         </div>
 
@@ -71,8 +70,9 @@ export default function TermsPage() {
           {/* --- AVISO LEGAL --- */}
           <div className="mt-8 rounded-xl border border-dashed border-white/20 p-4 text-center">
             <p className="text-xs text-neutral-500">
-              A SubMind se reserva o direito de alterar estes termos a qualquer
-              momento. Recomendamos que você revise esta página periodicamente.
+              A ESG-Group se reserva o direito de alterar estes termos a
+              qualquer momento. Recomendamos que você revise esta página
+              periodicamente.
             </p>
           </div>
         </div>

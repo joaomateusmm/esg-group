@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import { deleteGame } from "@/app/admin/jogos/actions";
+import { deleteGame } from "@/app/admin/moveis/actions";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -58,14 +58,14 @@ export function GamesTable({ data }: GamesTableProps) {
   const handleBulkDelete = () => {
     startTransition(async () => {
       try {
-        // Como não criamos uma action de bulk delete para jogos,
+        // Como não criamos uma action de bulk delete para moveis,
         // vamos deletar um por um usando Promise.all
         await Promise.all(selectedIds.map((id) => deleteGame(id)));
 
         setSelectedIds([]);
-        toast.success("Jogos excluídos com sucesso.");
+        toast.success("moveis excluídos com sucesso.");
       } catch {
-        toast.error("Erro ao excluir jogos.");
+        toast.error("Erro ao excluir moveis.");
       }
     });
   };
@@ -166,7 +166,7 @@ export function GamesTable({ data }: GamesTableProps) {
 
       {/* Rodapé da tabela com contagem */}
       <div className="text-xs text-neutral-600">
-        Mostrando {filteredData.length} de {data.length} jogos.
+        Mostrando {filteredData.length} de {data.length} moveis.
       </div>
     </div>
   );

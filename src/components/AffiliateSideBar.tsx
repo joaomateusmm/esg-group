@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  DollarSign,
-  Home,
-  LayoutDashboard,
-  Settings,
-} from "lucide-react";
+import { DollarSign, Home, LayoutDashboard, Settings } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -48,7 +43,7 @@ export function AffiliateSidebar({ user }: AffiliateSidebarProps) {
               className="object-cover"
             />
             <span className="font-clash-display text-2xl font-medium">
-              SubMind
+              ESG-Group
             </span>
           </Link>
         </div>

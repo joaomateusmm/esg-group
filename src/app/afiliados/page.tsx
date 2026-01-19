@@ -53,7 +53,7 @@ export default async function AffiliatePage() {
           {/* Imagem de Fundo */}
           <div className="absolute inset-0 h-full w-full">
             <Image
-              src="/images/banner/banner_afiliados_submind.webp"
+              src="/images/banner/banner_afiliados_ESG-Group.webp"
               alt="Banner Afiliados"
               fill
               className="object-cover"
@@ -92,7 +92,7 @@ export default async function AffiliatePage() {
               Simples, Transparente e Lucrativo
             </h2>
             <p className="mt-4 text-neutral-400">
-              Entenda o passo a passo para começar a faturar com a SubMind.
+              Entenda o passo a passo para começar a faturar com a ESG-Group.
             </p>
           </div>
 
@@ -352,7 +352,7 @@ export default async function AffiliatePage() {
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-bold text-white">
-                              SubMind Financeiro
+                              ESG-Group Financeiro
                             </span>
                             <span className="rounded-[3px] bg-[#5865F2] px-1 py-[1px] text-[8px] font-bold text-white">
                               BOT
@@ -393,7 +393,7 @@ export default async function AffiliatePage() {
             </h2>
             <p className="mb-8 text-lg text-neutral-300">
               Não perca tempo. Junte-se a centenas de afiliados que já estão
-              faturando com a SubMind. Cadastro rápido e aprovação imediata.
+              faturando com a ESG-Group. Cadastro rápido e aprovação imediata.
             </p>
 
             <div className="flex w-[210px] justify-center">

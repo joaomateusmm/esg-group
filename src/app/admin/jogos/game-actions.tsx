@@ -4,7 +4,7 @@ import { MoreHorizontal, Trash } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import { deleteGame } from "@/app/admin/jogos/actions";
+import { deleteGame } from "@/app/admin/moveis/actions";
 import {
   AlertDialog,
   AlertDialogAction,

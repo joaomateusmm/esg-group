@@ -4,10 +4,11 @@ import { desc, eq } from "drizzle-orm";
 import {
   CheckCircle2,
   Clock,
-  Download,
   ExternalLink,
+  MapPin,
   Package,
   ShoppingBag,
+  Truck,
   XCircle,
 } from "lucide-react";
 import { headers } from "next/headers";
@@ -18,7 +19,6 @@ import { redirect } from "next/navigation";
 import { DeleteOrderButton } from "@/components/delete-order-button";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
-// Importamos o FORMULÁRIO diretamente
 import { ProductReviewForm } from "@/components/product-review-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,10 +38,16 @@ const formatCurrency = (value: number) => {
 const getStatusBadge = (status: string) => {
   switch (status) {
     case "paid":
-    case "completed":
+    case "succeeded": // Status do Stripe
       return (
         <Badge className="gap-1 border-green-800/20 bg-green-900/10 px-2 py-0.5 text-xs font-normal text-green-700 hover:bg-green-900/20">
-          <CheckCircle2 className="h-3 w-3" /> Aprovado
+          <CheckCircle2 className="h-3 w-3" /> Pago
+        </Badge>
+      );
+    case "shipped":
+      return (
+        <Badge className="gap-1 border-blue-800/20 bg-blue-900/10 px-2 py-0.5 text-xs font-normal text-blue-700 hover:bg-blue-900/20">
+          <Truck className="h-3 w-3" /> Enviado
         </Badge>
       );
     case "pending":
@@ -73,6 +79,7 @@ export default async function MyPurchasesPage() {
 
   const userId = session.user.id;
 
+  // Busca pedidos do usuário
   const userOrders = await db.query.order.findMany({
     where: eq(order.userId, userId),
     orderBy: [desc(order.createdAt)],
@@ -80,66 +87,72 @@ export default async function MyPurchasesPage() {
 
   const enrichedOrders = await Promise.all(
     userOrders.map(async (currentOrder) => {
+      // Busca itens do pedido
       const items = await db
         .select()
         .from(orderItem)
         .where(eq(orderItem.orderId, currentOrder.id));
 
-      const itemsWithDownload = await Promise.all(
+      // Busca imagem atualizada do produto (caso tenha mudado)
+      const itemsWithDetails = await Promise.all(
         items.map(async (item) => {
           const productData = await db.query.product.findFirst({
             where: eq(product.id, item.productId),
             columns: {
-              downloadUrl: true,
               images: true,
             },
           });
 
           return {
             ...item,
-            downloadUrl: productData?.downloadUrl || null,
-            currentImage: productData?.images?.[0] || item.image,
+            // Prioriza a imagem salva no item do pedido (histórico), senão usa a atual do produto
+            currentImage: item.image || productData?.images?.[0],
           };
         }),
       );
 
+      // Parse do endereço de entrega (salvo como JSON)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const shippingAddress = currentOrder.shippingAddress as any;
+
       return {
         ...currentOrder,
-        items: itemsWithDownload,
+        items: itemsWithDetails,
+        shippingAddress,
       };
     }),
   );
 
   return (
-    <div className="min-h-screen bg-[#010000]">
+    <div className="min-h-screen bg-neutral-50 text-neutral-900">
       <Header />
 
-      <main className="mx-auto max-w-7xl px-4 py-42 md:px-8">
+      <main className="mx-auto max-w-7xl px-4 pt-38 pb-14 md:px-8">
         <div className="mb-12 flex flex-col gap-2">
-          <h1 className="font-clash-display text-3xl font-medium text-white md:text-4xl">
+          <h1 className="font-clash-display text-3xl font-bold text-neutral-900 md:text-4xl">
             Minhas Compras
           </h1>
-          <p className="text-neutral-400">
-            Gerencie seus pedidos, baixe seus arquivos e avalie os produtos.
+          <p className="text-neutral-500">
+            Acompanhe seus pedidos e histórico de compras.
           </p>
         </div>
 
         {enrichedOrders.length === 0 ? (
-          <Card className="border-white/10 bg-transparent py-16 text-center">
+          <Card className="border border-dashed border-neutral-300 bg-white py-16 text-center shadow-sm">
             <CardContent className="flex flex-col items-center justify-center gap-4">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/5">
-                <Package className="h-10 w-10 text-neutral-600" />
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-neutral-100">
+                <Package className="h-10 w-10 text-neutral-400" />
               </div>
               <div>
-                <h3 className="text-xl font-medium text-white">
+                <h3 className="text-xl font-bold text-neutral-900">
                   Nenhum pedido encontrado
                 </h3>
-                <p className="text-sm text-neutral-400">
+                <p className="text-sm text-neutral-500">
                   Você ainda não realizou nenhuma compra conosco.
                 </p>
               </div>
               <Link href="/">
-                <Button className="mt-4 bg-[#D00000] p-6 text-white hover:bg-[#a00000]">
+                <Button className="mt-4 bg-orange-600 px-8 py-6 text-white hover:bg-orange-700">
                   Explorar Loja
                 </Button>
               </Link>
@@ -152,58 +165,74 @@ export default async function MyPurchasesPage() {
                 key={order.id}
                 className="animate-in fade-in slide-in-from-bottom-4 duration-700"
               >
-                {/* Cabeçalho do Pedido (Data e ID) */}
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
-                  <div className="flex items-center gap-4">
+                {/* Cabeçalho do Pedido */}
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-4 border-b border-neutral-200 pb-4">
+                  <div className="flex items-center gap-6">
                     <div className="flex flex-col">
-                      <span className="text-xs text-neutral-500">
+                      <span className="text-xs font-semibold text-neutral-500 uppercase">
                         Data do Pedido
                       </span>
-                      <span className="text-sm font-medium text-white">
+                      <span className="text-sm font-medium text-neutral-900">
                         {format(
                           new Date(order.createdAt),
-                          "dd 'de' MMMM, yyyy",
-                          { locale: ptBR },
+                          "dd 'de' MMM, yyyy",
+                          {
+                            locale: ptBR,
+                          },
                         )}
-                        <span className="mx-2 text-white/30">•</span>
-                        {format(new Date(order.createdAt), "HH:mm", {
-                          locale: ptBR,
-                        })}
                       </span>
                     </div>
-                    <div className="hidden h-8 w-[1px] bg-white/10 sm:block" />
+                    <div className="hidden h-8 w-[1px] bg-neutral-200 sm:block" />
                     <div className="flex flex-col">
-                      <span className="text-xs text-neutral-500">
-                        ID do Pedido
+                      <span className="text-xs font-semibold text-neutral-500 uppercase">
+                        Total
                       </span>
-                      <span className="font-mono text-sm text-neutral-300">
-                        #{order.id.slice(0, 8).toUpperCase()}
+                      <span className="text-sm font-bold text-neutral-900">
+                        {formatCurrency(order.amount)}
+                      </span>
+                    </div>
+                    <div className="hidden h-8 w-[1px] bg-neutral-200 sm:block" />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-semibold text-neutral-500 uppercase">
+                        Pedido #
+                      </span>
+                      <span className="font-mono text-sm text-neutral-700">
+                        {order.id.slice(0, 8).toUpperCase()}
                       </span>
                     </div>
                   </div>
+
                   <div className="flex items-center gap-4">
                     {getStatusBadge(order.status)}
-                    <DeleteOrderButton orderId={order.id} />
+                    {/* Botão de Rastreio (se tiver código) */}
+                    {order.trackingCode && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-2 text-xs"
+                      >
+                        <Truck className="h-3 w-3" /> Rastrear:{" "}
+                        {order.trackingCode}
+                      </Button>
+                    )}
+                    {/* Removido DeleteOrderButton se não for essencial, ou ajuste o estilo */}
                   </div>
                 </div>
 
-                {/* Lista de Itens do Pedido */}
-                <div className="space-y-6">
+                {/* Lista de Itens */}
+                <div className="space-y-4">
                   {order.items.map((item, index) => (
                     <Card
                       key={`${order.id}-${index}`}
-                      className="border-white/10 bg-[#0A0A0A]"
+                      className="border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md"
                     >
-                      <CardContent>
-                        {/* AQUI MUDOU: 
-                           Grid direto dentro do CardContent para aninhar a avaliação
-                        */}
+                      <CardContent className="p-6">
                         <div className="grid gap-8 lg:grid-cols-3">
-                          {/* Coluna da Esquerda: Produto e Detalhes (Ocupa 2/3) */}
+                          {/* Coluna Esquerda: Produto */}
                           <div className="flex flex-col gap-6 lg:col-span-2">
-                            <div className="flex flex-1 items-center justify-center gap-5">
-                              {/* Imagem do Produto */}
-                              <div className="relative h-24 w-35 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/5 sm:h-32 sm:w-48">
+                            <div className="flex flex-1 items-start gap-5">
+                              {/* Imagem */}
+                              <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-neutral-100 bg-neutral-50 sm:h-32 sm:w-32">
                                 {item.currentImage ? (
                                   <Image
                                     src={item.currentImage}
@@ -213,88 +242,59 @@ export default async function MyPurchasesPage() {
                                   />
                                 ) : (
                                   <div className="flex h-full w-full items-center justify-center">
-                                    <ShoppingBag className="h-8 w-8 text-neutral-600" />
+                                    <ShoppingBag className="h-8 w-8 text-neutral-300" />
                                   </div>
                                 )}
                               </div>
 
-                              {/* Informações */}
-                              <div className="flex flex-1 flex-col justify-between">
+                              {/* Info */}
+                              <div className="flex h-full flex-1 flex-col justify-between">
                                 <div>
-                                  <h3 className="font-clash-display text-lg font-medium text-white sm:text-xl">
+                                  <h3 className="line-clamp-2 text-lg font-bold text-neutral-900 sm:text-xl">
                                     {item.productName}
                                   </h3>
-                                  <p className="mt-1 text-sm text-neutral-400">
-                                    {formatCurrency(item.price)} x{" "}
-                                    {item.quantity} un.
+                                  <p className="mt-1 text-sm text-neutral-500">
+                                    Quantidade: {item.quantity}
                                   </p>
-
-                                  {/* Botões de Ação (Download/Pagar) */}
-                                  <div className="mt-4">
-                                    {order.status === "paid" ||
-                                    order.status === "completed" ? (
-                                      item.downloadUrl &&
-                                      item.downloadUrl !== "#" ? (
-                                        <Button
-                                          asChild
-                                          className="gap-2 bg-white/10 text-white duration-300 hover:scale-105 hover:bg-white/20 active:scale-95"
-                                        >
-                                          <a
-                                            href={item.downloadUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                          >
-                                            <Download className="h-4 w-4" />
-                                            Baixar Arquivos
-                                          </a>
-                                        </Button>
-                                      ) : (
-                                        <Badge
-                                          variant="secondary"
-                                          className="h-9 border-neutral-800 bg-neutral-900 px-4 text-neutral-500"
-                                        >
-                                          Download Indisponível
-                                        </Badge>
-                                      )
-                                    ) : (
-                                      order.infinitePayUrl && (
-                                        <Button
-                                          asChild
-                                          className="gap-2 bg-[#D00000] text-white hover:bg-[#a00000]"
-                                        >
-                                          <a
-                                            href={order.infinitePayUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                          >
-                                            Realizar Pagamento
-                                            <ExternalLink className="h-4 w-4" />
-                                          </a>
-                                        </Button>
-                                      )
-                                    )}
-                                  </div>
+                                  <p className="mt-1 font-medium text-orange-600">
+                                    {formatCurrency(item.price)}
+                                  </p>
                                 </div>
+
+                                {/* Endereço de Entrega (Resumo) */}
+                                {order.shippingAddress && (
+                                  <div className="mt-4 flex items-center gap-2 text-xs text-neutral-500">
+                                    <MapPin className="h-3 w-3" />
+                                    <span>
+                                      Enviado para:{" "}
+                                      {order.shippingAddress.street},{" "}
+                                      {order.shippingAddress.number} -{" "}
+                                      {order.shippingAddress.city}/
+                                      {order.shippingAddress.state}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
 
-                          {/* Coluna da Direita: Avaliação (Ocupa 1/3) */}
-                          <div className="flex h-full flex-col justify-center border-t border-white/5 pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8">
+                          {/* Coluna Direita: Avaliação ou Status */}
+                          <div className="flex h-full flex-col justify-center border-t border-neutral-100 pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8">
                             {order.status === "paid" ||
-                            order.status === "completed" ? (
+                            order.status === "succeeded" ||
+                            order.status === "shipped" ? (
                               <div className="h-full">
                                 <ProductReviewForm productId={item.productId} />
                               </div>
                             ) : (
-                              // Placeholder se não estiver pago ainda
-                              <div className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-center">
-                                <span className="font-medium text-neutral-400">
-                                  Pagamento Pendente
+                              <div className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center">
+                                <Clock className="h-8 w-8 text-neutral-300" />
+                                <span className="font-medium text-neutral-600">
+                                  Aguardando Pagamento
                                 </span>
-                                <p className="text-xs text-neutral-500">
-                                  Complete o pagamento para avaliar este
-                                  produto.
+                                <p className="text-xs text-neutral-400">
+                                  O pedido precisa ser aprovado para você
+                                  avaliar.
                                 </p>
                               </div>
                             )}

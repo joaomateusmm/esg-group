@@ -32,7 +32,7 @@ const Authentication = () => {
     {
       image: "/images/banner/banner-4.webp",
       title: "Contas Exclusivas",
-      caption: "Obtenha as melhores contas para começar nos jogos com estilo.",
+      caption: "Obtenha as melhores contas para começar nos moveis com estilo.",
     },
   ];
 

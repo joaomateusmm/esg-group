@@ -2,6 +2,7 @@
 
 import {
   AlertCircle,
+  Armchair,
   ChevronRight,
   DollarSign,
   Gamepad2,
@@ -135,10 +136,10 @@ export function MobileMenu({
               </div>
             </div>
 
-            {/* Seção 3: Jogos */}
+            {/* Seção 3: moveis */}
             <div className="mb-6">
               <h3 className="mb-3 flex items-center gap-2 text-xs font-bold tracking-wider text-neutral-400 uppercase">
-                <Gamepad2 className="h-3 w-3" /> {t.header.games}
+                <Armchair className="h-3 w-3" /> {t.header.games}
               </h3>
 
               <div className="flex flex-col gap-1">
@@ -153,7 +154,7 @@ export function MobileMenu({
                     </Link>
                   ))
                 ) : (
-                  <EmptyState label="Sem jogos cadastrados" />
+                  <EmptyState label="Sem moveis cadastrados" />
                 )}
               </div>
             </div>

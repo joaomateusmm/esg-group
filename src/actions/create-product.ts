@@ -8,27 +8,82 @@ import { z } from "zod";
 import { db } from "@/db";
 import { product } from "@/db/schema";
 
-// --- SCHEMA ---
-// Nota: O schema valida 'number'. Se o front manda centavos (inteiro), passa aqui.
+// --- SCHEMA ATUALIZADO (FÍSICO - SEM PAYMENT METHODS) ---
 const productSchema = z.object({
   name: z.string().min(2, "Nome muito curto"),
   description: z.string().optional(),
-  paymentLink: z.string().url("URL inválida").optional().or(z.literal("")),
-  downloadUrl: z.string().optional().or(z.literal("")),
+
+  // Preços em centavos
   price: z.number().min(0),
   discountPrice: z.number().optional(),
+
   images: z.array(z.string()).optional(),
   categories: z.array(z.string()).default([]),
-  gameId: z.string().optional().or(z.literal("")),
-  streamings: z.array(z.string()).default([]),
+
   status: z.enum(["active", "inactive", "draft"]).default("active"),
-  deliveryMode: z.enum(["email", "none"]).default("email"),
-  paymentMethods: z.array(z.string()).default([]),
+
+  // Estoque
   stock: z.number().default(0),
   isStockUnlimited: z.boolean().default(false),
+
+  // --- NOVOS CAMPOS FÍSICOS ---
+  sku: z.string().optional(),
+  weight: z.number().min(0).default(0),
+  width: z.number().int().min(0).default(0),
+  height: z.number().int().min(0).default(0),
+  length: z.number().int().min(0).default(0),
 });
 
 export type ProductServerPayload = z.infer<typeof productSchema>;
+
+export async function createProduct(rawData: ProductServerPayload) {
+  // 1. Validar
+  const result = productSchema.safeParse(rawData);
+
+  if (!result.success) {
+    console.error("Erro de validação:", result.error.flatten());
+    throw new Error(
+      `Dados inválidos: ${JSON.stringify(result.error.flatten().fieldErrors)}`,
+    );
+  }
+
+  const data = result.data;
+
+  try {
+    // 2. Inserir no Banco (Campos Físicos)
+    await db.insert(product).values({
+      name: data.name,
+      description: data.description,
+
+      price: data.price,
+      discountPrice: data.discountPrice,
+
+      // Garante array vazio se undefined
+      images: data.images || [],
+      categories: data.categories || [],
+
+      status: data.status,
+
+      stock: data.stock,
+      isStockUnlimited: data.isStockUnlimited,
+
+      // Dados Logísticos
+      sku: data.sku,
+      weight: data.weight,
+      width: data.width,
+      height: data.height,
+      length: data.length,
+    });
+
+    revalidatePath("/admin/produtos");
+    revalidatePath("/");
+  } catch (error) {
+    console.error("Erro ao criar produto no banco:", error);
+    throw new Error("Erro interno ao salvar produto.");
+  }
+
+  redirect("/admin/produtos");
+}
 
 export async function updateProduct(id: string, rawData: ProductServerPayload) {
   // 1. Validar
@@ -40,8 +95,6 @@ export async function updateProduct(id: string, rawData: ProductServerPayload) {
   }
 
   const data = result.data;
-  const finalPaymentLink =
-    data.paymentLink && data.paymentLink.length > 0 ? data.paymentLink : "#";
 
   try {
     await db
@@ -49,22 +102,25 @@ export async function updateProduct(id: string, rawData: ProductServerPayload) {
       .set({
         name: data.name,
         description: data.description,
-        // CORREÇÃO: Removemos a multiplicação por 100.
-        // Assumimos que o formulário (ProductForm) já envia em centavos (inteiro).
-        // Se o form manda 1000 (R$10), salvamos 1000.
+
         price: data.price,
-        discountPrice: data.discountPrice, // Mesma coisa para o desconto
-        images: data.images,
-        categories: data.categories,
-        streamings: data.streamings,
-        gameId: data.gameId && data.gameId.length > 0 ? data.gameId : null,
+        discountPrice: data.discountPrice,
+
+        images: data.images || [],
+        categories: data.categories || [],
+
         stock: data.stock,
         isStockUnlimited: data.isStockUnlimited,
-        deliveryMode: data.deliveryMode,
-        paymentMethods: data.paymentMethods,
-        paymentLink: finalPaymentLink,
-        downloadUrl: data.downloadUrl,
+
         status: data.status,
+
+        // Dados Logísticos
+        sku: data.sku,
+        weight: data.weight,
+        width: data.width,
+        height: data.height,
+        length: data.length,
+
         updatedAt: new Date(),
       })
       .where(eq(product.id, id));
@@ -79,58 +135,7 @@ export async function updateProduct(id: string, rawData: ProductServerPayload) {
   }
 }
 
-export async function createProduct(rawData: ProductServerPayload) {
-  // 1. Validar
-  const result = productSchema.safeParse(rawData);
-
-  if (!result.success) {
-    console.error("Erro de validação:", result.error.flatten());
-    throw new Error(
-      `Dados inválidos: ${JSON.stringify(result.error.flatten().fieldErrors)}`,
-    );
-  }
-
-  const data = result.data;
-  const finalPaymentLink =
-    data.paymentLink && data.paymentLink.length > 0 ? data.paymentLink : "#";
-
-  try {
-    // 2. Inserir no Banco
-    await db.insert(product).values({
-      name: data.name,
-      description: data.description,
-      paymentLink: finalPaymentLink,
-      downloadUrl: data.downloadUrl,
-      // CORREÇÃO: Removemos a multiplicação por 100 aqui também para manter consistência.
-      // O formulário ProductForm JÁ faz Math.round(data.price * 100) antes de chamar esta action.
-      price: data.price,
-      discountPrice: data.discountPrice,
-      images: data.images || [],
-      categories: data.categories,
-      gameId: data.gameId && data.gameId.length > 0 ? data.gameId : null,
-      streamings: data.streamings,
-      status: data.status,
-      deliveryMode: data.deliveryMode,
-      paymentMethods: data.paymentMethods,
-      stock: data.stock,
-      isStockUnlimited: data.isStockUnlimited,
-    });
-
-    revalidatePath("/admin/produtos");
-    revalidatePath("/");
-  } catch (error) {
-    console.error("Erro ao criar produto no banco:", error);
-    throw new Error("Erro interno ao salvar produto.");
-  }
-
-  redirect("/admin/produtos");
-}
-
-// ... Resto das funções (deleteProduct, archiveProduct, deleteProducts) mantém igual ...
-// =========================================================
-// --- TENTATIVA DE DELEÇÃO (HARD DELETE) ---
-// =========================================================
-
+// ... Resto das funções (delete, archive) iguais ao original ...
 export async function deleteProduct(id: string) {
   console.log(`[DELETE TRY] ID: ${id}`);
 

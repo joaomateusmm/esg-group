@@ -100,7 +100,7 @@ export function Footer() {
                 />
               </div>
               <span className="font-clash-display text-2xl font-semibold text-white">
-                SubMind
+                ESG-Group
               </span>
             </Link>
 
@@ -187,11 +187,13 @@ export function Footer() {
         {/* --- RODAPÉ INFERIOR --- */}
         <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
           <div className="text-center text-xs text-neutral-500 md:text-left">
-            <p>© {currentYear} SubMind Store. Todos os direitos reservados.</p>
+            <p>
+              © {currentYear} ESG-Group Store. Todos os direitos reservados.
+            </p>
           </div>
           <div className="text-center text-xs text-neutral-500 md:text-left">
             <p className="mt-1">
-              CNPJ: XX.XXX.XXX/0001-XX • Desenvolvido por SubMind Team
+              CNPJ: XX.XXX.XXX/0001-XX • Desenvolvido por ESG-Group Team
             </p>
           </div>
         </div>

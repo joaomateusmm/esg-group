@@ -2,12 +2,14 @@ import { relations } from "drizzle-orm";
 import {
   boolean,
   integer,
+  json, // Necessário para salvar o endereço completo no pedido
   pgTable,
+  real, // Necessário para números decimais (peso)
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
 
-// --- TABELAS DE AUTENTICAÇÃO (BETTER AUTH) ---
+// --- TABELAS DE AUTENTICAÇÃO (MANTIDAS) ---
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -61,7 +63,7 @@ export const verification = pgTable("verification", {
   updatedAt: timestamp("updatedAt"),
 });
 
-// --- TABELA DE CATEGORIAS ---
+// --- TABELA DE CATEGORIAS (MANTIDA) ---
 
 export const category = pgTable("category", {
   id: text("id")
@@ -69,6 +71,8 @@ export const category = pgTable("category", {
     .$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
   description: text("description"),
+  // Adicionado slug para URLs amigáveis (ex: /categoria/moveis-quarto)
+  slug: text("slug").unique(),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
     .notNull()
@@ -76,37 +80,7 @@ export const category = pgTable("category", {
     .$onUpdate(() => new Date()),
 });
 
-// --- TABELA DE STREAMING ---
-
-export const streaming = pgTable("streaming", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  name: text("name").notNull(),
-  // Removido o campo image conforme solicitado
-  createdAt: timestamp("createdAt").notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt")
-    .notNull()
-    .defaultNow()
-    .$onUpdate(() => new Date()),
-});
-
-// --- TABELA DE JOGOS ---
-
-export const game = pgTable("game", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  name: text("name").notNull(),
-  image: text("image"), // Opcional
-  createdAt: timestamp("createdAt").notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt")
-    .notNull()
-    .defaultNow()
-    .$onUpdate(() => new Date()),
-});
-
-// --- TABELAS DA LOJA ---
+// --- TABELA DE PRODUTOS (ATUALIZADA PARA FÍSICO) ---
 
 export const product = pgTable("product", {
   id: text("id")
@@ -114,24 +88,28 @@ export const product = pgTable("product", {
     .$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
   description: text("description"),
-  price: integer("price").notNull(),
-  discountPrice: integer("discountPrice"),
-  downloadUrl: text("downloadUrl"),
+  price: integer("price").notNull(), // Em centavos
+  discountPrice: integer("discountPrice"), // Em centavos
+
   images: text("images").array(),
-  categories: text("categories").array(),
-  gameId: text("gameId").references(() => game.id, { onDelete: "set null" }),
-  streamings: text("streamings").array(),
-  paymentLink: text("paymentLink").notNull(),
-  deliveryMode: text("deliveryMode").notNull().default("email"),
-  paymentMethods: text("paymentMethods")
-    .array()
-    .notNull()
-    .default(["Pix", "Cartão de Crédito", "Cartão de Débito", "Boleto"]),
+  categories: text("categories").array(), // Array de IDs de categorias
+
+  // --- NOVOS CAMPOS FÍSICOS ---
+  weight: real("weight").default(0), // Peso em KG (ex: 0.500 para 500g)
+  width: integer("width").default(0), // Largura em cm
+  height: integer("height").default(0), // Altura em cm
+  length: integer("length").default(0), // Comprimento em cm
+  sku: text("sku"), // Código de estoque (opcional, mas bom para logística)
+
   stock: integer("stock").default(0),
   isStockUnlimited: boolean("isStockUnlimited").notNull().default(false),
-  status: text("status").notNull().default("draft"),
+
+  status: text("status").notNull().default("draft"), // draft, active, archived
   sales: integer("sales").notNull().default(0),
-  affiliateRate: integer("affiliateRate").default(10),
+
+  // Campos de Afiliado
+  affiliateRate: integer("affiliateRate").default(10), // Porcentagem de comissão
+
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
     .notNull()
@@ -139,26 +117,24 @@ export const product = pgTable("product", {
     .$onUpdate(() => new Date()),
 });
 
+// --- TABELA DE REVIEWS (MANTIDA) ---
+
 export const review = pgTable("review", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-
   rating: integer("rating").notNull(),
   comment: text("comment"),
-
   productId: text("productId")
     .notNull()
     .references(() => product.id, { onDelete: "cascade" }),
-
   userId: text("userId")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-
   createdAt: timestamp("createdAt").notNull().defaultNow(),
 });
 
-// --- NOVAS TABELAS DE PEDIDOS (INTEGRAÇÃO INFINITEPAY) ---
+// --- TABELA DE PEDIDOS (ATUALIZADA PARA STRIPE & LOGÍSTICA) ---
 
 export const order = pgTable("order", {
   id: text("id")
@@ -167,15 +143,25 @@ export const order = pgTable("order", {
   userId: text("userId")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  amount: integer("amount").notNull(),
-  status: text("status").notNull().default("pending"),
-  infinitePayUrl: text("infinitePayUrl"),
-  transactionId: text("transactionId"),
-  metadata: text("metadata"),
+
+  amount: integer("amount").notNull(), // Valor TOTAL (Produtos + Frete)
+  status: text("status").notNull().default("pending"), // pending, paid, shipped, delivered, canceled
+
+  // --- INTEGRAÇÃO STRIPE ---
+  stripePaymentIntentId: text("stripePaymentIntentId"), // ID para rastrear no Stripe
+  stripeClientSecret: text("stripeClientSecret"),
+
+  // --- DADOS DE ENTREGA ---
+  // Salvamos o endereço como JSON para garantir histórico (se o user mudar o endereço do perfil, o pedido antigo não muda)
+  shippingAddress: json("shippingAddress"),
+  shippingCost: integer("shippingCost").default(0), // Custo do frete em centavos
+  trackingCode: text("trackingCode"), // Código de rastreio (Correios/Transportadora)
+
   couponId: text("couponId").references(() => coupon.id, {
     onDelete: "set null",
   }),
-  discountAmount: integer("discountAmount").default(0), // Quanto foi descontado em centavos
+  discountAmount: integer("discountAmount").default(0),
+
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
     .notNull()
@@ -187,20 +173,19 @@ export const orderItem = pgTable("orderItem", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-
   orderId: text("orderId")
     .notNull()
     .references(() => order.id, { onDelete: "cascade" }),
-
   productId: text("productId")
     .notNull()
     .references(() => product.id),
-
-  productName: text("productName").notNull(),
-  price: integer("price").notNull(),
+  productName: text("productName").notNull(), // Salvamos o nome para histórico
+  price: integer("price").notNull(), // Preço no momento da compra
   quantity: integer("quantity").notNull(),
   image: text("image"),
 });
+
+// --- SISTEMA DE AFILIADOS E CUPONS (MANTIDO) ---
 
 export const affiliate = pgTable("affiliate", {
   id: text("id")
@@ -208,14 +193,14 @@ export const affiliate = pgTable("affiliate", {
     .$defaultFn(() => crypto.randomUUID()),
   userId: text("userId")
     .notNull()
-    .unique() // Garante que um usuário só tem 1 conta de afiliado
+    .unique()
     .references(() => user.id, { onDelete: "cascade" }),
   code: text("code").notNull().unique(),
   pixKey: text("pixKey"),
-  pixKeyType: text("pixKeyType"), // email, cpf, phone, random
+  pixKeyType: text("pixKeyType"),
   balance: integer("balance").notNull().default(0),
   totalEarnings: integer("totalEarnings").notNull().default(0),
-  status: text("status").notNull().default("active"), // active, suspended, banned
+  status: text("status").notNull().default("active"),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
     .notNull()
@@ -227,18 +212,18 @@ export const coupon = pgTable("coupon", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  code: text("code").notNull().unique(), // O código que o cliente digita (ex: "BEMVINDO10")
-  type: text("type").notNull().default("percent"), // 'percent' (porcentagem) ou 'fixed' (valor em centavos)
-  value: integer("value").notNull(), // O valor do desconto (ex: 10 para 10% ou 500 para R$ 5,00)
-  minValue: integer("minValue").default(0), // Valor mínimo do pedido para usar o cupom (em centavos)
-  maxUses: integer("maxUses"), // Limite global de usos (ex: apenas para os primeiros 100)
-  usedCount: integer("usedCount").default(0).notNull(), // Contador de quantas vezes já foi usado
-  expiresAt: timestamp("expiresAt"), // Data de validade (opcional)
-  isActive: boolean("isActive").default(true).notNull(), // Se o cupom está ativo ou não
-  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  code: text("code").notNull().unique(),
+  type: text("type").notNull().default("percent"),
+  value: integer("value").notNull(),
+  minValue: integer("minValue").default(0),
+  maxUses: integer("maxUses"),
+  usedCount: integer("usedCount").default(0).notNull(),
+  expiresAt: timestamp("expiresAt"),
+  isActive: boolean("isActive").default(true).notNull(),
   isFeatured: boolean("isFeatured").default(false).notNull(),
   popupTitle: text("popupTitle"),
   popupDescription: text("popupDescription"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
     .notNull()
     .defaultNow()
@@ -265,6 +250,8 @@ export const commission = pgTable("commission", {
     .$onUpdate(() => new Date()),
 });
 
+// --- RELAÇÕES ---
+
 export const userRelations = relations(user, ({ one }) => ({
   affiliateProfile: one(affiliate, {
     fields: [user.id],
@@ -277,7 +264,7 @@ export const affiliateRelations = relations(affiliate, ({ one, many }) => ({
     fields: [affiliate.userId],
     references: [user.id],
   }),
-  commissions: many(commission), // <--- Isto permite usar with: { commissions: true }
+  commissions: many(commission),
 }));
 
 export const commissionRelations = relations(commission, ({ one }) => ({

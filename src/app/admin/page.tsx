@@ -2,27 +2,16 @@ import { count, eq, sql, sum } from "drizzle-orm";
 import {
   Activity,
   DollarSign,
-  Gamepad2,
   Layers,
   MessageSquare,
-  MonitorPlay,
   Package,
   Star,
   Users,
 } from "lucide-react";
 
 import { RevenueChart } from "@/components/admin/revenue-chart";
-// IMPORTANTE: Importe o novo gráfico de vendas
 import { db } from "@/db";
-import {
-  category,
-  game,
-  order,
-  product,
-  review,
-  streaming,
-  user,
-} from "@/db/schema";
+import { category, order, product, review, user } from "@/db/schema";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("pt-BR", {
@@ -39,32 +28,37 @@ export default async function AdminDashboard() {
     totalUsersRes,
     avgRatingRes,
     totalCategoriesRes,
-    totalGamesRes,
     totalReviewsRes,
-    totalStreamingsRes,
     ordersForChart,
   ] = await Promise.all([
+    // 1. Receita Total
     db
       .select({ value: sum(order.amount) })
       .from(order)
       .where(eq(order.status, "paid")),
 
+    // 2. Total de Vendas
     db.select({ count: count() }).from(order).where(eq(order.status, "paid")),
 
+    // 3. Produtos Ativos
     db
       .select({ count: count() })
       .from(product)
       .where(eq(product.status, "active")),
 
+    // 4. Usuários
     db.select({ count: count() }).from(user),
 
+    // 5. Avaliação Média
     db.select({ avg: sql<number>`avg(${review.rating})` }).from(review),
 
+    // 6. Categorias
     db.select({ count: count() }).from(category),
-    db.select({ count: count() }).from(game),
-    db.select({ count: count() }).from(review),
-    db.select({ count: count() }).from(streaming),
 
+    // 7. Reviews (Avaliações)
+    db.select({ count: count() }).from(review),
+
+    // 8. Dados para o Gráfico
     db
       .select({ amount: order.amount, createdAt: order.createdAt })
       .from(order)
@@ -83,21 +77,17 @@ export default async function AdminDashboard() {
 
   const stats = {
     categories: totalCategoriesRes[0]?.count || 0,
-    games: totalGamesRes[0]?.count || 0,
     reviews: totalReviewsRes[0]?.count || 0,
-    streamings: totalStreamingsRes[0]?.count || 0,
-    cartItems: 0,
-    favorites: 0,
   };
 
   // --- LÓGICA DOS GRÁFICOS (Revenue + Sales) ---
   const dailyRevenueMap = new Map<string, number>();
-  const dailySalesMap = new Map<string, number>(); // Mapa para contagem de vendas
+  const dailySalesMap = new Map<string, number>();
 
   ordersForChart.forEach((o) => {
     const dateKey = new Date(o.createdAt).toISOString().split("T")[0];
 
-    // Receita
+    // Receita (convertendo centavos para reais)
     const currentRev = dailyRevenueMap.get(dateKey) || 0;
     dailyRevenueMap.set(dateKey, currentRev + o.amount / 100);
 
@@ -107,10 +97,11 @@ export default async function AdminDashboard() {
   });
 
   const revenueChartData = [];
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const salesChartData = [];
   const today = new Date();
 
-  // Loop para preencher os últimos 95 dias (incluindo dias zerados)
+  // Loop para preencher os últimos 95 dias
   for (let i = 95; i >= 0; i--) {
     const d = new Date();
     d.setDate(today.getDate() - i);
@@ -228,24 +219,6 @@ export default async function AdminDashboard() {
               {stats.categories}
             </span>
             <span className="text-[10px] text-neutral-500">Categorias</span>
-          </div>
-
-          <div className="flex flex-col justify-center rounded-lg border border-white/5 bg-white/[0.02] p-4 hover:bg-white/[0.04]">
-            <div className="mb-2 text-neutral-400">
-              <Gamepad2 className="h-4 w-4" />
-            </div>
-            <span className="text-xl font-bold text-white">{stats.games}</span>
-            <span className="text-[10px] text-neutral-500">Jogos</span>
-          </div>
-
-          <div className="flex flex-col justify-center rounded-lg border border-white/5 bg-white/[0.02] p-4 hover:bg-white/[0.04]">
-            <div className="mb-2 text-neutral-400">
-              <MonitorPlay className="h-4 w-4" />
-            </div>
-            <span className="text-xl font-bold text-white">
-              {stats.streamings}
-            </span>
-            <span className="text-[10px] text-neutral-500">Streamings</span>
           </div>
 
           <div className="flex flex-col justify-center rounded-lg border border-white/5 bg-white/[0.02] p-4 hover:bg-white/[0.04]">

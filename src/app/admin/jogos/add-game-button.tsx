@@ -5,8 +5,8 @@ import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { createGame } from "@/app/admin/jogos/actions";
-import { GameSchema, gameSchema } from "@/app/admin/jogos/schema";
+import { createGame } from "@/app/admin/moveis/actions";
+import { GameSchema, gameSchema } from "@/app/admin/moveis/schema";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

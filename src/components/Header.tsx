@@ -7,6 +7,7 @@ import {
   Loader2,
   LogOut,
   MapPin,
+  Menu,
   Minus,
   Plus,
   Search,
@@ -26,8 +27,6 @@ import { checkAffiliateStatus } from "@/actions/check-affiliate-status";
 import { checkStockAvailability } from "@/actions/check-stock";
 import { createCheckoutSession } from "@/actions/checkout";
 import { getAllCategories } from "@/actions/get-all-categories";
-import { getAllGames } from "@/actions/get-all-games";
-import { getAllStreamings } from "@/actions/get-all-streamings";
 import { searchProductsAction } from "@/actions/search-products";
 // IMPORTANTE: Importe o novo componente
 import { MobileMenu } from "@/components/mobile-menu";
@@ -52,21 +51,13 @@ import { authClient } from "@/lib/auth-client";
 import { useCartStore } from "@/store/cart-store";
 import { useWishlistStore } from "@/store/wishlist-store";
 
-// --- INTERFACES ---
+// --- INTERFACES LIMPAS ---
 interface Category {
   label: string;
   href: string;
 }
 
-interface Game {
-  label: string;
-  href: string;
-}
-
-interface Streaming {
-  label: string;
-  href: string;
-}
+// Removidas interfaces Game e Streaming
 
 interface Product {
   id: string;
@@ -114,10 +105,8 @@ export function Header() {
   const [mounted, setMounted] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
-  // ESTADOS
+  // ESTADOS (Removidos games/streamings)
   const [categories, setCategories] = useState<Category[]>([]);
-  const [games, setGames] = useState<Game[]>([]);
-  const [streamings, setStreamings] = useState<Streaming[]>([]);
   const [isAffiliate, setIsAffiliate] = useState(false);
 
   // PESQUISA
@@ -146,15 +135,13 @@ export function Header() {
     setMounted(true);
     const fetchData = async () => {
       try {
-        const [cats, gms, strms, affStatus] = await Promise.all([
+        // Removidas chamadas para getAllGames e getAllStreamings
+        const [cats, affStatus] = await Promise.all([
           getAllCategories(),
-          getAllGames(),
-          getAllStreamings(),
           checkAffiliateStatus().catch(() => false),
         ]);
+
         if (Array.isArray(cats)) setCategories(cats);
-        if (Array.isArray(gms)) setGames(gms);
-        if (Array.isArray(strms)) setStreamings(strms);
         setIsAffiliate(affStatus);
       } catch (error) {
         console.error("Erro ao carregar dados do header", error);
@@ -163,7 +150,9 @@ export function Header() {
     fetchData();
   }, []);
 
-  // ... (useEffects de estoque e search permanecem iguais)
+  // ... (Restante do código de estoque, pesquisa e renderização permanece igual)
+  // APENAS GARANTINDO QUE O MOBILE MENU NÃO RECEBA PROPS QUE NÃO EXISTEM MAIS
+
   useEffect(() => {
     const verifyStock = async () => {
       if (cartItems.length === 0) return;
@@ -266,10 +255,9 @@ export function Header() {
 
   return (
     <header className="fixed top-0 z-50 w-full flex-col shadow-sm">
-      {/* --- BARRA LARANJA (TOP BAR) --- */}
+      {/* ... (Barra Laranja igual) ... */}
       <div className="w-full bg-orange-600 px-4 py-2 text-xs font-medium text-white md:px-8">
         <div className="mx-auto flex max-w-[1440px] items-center justify-between">
-          {/* Lado Esquerdo */}
           <div className="flex items-center gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -286,7 +274,7 @@ export function Header() {
                           <div className="h-[1px] bg-white"></div>
                           <div className="h-[1px] bg-white"></div>
                         </div>
-                        <div className="absolute top-0 left-0 h-1.5 w-2 bg-blue-700"></div>
+                        <div className="absolute -top-0 -left-0 h-1.5 w-2 bg-blue-700"></div>
                       </div>
                     )}
                   </div>
@@ -337,16 +325,17 @@ export function Header() {
         </div>
       </div>
 
-      {/* --- BARRA PRINCIPAL (BRANCA) --- */}
       <div className="w-full border-b border-neutral-200 bg-white px-4 py-4 md:px-8">
         <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4 lg:gap-8">
-          {/* 1. LOGO & MENU */}
           <div className="flex items-center gap-4">
-            {/* AQUI ESTÁ A MUDANÇA: USANDO O NOVO COMPONENTE */}
+            {/* CORREÇÃO NO MOBILE MENU:
+                Removemos as props games={} e streamings={} pois não existem mais.
+                Você precisará ir no arquivo mobile-menu.tsx e remover essas props da interface também se der erro lá.
+            */}
             <MobileMenu
               categories={categories}
-              games={games}
-              streamings={streamings}
+              games={[]} // Passando array vazio para compatibilidade se o componente ainda exigir
+              streamings={[]} // Passando array vazio
               isAffiliate={isAffiliate}
             />
 
@@ -357,7 +346,9 @@ export function Header() {
             </Link>
           </div>
 
-          {/* 2. BARRA DE PESQUISA (CENTRO) - MANTIDA IGUAL */}
+          {/* ... (Resto do Header igual: Barra de Pesquisa, Ícones, etc) ... */}
+          {/* Mantenha o código original daqui para baixo, ele está correto */}
+
           <div className="relative max-w-2xl flex-1" ref={searchRef}>
             <div className="flex h-11 w-full items-center rounded-full border border-neutral-300 bg-neutral-50 transition-all focus-within:border-orange-600 focus-within:bg-white focus-within:ring-2 focus-within:ring-orange-100">
               <button className="hidden h-full items-center gap-2 border-r border-neutral-200 px-4 text-sm font-medium whitespace-nowrap text-neutral-600 hover:text-neutral-900 sm:flex">
@@ -380,7 +371,6 @@ export function Header() {
               </button>
             </div>
 
-            {/* RESULTADOS DA PESQUISA - MANTIDO IGUAL */}
             {showResults && searchQuery.length >= 2 && (
               <div className="animate-in fade-in zoom-in-95 absolute top-14 right-0 left-0 z-50 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xl duration-200">
                 {searchResults.length > 0 ? (
@@ -426,7 +416,6 @@ export function Header() {
             )}
           </div>
 
-          {/* 3. ÍCONES E AÇÕES (DIREITA) - MANTIDOS IGUAIS */}
           <div className="flex items-center gap-2 sm:gap-6">
             <Link
               href="#"
@@ -443,7 +432,6 @@ export function Header() {
               <span className="text-sm font-medium">{t.header.sale}</span>
             </Link>
 
-            {/* Favoritos */}
             <Sheet>
               <SheetTrigger asChild>
                 <div className="hidden sm:block">
@@ -498,7 +486,6 @@ export function Header() {
               </SheetContent>
             </Sheet>
 
-            {/* Conta e Carrinho mantidos iguais ao código anterior... */}
             {session ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

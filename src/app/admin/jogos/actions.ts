@@ -21,7 +21,7 @@ export async function createGame(data: GameSchema) {
       name: result.data.name,
     });
 
-    revalidatePath("/admin/jogos");
+    revalidatePath("/admin/moveis");
     revalidatePath("/"); // Atualiza o menu do site
 
     return { success: true, message: "Jogo adicionado com sucesso!" };
@@ -38,7 +38,7 @@ export async function deleteGame(id: string) {
     // Se tiver constraints rígidas, pode dar erro (igual vimos em produtos).
     await db.delete(game).where(eq(game.id, id));
 
-    revalidatePath("/admin/jogos");
+    revalidatePath("/admin/moveis");
     revalidatePath("/");
 
     return { success: true, message: "Jogo excluído com sucesso." };

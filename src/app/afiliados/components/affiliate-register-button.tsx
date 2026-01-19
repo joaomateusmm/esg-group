@@ -146,8 +146,8 @@ export function AffiliateRegisterButton() {
                 htmlFor="terms1"
                 className="cursor-pointer text-sm leading-none font-normal text-neutral-400 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
               >
-                Estou ciente dos valores e regras do programa
-                de afiliados SubMind.
+                Estou ciente dos valores e regras do programa de afiliados
+                ESG-Group.
               </Label>
             </div>
 

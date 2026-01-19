@@ -26,7 +26,7 @@ export default async function GamePage({ params }: GamePageProps) {
   // Pegamos o slug da URL
   const { slug } = await params;
 
-  // 1. Buscar todos os jogos para encontrar o correto pelo slug
+  // 1. Buscar todos os moveis para encontrar o correto pelo slug
   // (Idealmente, salvaríamos o slug no banco, mas seguindo sua lógica atual:)
   const allGames = await db.select().from(game);
 

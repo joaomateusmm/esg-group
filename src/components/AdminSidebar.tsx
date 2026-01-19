@@ -45,14 +45,14 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
       <SidebarHeader className="flex h-20 justify-center border-b border-white/5 px-6">
         <div className="flex items-center justify-center gap-2 py-6">
           <Image
-            src="/images/icons/logo.png"
+            src="/images/logo.png"
             alt="Logo Sub Mind"
             width={50}
             height={50}
             className="object-cover"
           />
           <span className="font-clash-display text-2xl font-medium">
-            SubMind
+            ESG-Group
           </span>
         </div>
       </SidebarHeader>
@@ -99,16 +99,16 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          {/* Jogos */}
+          {/* moveis */}
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              isActive={pathname.startsWith("/admin/jogos")}
+              isActive={pathname.startsWith("/admin/moveis")}
               className="h-12 text-neutral-400 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#D00000]/10 data-[active=true]:text-[#D00000]"
             >
-              <Link href="/admin/jogos">
+              <Link href="/admin/moveis">
                 <Gamepad2 className="mr-2 h-5 w-5" />
-                <span>Jogos</span>
+                <span>Móveis</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

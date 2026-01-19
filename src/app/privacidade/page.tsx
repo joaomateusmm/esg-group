@@ -57,8 +57,8 @@ export default function PrivacyPolicyPage() {
           <div>
             <p className="text-base leading-relaxed text-neutral-300">
               A sua privacidade é importante para nós. É política da{" "}
-              <strong>SubMind</strong> respeitar a sua privacidade em relação a
-              qualquer informação sua que possamos coletar no site e outros
+              <strong>ESG-Group</strong> respeitar a sua privacidade em relação
+              a qualquer informação sua que possamos coletar no site e outros
               meios que possuímos e operamos.
             </p>
           </div>
