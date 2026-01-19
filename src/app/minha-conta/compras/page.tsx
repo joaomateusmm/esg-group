@@ -4,7 +4,6 @@ import { desc, eq } from "drizzle-orm";
 import {
   CheckCircle2,
   Clock,
-  ExternalLink,
   MapPin,
   Package,
   ShoppingBag,
@@ -16,7 +15,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { DeleteOrderButton } from "@/components/delete-order-button";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { ProductReviewForm } from "@/components/product-review-form";

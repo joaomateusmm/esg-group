@@ -7,7 +7,7 @@ import {
   Loader2,
   LogOut,
   MapPin,
-  Menu,
+  // Menu removido
   Minus,
   Plus,
   Search,
@@ -57,14 +57,19 @@ interface Category {
   href: string;
 }
 
-// Removidas interfaces Game e Streaming
-
 interface Product {
   id: string;
   name: string;
   price: number;
   discountPrice: number | null;
   images: string[] | null;
+}
+
+// Interface auxiliar para o retorno do banco de dados
+interface DbCategory {
+  id: string;
+  name: string;
+  slug: string | null; // Slug pode ser null no banco
 }
 
 // --- COMPONENTE DE ÍCONE ---
@@ -105,7 +110,7 @@ export function Header() {
   const [mounted, setMounted] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
-  // ESTADOS (Removidos games/streamings)
+  // ESTADOS
   const [categories, setCategories] = useState<Category[]>([]);
   const [isAffiliate, setIsAffiliate] = useState(false);
 
@@ -135,13 +140,25 @@ export function Header() {
     setMounted(true);
     const fetchData = async () => {
       try {
-        // Removidas chamadas para getAllGames e getAllStreamings
         const [cats, affStatus] = await Promise.all([
           getAllCategories(),
           checkAffiliateStatus().catch(() => false),
         ]);
 
-        if (Array.isArray(cats)) setCategories(cats);
+        // Correção de tipagem aqui: Forçamos o tipo DbCategory[] para o TS entender
+        // o que está vindo do banco antes de mapear.
+        if (Array.isArray(cats)) {
+          const dbCategories = cats as unknown as DbCategory[];
+
+          const formattedCategories = dbCategories.map((c) => ({
+            label: c.name,
+            // Lógica manual de href como solicitado
+            href: c.slug ? `/categoria/${c.slug}` : `/search?q=${c.name}`,
+          }));
+
+          setCategories(formattedCategories);
+        }
+
         setIsAffiliate(affStatus);
       } catch (error) {
         console.error("Erro ao carregar dados do header", error);
@@ -149,9 +166,6 @@ export function Header() {
     };
     fetchData();
   }, []);
-
-  // ... (Restante do código de estoque, pesquisa e renderização permanece igual)
-  // APENAS GARANTINDO QUE O MOBILE MENU NÃO RECEBA PROPS QUE NÃO EXISTEM MAIS
 
   useEffect(() => {
     const verifyStock = async () => {
@@ -232,14 +246,17 @@ export function Header() {
         quantity: item.quantity,
         image: item.image,
       }));
+
       const result = await createCheckoutSession(checkoutItems);
-      if ("url" in result && result.url) {
-        window.location.href = result.url;
-      } else if ("success" in result && result.success) {
+
+      // Correção da lógica de redirecionamento:
+      // O createCheckoutSession agora retorna { success: true }
+      // Não existe mais result.url (InfinityPay)
+      if (result && result.success) {
         toast.success(
-          language === "pt" ? "Pedido realizado!" : "Order placed!",
+          language === "pt" ? "Iniciando pagamento..." : "Starting checkout...",
         );
-        router.push("/checkout/success");
+        router.push("/checkout");
       }
     } catch (error) {
       console.error(error);
@@ -255,7 +272,7 @@ export function Header() {
 
   return (
     <header className="fixed top-0 z-50 w-full flex-col shadow-sm">
-      {/* ... (Barra Laranja igual) ... */}
+      {/* --- BARRA LARANJA (TOP BAR) --- */}
       <div className="w-full bg-orange-600 px-4 py-2 text-xs font-medium text-white md:px-8">
         <div className="mx-auto flex max-w-[1440px] items-center justify-between">
           <div className="flex items-center gap-4">
@@ -325,17 +342,15 @@ export function Header() {
         </div>
       </div>
 
+      {/* --- BARRA PRINCIPAL (BRANCA) --- */}
       <div className="w-full border-b border-neutral-200 bg-white px-4 py-4 md:px-8">
         <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4 lg:gap-8">
           <div className="flex items-center gap-4">
-            {/* CORREÇÃO NO MOBILE MENU:
-                Removemos as props games={} e streamings={} pois não existem mais.
-                Você precisará ir no arquivo mobile-menu.tsx e remover essas props da interface também se der erro lá.
-            */}
+            {/* MOBILE MENU CORRIGIDO */}
             <MobileMenu
               categories={categories}
-              games={[]} // Passando array vazio para compatibilidade se o componente ainda exigir
-              streamings={[]} // Passando array vazio
+              games={[]}
+              streamings={[]}
               isAffiliate={isAffiliate}
             />
 
@@ -346,9 +361,7 @@ export function Header() {
             </Link>
           </div>
 
-          {/* ... (Resto do Header igual: Barra de Pesquisa, Ícones, etc) ... */}
-          {/* Mantenha o código original daqui para baixo, ele está correto */}
-
+          {/* BARRA DE PESQUISA */}
           <div className="relative max-w-2xl flex-1" ref={searchRef}>
             <div className="flex h-11 w-full items-center rounded-full border border-neutral-300 bg-neutral-50 transition-all focus-within:border-orange-600 focus-within:bg-white focus-within:ring-2 focus-within:ring-orange-100">
               <button className="hidden h-full items-center gap-2 border-r border-neutral-200 px-4 text-sm font-medium whitespace-nowrap text-neutral-600 hover:text-neutral-900 sm:flex">

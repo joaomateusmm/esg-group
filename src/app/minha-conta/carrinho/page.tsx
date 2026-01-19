@@ -75,6 +75,8 @@ export default function CartPage() {
   };
 
   async function handleCheckout() {
+    // 1. Validar Login (se necessário, ou permitir guest checkout)
+    // Se quiser permitir guest, remova este bloco ou ajuste
     if (!session) {
       toast.error("Você precisa estar logado para finalizar a compra.");
       router.push("/authentication");
@@ -100,6 +102,7 @@ export default function CartPage() {
       }
       // ------------------------------------------
 
+      // Prepara os itens para a action
       const checkoutItems = items.map((item) => ({
         id: item.id,
         name: item.name,
@@ -108,19 +111,24 @@ export default function CartPage() {
         image: item.image,
       }));
 
+      // Chama a action (que agora apenas valida e prepara, não gera URL externa)
       const result = await createCheckoutSession(checkoutItems);
 
-      if ("url" in result && result.url) {
-        window.location.href = result.url;
-      } else if ("success" in result && result.success) {
-        toast.success("Pedido realizado com sucesso!");
-        router.push("/checkout/success");
+      // CORREÇÃO AQUI:
+      // O createCheckoutSession agora retorna { success: true } ou lança erro.
+      // Se tiver sucesso, nós redirecionamos para a página interna /checkout
+      if (result && result.success) {
+        router.push("/checkout");
       } else {
         throw new Error("Erro desconhecido ao processar pedido.");
       }
     } catch (error) {
       console.error(error);
-      toast.error("Erro ao processar pagamento. Tente novamente.");
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Erro ao processar pagamento. Tente novamente.");
+      }
     } finally {
       setIsCheckingOut(false);
     }
@@ -129,29 +137,29 @@ export default function CartPage() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-[#010000]">
+    <div className="min-h-screen bg-neutral-50 text-neutral-900">
       <Header />
 
-      <div className="mx-auto max-w-6xl px-4 pt-40 pb-20 md:px-8">
-        <h1 className="font-clash-display mb-8 text-4xl font-medium text-white">
+      <div className="mx-auto max-w-6xl px-4 pt-12 pb-20 md:px-8 lg:pt-16">
+        <h1 className="font-clash-display mb-8 text-4xl font-bold text-neutral-900">
           Seu Carrinho
         </h1>
 
         {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl py-20 text-center">
-            <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-white/5">
-              <ShoppingCart className="h-10 w-10 text-neutral-500" />
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-300 bg-white py-20 text-center shadow-sm">
+            <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-neutral-100">
+              <ShoppingCart className="h-10 w-10 text-neutral-400" />
             </div>
-            <h2 className="text-xl font-medium text-white">
+            <h2 className="text-xl font-bold text-neutral-900">
               Seu carrinho está vazio
             </h2>
-            <p className="mt-2 mb-8 text-neutral-400">
+            <p className="mt-2 mb-8 text-neutral-500">
               Parece que você ainda não adicionou nenhum item.
             </p>
             <Link href="/">
               <Button
                 size="lg"
-                className="bg-[#D00000] text-white hover:bg-[#a00000]"
+                className="bg-orange-600 text-white hover:bg-orange-700"
               >
                 Explorar Catálogo
               </Button>
@@ -163,9 +171,9 @@ export default function CartPage() {
               {items.map((item) => (
                 <div
                   key={item.id}
-                  className="flex flex-col gap-4 rounded-xl border border-white/10 bg-[#0A0A0A] p-4 sm:flex-row sm:items-center"
+                  className="flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center"
                 >
-                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/5">
+                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-neutral-100 bg-neutral-50">
                     {item.image ? (
                       <Image
                         src={item.image}
@@ -175,43 +183,41 @@ export default function CartPage() {
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">
-                        <ShoppingBag className="h-6 w-6 text-neutral-600" />
+                        <ShoppingBag className="h-6 w-6 text-neutral-300" />
                       </div>
                     )}
                   </div>
 
                   <div className="flex flex-1 flex-col justify-between gap-4 sm:flex-row sm:items-center">
                     <div className="space-y-1">
-                      <h3 className="font-medium text-white md:text-lg">
+                      <h3 className="line-clamp-2 font-bold text-neutral-900 md:text-lg">
                         {item.name}
                       </h3>
-                      <p className="text-sm text-neutral-400">
-                        Produto Digital
-                      </p>
+                      <p className="text-sm text-neutral-500">Produto Físico</p>
                     </div>
 
                     <div className="flex items-center justify-between gap-6 sm:justify-end">
-                      <div className="flex items-center rounded-md border border-white/10 bg-white/5">
+                      <div className="flex items-center rounded-md border border-neutral-200 bg-neutral-50">
                         <button
                           onClick={() => updateQuantity(item.id, "decrease")}
-                          className="flex h-8 w-8 items-center justify-center text-neutral-400 hover:text-white disabled:opacity-30"
+                          className="flex h-8 w-8 items-center justify-center text-neutral-500 hover:text-neutral-900 disabled:opacity-30"
                           disabled={item.quantity <= 1}
                         >
                           <Minus className="h-3 w-3" />
                         </button>
-                        <span className="w-8 text-center text-sm font-medium text-white">
+                        <span className="w-8 text-center text-sm font-medium text-neutral-900">
                           {item.quantity}
                         </span>
                         <button
                           onClick={() => updateQuantity(item.id, "increase")}
-                          className="flex h-8 w-8 items-center justify-center text-neutral-400 hover:text-white"
+                          className="flex h-8 w-8 items-center justify-center text-neutral-500 hover:text-neutral-900"
                         >
                           <Plus className="h-3 w-3" />
                         </button>
                       </div>
 
-                      <div className="text-right">
-                        <p className="font-mono text-lg font-bold text-white">
+                      <div className="min-w-[80px] text-right">
+                        <p className="font-mono text-lg font-bold text-neutral-900">
                           {formatPrice(item.price * item.quantity)}
                         </p>
                         {item.quantity > 1 && (
@@ -223,7 +229,7 @@ export default function CartPage() {
 
                       <button
                         onClick={() => removeItem(item.id)}
-                        className="rounded-full p-2 text-neutral-500 transition-colors hover:bg-red-500/10 hover:text-red-500"
+                        className="rounded-full p-2 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-600"
                       >
                         <Trash2 className="h-5 w-5" />
                       </button>
@@ -234,26 +240,28 @@ export default function CartPage() {
             </div>
 
             <div className="h-fit lg:sticky lg:top-32">
-              <Card className="border-white/10 bg-[#0A0A0A]">
+              <Card className="border border-neutral-200 bg-white shadow-lg">
                 <CardContent className="p-6">
-                  <h3 className="font-clash-display mb-4 text-xl font-medium text-white">
+                  <h3 className="mb-4 text-xl font-bold text-neutral-900">
                     Resumo do Pedido
                   </h3>
                   <div className="space-y-3 text-sm">
-                    <div className="flex justify-between text-neutral-400">
+                    <div className="flex justify-between text-neutral-600">
                       <span>Subtotal</span>
-                      <span className="text-white">
+                      <span className="text-neutral-900">
                         {formatPrice(getTotalPrice())}
                       </span>
                     </div>
-                    <div className="flex justify-between text-neutral-400">
-                      <span>Descontos</span>
-                      <span className="text-green-500">- R$ 0,00</span>
+                    <div className="flex justify-between text-neutral-600">
+                      <span>Frete</span>
+                      <span className="text-xs text-neutral-400">
+                        Calculado no checkout
+                      </span>
                     </div>
-                    <Separator className="bg-white/10" />
-                    <div className="flex justify-between text-base font-medium text-white">
-                      <span>Total</span>
-                      <span className="font-mono text-xl text-[#D00000]">
+                    <Separator className="bg-neutral-100" />
+                    <div className="flex justify-between text-base font-bold text-neutral-900">
+                      <span>Total Estimado</span>
+                      <span className="font-mono text-xl text-orange-600">
                         {formatPrice(getTotalPrice())}
                       </span>
                     </div>
@@ -263,20 +271,20 @@ export default function CartPage() {
                     onClick={handleCheckout}
                     disabled={isCheckingOut}
                     size="lg"
-                    className="mt-6 w-full cursor-pointer bg-[#D00000] py-6 text-base font-bold text-white hover:bg-[#a00000] disabled:opacity-70"
+                    className="mt-6 w-full cursor-pointer bg-orange-600 py-6 text-base font-bold text-white hover:bg-orange-700 disabled:bg-neutral-300"
                   >
                     {isCheckingOut ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processando...
+                        Iniciando...
                       </>
                     ) : (
-                      <>Finalizar Compra</>
+                      <>Ir para Pagamento</>
                     )}
                   </Button>
 
-                  <p className="mt-4 text-center text-xs text-neutral-500">
-                    Ambiente 100% seguro. Seus dados estão protegidos.
+                  <p className="mt-4 text-center text-xs text-neutral-400">
+                    Ambiente 100% seguro via Stripe.
                   </p>
                 </CardContent>
               </Card>
@@ -284,7 +292,7 @@ export default function CartPage() {
           </div>
         )}
       </div>
-      <div className="mt-25">
+      <div className="mt-20">
         <Footer />
       </div>
     </div>

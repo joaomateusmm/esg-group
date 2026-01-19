@@ -1,18 +1,15 @@
 "use client";
 
 import {
-  AlertCircle,
   Armchair,
   ChevronRight,
   DollarSign,
-  Gamepad2,
   HelpCircle,
   LayoutGrid,
   Menu,
   MonitorPlay,
   PackageOpen,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";

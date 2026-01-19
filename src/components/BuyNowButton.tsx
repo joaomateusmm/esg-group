@@ -45,7 +45,7 @@ export function BuyNowButton({
   const [showGuestModal, setShowGuestModal] = useState(false);
 
   const { data: session } = authClient.useSession();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   const user = session?.user || initialUser;
 
   const [guestName, setGuestName] = useState("");

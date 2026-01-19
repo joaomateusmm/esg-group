@@ -6,7 +6,8 @@ import {
   Check,
   ChevronLeft,
   ChevronsUpDown,
-  Link as LinkIcon,
+  Package,
+  Ruler,
   X,
 } from "lucide-react";
 import Image from "next/image";
@@ -25,8 +26,6 @@ import {
 } from "@/actions/create-product";
 // Importe suas funções de fetch
 import { getCategories } from "@/app/admin/produtos/new/get-categories";
-import { getGames } from "@/app/admin/produtos/new/get-games";
-import { getStreamings } from "@/app/admin/produtos/new/get-streamings";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -66,40 +65,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { UploadButton } from "@/lib/uploadthing";
 import { cn } from "@/lib/utils";
 
-// --- CONSTANTES ---
-const PAYMENT_METHODS_OPTIONS = [
-  { id: "pix", label: "Pix" },
-  { id: "credit_card", label: "Cartão de Crédito" },
-  { id: "debit_card", label: "Cartão de Débito" },
-  { id: "boleto", label: "Boleto" },
-];
-
 const formSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   description: z.string().optional(),
-  paymentLink: z
-    .union([z.literal(""), z.string().url("URL inválida. Inclua https://")])
-    .optional(),
-  downloadUrl: z
-    .union([z.literal(""), z.string().url("URL inválida. Inclua https://")])
-    .optional(),
   price: z.number().min(0.01, "O preço deve ser maior que R$ 0,00"),
   discountPrice: z.number().optional(),
   categories: z.array(z.string()),
-  streamings: z.array(z.string()),
-  gameId: z.string().optional(),
   status: z.enum(["active", "inactive", "draft"]),
-  deliveryMode: z.enum(["email", "none"]),
-  paymentMethods: z.array(z.string()).refine((value) => value.length > 0, {
-    message: "Selecione pelo menos uma forma de pagamento.",
-  }),
-  stock: z.number(),
+  stock: z.number().min(0),
   isStockUnlimited: z.boolean(),
+  // Campos Físicos
+  sku: z.string().optional(),
+  weight: z.number().min(0, "Peso obrigatório"),
+  width: z.number().int().min(0, "Largura obrigatória"),
+  height: z.number().int().min(0, "Altura obrigatória"),
+  length: z.number().int().min(0, "Comprimento obrigatório"),
 });
 
 type ProductFormValues = z.infer<typeof formSchema>;
@@ -109,23 +93,27 @@ interface OptionData {
   name: string;
 }
 
-interface ProductData {
+// Interface compatível com o retorno do banco (sem campos legados)
+export interface ProductData {
   id: string;
   name: string;
   description?: string | null;
   price: number;
   discountPrice?: number | null;
-  paymentLink?: string | null;
-  downloadUrl?: string | null;
   images?: string[] | null;
   categories?: string[] | null;
-  streamings?: string[] | null;
-  gameId?: string | null;
   status: string;
-  deliveryMode: string;
-  paymentMethods?: string[] | null;
   stock?: number | null;
   isStockUnlimited?: boolean | null;
+  // Campos Físicos
+  sku?: string | null;
+  weight?: number | null;
+  width?: number | null;
+  height?: number | null;
+  length?: number | null;
+  // Campos Opcionais (Legacy) para evitar erro se o banco retornar algo
+  deliveryMode?: unknown;
+  paymentMethods?: unknown;
 }
 
 const formatCurrency = (value: number) => {
@@ -148,8 +136,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
   );
 
   const [categoriesList, setCategoriesList] = useState<OptionData[]>([]);
-  const [gamesList, setGamesList] = useState<OptionData[]>([]);
-  const [streamingsList, setStreamingsList] = useState<OptionData[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   const pageTitle = initialData ? "Editar Produto" : "Adicionar Novo Produto";
@@ -158,16 +144,10 @@ export function ProductForm({ initialData }: ProductFormProps) {
   useEffect(() => {
     async function loadData() {
       try {
-        const [cats, gms, stms] = await Promise.all([
-          getCategories(),
-          getGames(),
-          getStreamings(),
-        ]);
+        const cats = await getCategories();
         setCategoriesList(cats);
-        setGamesList(gms);
-        setStreamingsList(stms);
       } catch {
-        toast.error("Erro ao carregar dados auxiliares.");
+        toast.error("Erro ao carregar categorias.");
       } finally {
         setIsLoadingData(false);
       }
@@ -179,42 +159,38 @@ export function ProductForm({ initialData }: ProductFormProps) {
     ? {
         name: initialData.name,
         description: initialData.description || undefined,
-        paymentLink: initialData.paymentLink || "",
-        downloadUrl: initialData.downloadUrl || "",
         status:
           (initialData.status as "active" | "inactive" | "draft") || "active",
-        deliveryMode: (initialData.deliveryMode as "email" | "none") || "email",
         stock: initialData.stock || 0,
         isStockUnlimited: initialData.isStockUnlimited || false,
+        // Conversão de centavos para reais no formulário
         price: initialData.price ? initialData.price / 100 : 0,
         discountPrice: initialData.discountPrice
           ? initialData.discountPrice / 100
           : undefined,
         categories: initialData.categories || [],
-        streamings: initialData.streamings || [],
-        gameId: initialData.gameId || undefined,
-        paymentMethods: initialData.paymentMethods || [
-          "pix",
-          "credit_card",
-          "debit_card",
-          "boleto",
-        ],
+
+        // Físicos
+        sku: initialData.sku || "",
+        weight: initialData.weight || 0,
+        width: initialData.width || 0,
+        height: initialData.height || 0,
+        length: initialData.length || 0,
       }
     : {
         name: "",
         description: undefined,
-        paymentLink: "",
-        downloadUrl: "",
         status: "active",
-        deliveryMode: "email",
         stock: 0,
         isStockUnlimited: false,
         price: 0,
         discountPrice: undefined,
         categories: [],
-        streamings: [],
-        gameId: undefined,
-        paymentMethods: ["pix", "credit_card", "debit_card", "boleto"],
+        sku: "",
+        weight: 0,
+        width: 0,
+        height: 0,
+        length: 0,
       };
 
   const form = useForm<ProductFormValues>({
@@ -225,9 +201,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
   const watchPrice = form.watch("price");
   const watchDiscountPrice = form.watch("discountPrice");
-  const watchDeliveryMode = form.watch("deliveryMode");
-
-  // --- ADICIONADO: Watch para mostrar/ocultar input de quantidade ---
   const watchIsStockUnlimited = form.watch("isStockUnlimited");
 
   const handlePriceChange = (
@@ -254,14 +227,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
       return;
     }
 
-    if (data.deliveryMode === "email" && !data.downloadUrl) {
-      form.setError("downloadUrl", {
-        message: "Link de download é obrigatório para entrega por email.",
-      });
-      toast.error("Preencha o link do arquivo para entrega automática.");
-      return;
-    }
-
     try {
       const formattedData: ProductServerPayload = {
         name: data.name,
@@ -271,17 +236,18 @@ export function ProductForm({ initialData }: ProductFormProps) {
           data.discountPrice && data.discountPrice > 0
             ? Math.round(data.discountPrice * 100)
             : undefined,
-        gameId: data.gameId,
-        streamings: data.streamings,
         images: uploadedImages,
         categories: data.categories,
         status: data.status,
-        deliveryMode: data.deliveryMode,
-        paymentLink: data.paymentLink === "" ? undefined : data.paymentLink,
-        downloadUrl: data.downloadUrl === "" ? undefined : data.downloadUrl,
-        paymentMethods: data.paymentMethods,
         stock: data.stock,
         isStockUnlimited: data.isStockUnlimited,
+
+        // Físicos
+        sku: data.sku,
+        weight: data.weight,
+        width: data.width,
+        height: data.height,
+        length: data.length,
       };
 
       if (initialData) {
@@ -360,7 +326,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                       </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Ex: Combo Netflix + Disney"
+                          placeholder="Ex: Cadeira Gamer"
                           className="border-white/10 bg-white/5 text-white"
                           {...field}
                         />
@@ -387,31 +353,134 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     </FormItem>
                   )}
                 />
+              </CardContent>
+            </Card>
 
+            {/* Informações Logísticas */}
+            <Card className="border-white/10 bg-[#0A0A0A]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Package className="h-5 w-5" /> Informações Logísticas
+                </CardTitle>
+                <CardDescription>
+                  Necessário para o cálculo de frete.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="paymentLink"
+                  name="sku"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2 text-white">
-                        <LinkIcon className="h-4 w-4" /> Link de Pagamento
-                        Externo (Opcional)
-                      </FormLabel>
+                      <FormLabel className="text-white">SKU (Código)</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Ex: https://pag.seguro/..."
+                          placeholder="Ex: PROD-001"
                           className="border-white/10 bg-white/5 text-white"
                           {...field}
-                          value={field.value ?? ""}
                         />
                       </FormControl>
-                      <FormDescription className="text-xs text-neutral-400">
-                        Caso utilize um checkout externo.
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="weight"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white">Peso (kg)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.001"
+                            placeholder="0.000"
+                            className="border-white/10 bg-white/5 text-white"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(parseFloat(e.target.value))
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="width"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1 text-white">
+                          <Ruler className="h-3 w-3" /> Largura (cm)
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            className="border-white/10 bg-white/5 text-white"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(parseInt(e.target.value))
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="height"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1 text-white">
+                          <Ruler className="h-3 w-3 rotate-90" /> Altura (cm)
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            className="border-white/10 bg-white/5 text-white"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(parseInt(e.target.value))
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="length"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1 text-white">
+                          <Ruler className="h-3 w-3" /> Comp. (cm)
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            className="border-white/10 bg-white/5 text-white"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(parseInt(e.target.value))
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </CardContent>
             </Card>
 
@@ -489,151 +558,10 @@ export function ProductForm({ initialData }: ProductFormProps) {
                 )}
               </CardContent>
             </Card>
-
-            {/* Configurações de Venda */}
-            <Card className="border-white/10 bg-[#0A0A0A]">
-              <CardHeader>
-                <CardTitle className="text-white">
-                  Configurações de Venda
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="deliveryMode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white">
-                        Modo de Entrega
-                      </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-12 border-white/10 bg-white/5 text-white [&_.delivery-desc]:hidden">
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="border-white/10 bg-[#111] text-white">
-                          <SelectItem
-                            value="email"
-                            className="cursor-pointer py-3 focus:bg-white/10 focus:text-white"
-                          >
-                            <div className="flex flex-col gap-1 text-left">
-                              <span className="font-medium">
-                                Entrega por Email
-                              </span>
-                              <span className="delivery-desc text-xs text-neutral-400">
-                                Receba o seu pacote por Email imediatamente após
-                                o pagamento.
-                              </span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem
-                            value="none"
-                            className="cursor-pointer py-3 focus:bg-white/10 focus:text-white"
-                          >
-                            <div className="flex flex-col gap-1 text-left">
-                              <span className="font-medium">Não informar</span>
-                              <span className="delivery-desc text-xs text-neutral-400">
-                                Não exibe informações de entrega.
-                              </span>
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {watchDeliveryMode === "email" && (
-                  <FormField
-                    control={form.control}
-                    name="downloadUrl"
-                    render={({ field }) => (
-                      <FormItem className="animate-in fade-in slide-in-from-top-2">
-                        <FormLabel className="flex items-center gap-2 text-white">
-                          <LinkIcon className="h-4 w-4 text-[#D00000]" /> Link
-                          do Arquivo (Download)
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Ex: https://drive.google.com/..."
-                            className="border-white/10 bg-white/5 text-white"
-                            {...field}
-                            value={field.value ?? ""}
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs text-neutral-400">
-                          Enviado automaticamente após a compra.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                <Separator className="bg-white/10" />
-
-                <FormField
-                  control={form.control}
-                  name="paymentMethods"
-                  render={() => (
-                    <FormItem>
-                      <div className="mb-4">
-                        <FormLabel className="text-white">
-                          Formas de Pagamento Aceitas
-                        </FormLabel>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        {PAYMENT_METHODS_OPTIONS.map((item) => (
-                          <FormField
-                            key={item.id}
-                            control={form.control}
-                            name="paymentMethods"
-                            render={({ field }) => (
-                              <FormItem
-                                key={item.id}
-                                className="flex flex-row items-start space-y-0 space-x-3 rounded-md border border-white/10 bg-white/5 p-4"
-                              >
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value?.includes(item.id)}
-                                    onCheckedChange={(checked) =>
-                                      checked
-                                        ? field.onChange([
-                                            ...field.value,
-                                            item.id,
-                                          ])
-                                        : field.onChange(
-                                            field.value?.filter(
-                                              (value) => value !== item.id,
-                                            ),
-                                          )
-                                    }
-                                    className="border-white/50 data-[state=checked]:border-[#D00000] data-[state=checked]:bg-[#D00000]"
-                                  />
-                                </FormControl>
-                                <FormLabel className="w-full cursor-pointer text-sm font-normal text-white">
-                                  {item.label}
-                                </FormLabel>
-                              </FormItem>
-                            )}
-                          />
-                        ))}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
           </div>
 
           <div className="space-y-8">
-            {/* Organização (Categorias + Jogo + Streamings) */}
+            {/* Organização */}
             <Card className="border-white/10 bg-[#0A0A0A]">
               <CardHeader>
                 <CardTitle className="text-white">Organização</CardTitle>
@@ -665,7 +593,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
                   )}
                 />
 
-                {/* --- SELETOR DE CATEGORIAS (Múltipla Escolha) --- */}
                 <FormField
                   control={form.control}
                   name="categories"
@@ -746,177 +673,10 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     </FormItem>
                   )}
                 />
-
-                {/* --- SELETOR DE JOGO (Única Escolha) --- */}
-                <FormField
-                  control={form.control}
-                  name="gameId"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel className="text-white">
-                        Jogo Relacionado (Opcional)
-                      </FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              disabled={isLoadingData}
-                              className={cn(
-                                "justify-between border-white/10 bg-white/5 text-left font-normal text-white hover:bg-white/10 hover:text-white",
-                                !field.value
-                                  ? "text-neutral-400"
-                                  : "text-white",
-                              )}
-                            >
-                              {field.value
-                                ? gamesList.find((g) => g.id === field.value)
-                                    ?.name
-                                : "Selecione um jogo..."}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] border-white/10 bg-[#111] p-0 text-white">
-                          <Command className="bg-[#111] text-white">
-                            <CommandInput
-                              placeholder="Buscar jogo..."
-                              className="border-none focus:ring-0"
-                            />
-                            <CommandList>
-                              <CommandEmpty>
-                                Nenhum jogo encontrado.
-                              </CommandEmpty>
-                              <CommandGroup>
-                                <CommandItem
-                                  value="none"
-                                  onSelect={() =>
-                                    form.setValue("gameId", undefined)
-                                  }
-                                  className="cursor-pointer text-neutral-400 hover:bg-white/10"
-                                >
-                                  Nenhum (Limpar)
-                                </CommandItem>
-                                {gamesList.map((game) => (
-                                  <CommandItem
-                                    key={game.id}
-                                    value={game.name}
-                                    onSelect={() =>
-                                      form.setValue("gameId", game.id)
-                                    }
-                                    className="cursor-pointer hover:bg-white/10 aria-selected:bg-white/10"
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        field.value === game.id
-                                          ? "opacity-100"
-                                          : "opacity-0",
-                                      )}
-                                    />
-                                    {game.name}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* --- SELETOR DE STREAMINGS (Múltipla Escolha) --- */}
-                <FormField
-                  control={form.control}
-                  name="streamings"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel className="text-white">
-                        Streamings Relacionados (Opcional)
-                      </FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              disabled={isLoadingData}
-                              className={cn(
-                                "justify-between border-white/10 bg-white/5 text-left font-normal text-white hover:bg-white/10 hover:text-white",
-                                !field.value || field.value.length === 0
-                                  ? "text-neutral-400"
-                                  : "text-white",
-                              )}
-                            >
-                              {field.value && field.value.length > 0
-                                ? `${field.value.length} selecionada(s)`
-                                : "Selecione streamings..."}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] border-white/10 bg-[#111] p-0 text-white">
-                          <Command className="bg-[#111] text-white">
-                            <CommandInput
-                              placeholder="Buscar streaming..."
-                              className="border-none focus:ring-0"
-                            />
-                            <CommandList>
-                              <CommandEmpty>
-                                Nenhum streaming encontrado.
-                              </CommandEmpty>
-                              <CommandGroup>
-                                {streamingsList.map((stream) => (
-                                  <CommandItem
-                                    key={stream.id}
-                                    value={stream.name}
-                                    onSelect={() => {
-                                      const current = field.value || [];
-                                      const isSelected = current.includes(
-                                        stream.id,
-                                      );
-                                      form.setValue(
-                                        "streamings",
-                                        isSelected
-                                          ? current.filter(
-                                              (id) => id !== stream.id,
-                                            )
-                                          : [...current, stream.id],
-                                      );
-                                    }}
-                                    className="cursor-pointer hover:bg-white/10 aria-selected:bg-white/10"
-                                  >
-                                    <div
-                                      className={cn(
-                                        "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-white/30",
-                                        field.value?.includes(stream.id)
-                                          ? "border-[#D00000] bg-[#D00000]"
-                                          : "opacity-50",
-                                      )}
-                                    >
-                                      {field.value?.includes(stream.id) && (
-                                        <Check className="h-3 w-3 text-white" />
-                                      )}
-                                    </div>
-                                    {stream.name}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </CardContent>
             </Card>
 
-            {/* ESTOQUE (ADICIONADO) */}
+            {/* ESTOQUE */}
             <Card className="border-white/10 bg-[#0A0A0A]">
               <CardHeader>
                 <CardTitle className="text-white">Estoque</CardTitle>
