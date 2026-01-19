@@ -9,6 +9,7 @@ import { Toaster } from "sonner";
 import { CouponPopup } from "@/components/coupon-popup"; // Importe o componente que criamos
 import FloatingScrollbar from "@/components/FloatingScrollbar";
 import SmoothScroll from "@/components/SmoothScroll";
+import { LanguageProvider } from "@/contexts/language-context";
 import { db } from "@/db"; // Importe seu db
 import { coupon } from "@/db/schema"; // Importe o schema
 
@@ -40,7 +41,7 @@ const clash = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "SubMind - Loja Virtual",
+  title: "ESG Group - Ecommerce",
   description:
     "A melhor loja de Citizens, Configs Privadas e Mod Sons premium, oferecendo soluções inovadoras e de alta qualidade para melhorar a sua experiencia de jogo.",
 };
@@ -86,13 +87,15 @@ export default async function RootLayout({
         suppressHydrationWarning={true}
         className={`${geistSans.variable} ${geistMono.variable} ${montserrat.variable} ${clash.variable} antialiased`}
       >
-        <FloatingScrollbar />
-        <SmoothScroll>{children}</SmoothScroll>
+        <LanguageProvider>
+          <FloatingScrollbar />
+          <SmoothScroll>{children}</SmoothScroll>
 
-        {/* Inserimos o Pop-up aqui, passando os dados */}
-        <CouponPopup coupon={activePromo} />
+          {/* Inserimos o Pop-up aqui, passando os dados */}
+          <CouponPopup coupon={activePromo} />
 
-        <Toaster position="top-left" />
+          <Toaster position="top-left" />
+        </LanguageProvider>
       </body>
     </html>
   );

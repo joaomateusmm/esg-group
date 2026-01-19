@@ -8,55 +8,55 @@ import { TestimonialsColumn } from "@/components/ui/testimonials-columns-1";
 const testimonials = [
   {
     text: "Muito Bom",
-    image: "/images/avatar/avatar1.webp", // Caminho corrigido
+    image: "/images/avatar/", // Caminho corrigido
     name: "again7r",
     role: "12/12/2025",
   },
   {
     text: "Muito boa a config, obrigado",
-    image: "/images/avatar/avatar2.webp", // Assumindo que tens avatar2.png
+    image: "/images/avatar/", // Assumindo que tens avatar2.png
     name: "silva_lispo",
     role: "14/10/2025",
   },
   {
     text: "Muito bom, estão de parabens.",
-    image: "/images/avatar/avatar3.webp",
+    image: "/images/avatar/",
     name: "silva_lispo",
     role: "14/10/2025",
   },
   {
     text: "Som bem dms",
-    image: "/images/avatar/avatar4.webp",
+    image: "/images/avatar/",
     name: "lavinia.lovs",
     role: "12/10/2025",
   },
   {
     text: "Curti bastante é realmente o do goat nota1000",
-    image: "/images/avatar/avatar5.webp",
+    image: "/images/avatar/",
     name: "octavio_barbosa",
     role: "08/10/2025",
   },
   {
     text: "Muito bom mano",
-    image: "/images/avatar/avatar6.webp",
+    image: "/images/avatar/",
     name: "jnzin24fps",
     role: "08/10/2025",
   },
   {
     text: "Slc muito bom",
-    image: "/images/avatar/avatar7.webp",
+    image: "/images/avatar/",
     name: "driftdynamo",
     role: "08/10/2025",
   },
   {
     text: "vamo ver se eu consigo ganhar tbm kkkkkkkk",
-    image: "/images/avatar/avatar8.webp",
+    image: "/images/avatar/",
     name: "kamp",
     role: "07/10/2025",
   },
   {
     text: "Chegou tudo certo no email, vlwww dms",
-    image: "/images/avatar/avatar9.webp",
+    image: "/images/avatar/",
     name: "yuteus26",
     role: "05/01/2026",
   },
@@ -68,7 +68,7 @@ const thirdColumn = testimonials.slice(6, 9);
 
 const TestimonialsSection = () => {
   return (
-    <section className="relative my-20 bg-[#010000]">
+    <section className="relative my-20">
       <div className="z-10 container mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

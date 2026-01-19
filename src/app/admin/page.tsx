@@ -13,7 +13,6 @@ import {
 
 import { RevenueChart } from "@/components/admin/revenue-chart";
 // IMPORTANTE: Importe o novo gráfico de vendas
-import { SalesChart } from "@/components/admin/sales-chart";
 import { db } from "@/db";
 import {
   category,
@@ -266,11 +265,6 @@ export default async function AdminDashboard() {
         {/* GRÁFICO 1: RECEITA */}
         <div className="w-full rounded-xl border border-white/10 bg-[#0A0A0A] p-6">
           <RevenueChart data={revenueChartData} />
-        </div>
-
-        {/* GRÁFICO 2: VENDAS (Agora funcional!) */}
-        <div className="w-full rounded-xl border border-white/10 bg-[#0A0A0A] p-6">
-          <SalesChart data={salesChartData} />
         </div>
       </div>
     </div>

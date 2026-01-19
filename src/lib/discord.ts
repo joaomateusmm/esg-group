@@ -1,5 +1,5 @@
 const DISCORD_WEBHOOK_URL =
-  "https://discord.com/api/webhooks/1461368457265152098/lnpj5aBB5fpz8XhHEOvr6-B9w7G8C4wdDZTNMj2bpa7HnnAejkKfDYfaI8cYDcA1UI-K";
+  "https://discord.com/api/webhooks/1451682241825607850/DCfDUOZ2J0V6KqHt4jZu4bvlyA9HQ5PmEfz8LfVVxS4xZxkTb9v14rRcATwK18MUj1Ir';";
 
 export async function sendReviewToDiscord(
   userName: string,
