@@ -12,17 +12,40 @@ interface Item {
   image?: string;
 }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-12-15.clover" as unknown as Stripe.LatestApiVersion,
-  typescript: true,
-});
+// Inicializa o Stripe
+const stripeSecret = process.env.STRIPE_SECRET_KEY;
 
-// Valor fixo de frete para teste (R$ 15,00)
+// Valor fixo de frete (R$ 15,00)
 const FIXED_SHIPPING_COST = 1500;
 
 export async function POST(req: Request) {
   try {
-    const { items, currency, shippingAddress } = await req.json();
+    // 1. Validação da Chave do Stripe
+    if (!stripeSecret) {
+      console.error(
+        "❌ STRIPE_SECRET_KEY não definida nas variáveis de ambiente.",
+      );
+      return NextResponse.json(
+        { error: "Erro de configuração do servidor (Stripe Key Missing)" },
+        { status: 500 },
+      );
+    }
+
+    const stripe = new Stripe(stripeSecret, {
+      // CORREÇÃO: Isso resolve o erro de lint "Unexpected any"
+      apiVersion: "2025-02-24.acacia" as unknown as Stripe.LatestApiVersion,
+      typescript: true,
+    });
+
+    // 2. Leitura do Body
+    const body = await req.json();
+    const { items, currency, shippingAddress } = body;
+
+    // Log para ver o que chegou (ajuda no debug)
+    console.log(
+      "📦 Payment Intent Iniciado. Endereço recebido:",
+      !!shippingAddress,
+    );
 
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -44,7 +67,7 @@ export async function POST(req: Request) {
     // Soma o frete ao total
     const totalAmount = itemsTotal + FIXED_SHIPPING_COST;
 
-    // Minifica os itens para caber nos metadados (limite 500 chars)
+    // Minifica os itens para caber nos metadados
     const itemsMinified = items.map((i: Item) => ({
       id: i.id,
       name: i.name,
@@ -53,25 +76,28 @@ export async function POST(req: Request) {
       image: i.image,
     }));
 
-    // Sanitiza o endereço para garantir que não quebre o JSON
+    // 3. Sanitização Segura do Endereço
+    // Se shippingAddress for undefined, usamos {} para não quebrar o código
+    const rawAddress = shippingAddress || {};
+
     const sanitizedAddress = {
-      street: shippingAddress.street || "",
-      number: shippingAddress.number || "",
-      complement: shippingAddress.complement || "",
-      city: shippingAddress.city || "",
-      state: shippingAddress.state || "",
-      zipCode: shippingAddress.zipCode || "",
-      country: shippingAddress.country || "BR",
+      street: rawAddress.street || "Não informado",
+      number: rawAddress.number || "S/N",
+      complement: rawAddress.complement || "",
+      city: rawAddress.city || "",
+      state: rawAddress.state || "",
+      zipCode: rawAddress.zipCode || "",
+      country: rawAddress.country || "BR",
     };
 
+    // Cria a intenção de pagamento
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: totalAmount, // Valor TOTAL (Produtos + Frete)
+      amount: totalAmount,
       currency: currency || "brl",
       automatic_payment_methods: { enabled: true },
       metadata: {
         userId: session.user.id,
         itemsJson: JSON.stringify(itemsMinified).substring(0, 499),
-        // Enviamos o endereço e o custo do frete nos metadados
         shippingAddressJson: JSON.stringify(sanitizedAddress),
         shippingCost: FIXED_SHIPPING_COST.toString(),
       },
@@ -79,9 +105,14 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ clientSecret: paymentIntent.client_secret });
   } catch (error) {
-    console.error("Erro ao processar pagamento no Stripe:", error);
+    // Log detalhado do erro para o Vercel Logs
+    console.error("❌ Erro CRÍTICO ao criar Payment Intent:", error);
+
+    const errorMessage =
+      error instanceof Error ? error.message : "Erro desconhecido";
+
     return NextResponse.json(
-      { error: "Erro ao criar pagamento" },
+      { error: `Erro ao processar pagamento: ${errorMessage}` },
       { status: 500 },
     );
   }
