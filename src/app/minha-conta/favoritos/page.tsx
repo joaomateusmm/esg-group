@@ -1,16 +1,16 @@
 "use client";
 
-import { Heart, ShoppingBag, ShoppingCart, Trash2 } from "lucide-react"; 
+import { Heart, ShoppingBag, ShoppingCart, Trash2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
+import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart-store";
-import { useWishlistStore, WishlistItem } from "@/store/wishlist-store"; 
+import { useWishlistStore, WishlistItem } from "@/store/wishlist-store";
 
 export default function WishlistPage() {
   const [mounted, setMounted] = useState(false);

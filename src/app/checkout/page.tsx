@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { StripeCheckout } from "@/components/checkout/stripe-checkout";
 import { Footer } from "@/components/Footer"; // Verifique se o caminho do seu Footer está correto
-import { Header } from "@/components/Header";
+import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart-store";
 

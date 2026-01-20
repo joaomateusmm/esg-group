@@ -16,7 +16,7 @@ import { redirect } from "next/navigation";
 
 import { DashboardGrid } from "@/components/dashboard-grid";
 import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
+import { Header } from "@/components/header";
 import { SignOutButton } from "@/components/sign-out-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";

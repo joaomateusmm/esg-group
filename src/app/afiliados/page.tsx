@@ -6,7 +6,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
+import { Header } from "@/components/header";
 import { SpotlightCard } from "@/components/spotlight-card";
 import { db } from "@/db";
 import { user } from "@/db/schema";

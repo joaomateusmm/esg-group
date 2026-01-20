@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { checkStockAvailability } from "@/actions/check-stock";
 import { createCheckoutSession } from "@/actions/checkout";
 import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
+import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";

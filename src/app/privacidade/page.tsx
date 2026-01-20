@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
+import { Header } from "@/components/header";
 import { SpotlightCard } from "@/components/spotlight-card";
 
 export default function PrivacyPolicyPage() {

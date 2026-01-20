@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
@@ -6,8 +6,18 @@ import Stripe from "stripe";
 import { db } from "@/db";
 import { order, orderItem, product } from "@/db/schema";
 
+// Interface para os itens recuperados dos metadados
+interface WebhookItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image?: string;
+}
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-12-15.clover", // Ajuste se necessário para sua versão
+  // Correção do 'as any' para 'as unknown as ...' para evitar o erro de lint
+  apiVersion: "2025-12-15.clover" as unknown as Stripe.LatestApiVersion,
   typescript: true,
 });
 
@@ -20,16 +30,7 @@ export async function POST(req: Request) {
   let event: Stripe.Event;
 
   try {
-    if (!webhookSecret) {
-      // Se não tiver secret (ex: desenvolvimento local sem CLI), tenta parsear direto
-      // PERIGO: Apenas para debug local rápido, em produção precisa do secret
-      console.warn(
-        "⚠️ STRIPE_WEBHOOK_SECRET ausente. Validando sem assinatura (DEV ONLY).",
-      );
-      event = JSON.parse(body);
-    } else {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-    }
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err) {
     console.error(`❌ Erro Webhook: ${(err as Error).message}`);
     return new NextResponse(`Webhook Error: ${(err as Error).message}`, {
@@ -37,44 +38,43 @@ export async function POST(req: Request) {
     });
   }
 
-  // --- Processar Evento: Pagamento Bem-sucedido ---
   if (event.type === "payment_intent.succeeded") {
     const paymentIntent = event.data.object as Stripe.PaymentIntent;
-
-    // Recuperamos os metadados que enviamos na criação do PaymentIntent
-    // Precisamos garantir que enviamos isso na rota /api/create-payment-intent
-    const { userId, itemsJson, shippingAddressJson } = paymentIntent.metadata;
+    const { userId, itemsJson, shippingAddressJson, shippingCost } =
+      paymentIntent.metadata;
 
     if (!userId || !itemsJson) {
-      console.error("❌ Metadados incompletos no PaymentIntent");
+      console.error("❌ Metadados incompletos");
       return new NextResponse("Metadados inválidos", { status: 400 });
     }
 
-    const items = JSON.parse(itemsJson);
+    // Tipamos o JSON.parse com a interface criada
+    const items = JSON.parse(itemsJson) as WebhookItem[];
+
+    // Parse seguro do endereço e conversão do frete
     const shippingAddress = shippingAddressJson
       ? JSON.parse(shippingAddressJson)
       : null;
-
-    console.log(`💰 Pagamento recebido! Criando pedido para User: ${userId}`);
+    const shippingCostValue = shippingCost ? parseInt(shippingCost) : 0;
 
     try {
-      // 1. Criar o Pedido
+      // 1. Criar o Pedido com os dados corretos
       const [newOrder] = await db
         .insert(order)
         .values({
           userId: userId,
-          amount: paymentIntent.amount, // Valor em centavos
-          status: "paid", // Já nasce pago
+          amount: paymentIntent.amount, // Valor total pago (já inclui o frete)
+          status: "paid",
           stripePaymentIntentId: paymentIntent.id,
           stripeClientSecret: paymentIntent.client_secret,
-          shippingAddress: shippingAddress,
-          shippingCost: 0, // Se tiver frete separado, precisa vir nos metadados também
+          shippingAddress: shippingAddress, // Salva o JSON completo do endereço
+          shippingCost: shippingCostValue, // Salva o valor do frete separado
         })
         .returning();
 
-      // 2. Criar os Itens do Pedido
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const orderItemsData = items.map((item: any) => ({
+      // 2. Criar Itens
+      // Agora 'item' é inferido como WebhookItem, não precisamos de 'any'
+      const orderItemsData = items.map((item) => ({
         orderId: newOrder.id,
         productId: item.id,
         productName: item.name,
@@ -85,8 +85,7 @@ export async function POST(req: Request) {
 
       await db.insert(orderItem).values(orderItemsData);
 
-      // 3. Baixar Estoque
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // 3. Atualizar Estoque
       for (const item of items) {
         await db
           .update(product)
@@ -101,16 +100,12 @@ export async function POST(req: Request) {
           );
       }
 
-      console.log(`✅ Pedido #${newOrder.id} criado com sucesso!`);
       return NextResponse.json({ received: true });
     } catch (error) {
-      console.error("❌ Erro ao salvar pedido no banco:", error);
-      return new NextResponse("Erro interno ao salvar pedido", { status: 500 });
+      console.error("❌ Erro ao salvar pedido:", error);
+      return new NextResponse("Erro interno", { status: 500 });
     }
   }
 
   return NextResponse.json({ received: true });
 }
-
-// Helper para o 'and' do drizzle que esqueci no import acima
-import { and } from "drizzle-orm";

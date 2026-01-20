@@ -10,7 +10,7 @@ import { notFound } from "next/navigation";
 
 import { DeleteReviewButton } from "@/components/delete-review-button";
 import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
+import { Header } from "@/components/header";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductPurchaseCard } from "@/components/product-purchase-card";
 import { db } from "@/db";

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
+import { Header } from "@/components/header";
 import { db } from "@/db";
 import {
   product as productTable,
