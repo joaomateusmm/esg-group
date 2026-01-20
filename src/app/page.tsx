@@ -11,19 +11,15 @@ export default function Home() {
     <div className="font-montserrat relative flex min-h-screen flex-col overflow-x-hidden bg-[#FFFFFF] text-neutral-900">
       {/* Adicionei o Header aqui para ficar completo, se não precisar, pode remover */}
       <Header />
-
       {/* AQUI ESTÁ A CORREÇÃO: Usar HeroBanners em vez de BannerCard */}
-      <HeroBanners />
-
+      <HeroBanners /> fix
       <div className="mt-28" id="catalogo">
         <ProductCatalog />
       </div>
-
       {/* AJUSTE AQUI: Padding responsivo progressivo */}
       <div className="mx-auto w-full max-w-7xl px-4 md:px-8 lg:px-12">
         <StatsSection />
       </div>
-
       <TestimonialsSection />
       <FaqSection />
       <Footer />
