@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react"; // Importe Suspense
 
 import { Footer } from "@/components/Footer";
-import { Header } from "@/components/header";
+import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart-store";
 

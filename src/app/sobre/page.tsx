@@ -2,7 +2,7 @@ import { Calendar, Gamepad2, ShieldCheck, Zap } from "lucide-react";
 import Link from "next/link";
 
 import { Footer } from "@/components/Footer";
-import { Header } from "@/components/header";
+import { Header } from "@/components/Header";
 import { SpotlightCard } from "@/components/spotlight-card";
 import { Button } from "@/components/ui/button";
 

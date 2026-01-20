@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Footer } from "@/components/Footer";
-import { Header } from "@/components/header";
+import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart-store";
 import { useWishlistStore, WishlistItem } from "@/store/wishlist-store";

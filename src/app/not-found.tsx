@@ -3,7 +3,7 @@
 import { ChevronLeft, Home } from "lucide-react";
 import Link from "next/link";
 
-import { Header } from "@/components/header";
+import { Header } from "@/components/Header";
 import Silk from "@/components/Silk";
 import { Button } from "@/components/ui/button";
 

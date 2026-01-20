@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 import { OrderCard } from "@/components/account/order-card";
 import { OrderTabs } from "@/components/account/order-tabs";
 import { Footer } from "@/components/Footer";
-import { Header } from "@/components/header";
+import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { db } from "@/db";
 import { order, orderItem, product } from "@/db/schema";

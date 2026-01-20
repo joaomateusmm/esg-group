@@ -1,6 +1,6 @@
 import FaqSection from "@/components/FaqSection";
 import { Footer } from "@/components/Footer";
-import { Header } from "@/components/header"; // Suponho que você queira o Header aqui também
+import { Header } from "@/components/Header"; // Suponho que você queira o Header aqui também
 import { HeroBanners } from "@/components/hero-banners"; // <--- Importe o HeroBanners
 import ProductCatalog from "@/components/ProductCatalog";
 import { StatsSection } from "@/components/stats-section";
