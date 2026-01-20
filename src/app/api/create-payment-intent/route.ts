@@ -1,42 +1,66 @@
+import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
-// Interface para definir o formato do item e garantir tipagem
+import { auth } from "@/lib/auth"; // Importe seu auth
+
 interface Item {
+  id: string; // Adicionado ID
+  name: string; // Adicionado Nome
   price: number;
   quantity: number;
+  image?: string; // Adicionado Imagem
 }
 
-// Inicialize o Stripe com sua chave secreta
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  // Correção: Removemos o 'as any'.
-  // Se aparecer um sublinhado vermelho aqui, execute: npm install stripe@latest
-  apiVersion: "2025-12-15.clover",
+  apiVersion: "2025-12-15.clover", // Ou a versão que estiver usando
   typescript: true,
 });
 
 export async function POST(req: Request) {
   try {
-    const { items, currency } = await req.json();
+    const { items, currency, shippingAddress } = await req.json();
 
-    // Cálculo do total no servidor (Segurança)
+    // Pegar o usuário logado para vincular o pedido
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "Usuário não autenticado" },
+        { status: 401 },
+      );
+    }
+
     const amount = items.reduce(
       (acc: number, item: Item) => acc + item.price * item.quantity,
       0,
     );
 
-    // Criar o PaymentIntent
+    const itemsMinified = items.map((i: Item) => ({
+      id: i.id,
+      name: i.name,
+      price: i.price,
+      quantity: i.quantity,
+      image: i.image,
+    }));
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amount,
       currency: currency || "brl",
       automatic_payment_methods: { enabled: true },
+      // AQUI ESTÁ O SEGREDO: Enviamos dados para recuperar no Webhook
+      metadata: {
+        userId: session.user.id,
+        itemsJson: JSON.stringify(itemsMinified).substring(0, 499), // Cuidado com limite
+        shippingAddressJson: JSON.stringify(shippingAddress || {}),
+      },
     });
 
     return NextResponse.json({ clientSecret: paymentIntent.client_secret });
   } catch (error) {
-    // Log do erro para depuração
     console.error("Erro ao processar pagamento no Stripe:", error);
-
     return NextResponse.json(
       { error: "Erro ao criar pagamento" },
       { status: 500 },
