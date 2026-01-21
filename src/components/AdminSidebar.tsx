@@ -8,6 +8,7 @@ import {
   Package,
   Star,
   TicketPercent,
+  Truck,
   TvMinimalPlay,
   Users,
 } from "lucide-react";
@@ -70,6 +71,19 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
               <Link href="/admin">
                 <LayoutDashboard className="mr-2 h-5 w-5" />
                 <span>Dashboard</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          {/* Dashboard */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname === "/admin/pedidos"}
+              className="h-12 text-neutral-400 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#D00000]/10 data-[active=true]:text-[#D00000]"
+            >
+              <Link href="/admin/pedidos">
+                <Truck className="mr-2 h-5 w-5" />
+                <span>Pedidos </span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

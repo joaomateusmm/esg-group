@@ -6,7 +6,7 @@ import Stripe from "stripe";
 import { db } from "@/db";
 import { order, orderItem, product } from "@/db/schema";
 
-// Interface para os itens recuperados dos metadados
+// Interface para os itens
 interface WebhookItem {
   id: string;
   name: string;
@@ -16,8 +16,7 @@ interface WebhookItem {
 }
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  // Correção do 'as any' para 'as unknown as ...' para evitar o erro de lint
-  apiVersion: "2025-12-15.clover" as unknown as Stripe.LatestApiVersion,
+  apiVersion: "2025-02-24.acacia" as unknown as Stripe.LatestApiVersion,
   typescript: true,
 });
 
@@ -48,32 +47,53 @@ export async function POST(req: Request) {
       return new NextResponse("Metadados inválidos", { status: 400 });
     }
 
-    // Tipamos o JSON.parse com a interface criada
     const items = JSON.parse(itemsJson) as WebhookItem[];
-
-    // Parse seguro do endereço e conversão do frete
-    const shippingAddress = shippingAddressJson
-      ? JSON.parse(shippingAddressJson)
-      : null;
     const shippingCostValue = shippingCost ? parseInt(shippingCost) : 0;
 
+    // --- LÓGICA DE RECUPERAÇÃO DE ENDEREÇO (AQUI ESTÁ A CORREÇÃO) ---
+    // 1. Tenta pegar dos metadados (se o seu front enviou)
+    let finalAddress = shippingAddressJson
+      ? JSON.parse(shippingAddressJson)
+      : null;
+
+    // 2. Se não tiver nos metadados (ou for "Não informado"), pega do objeto nativo do Stripe
+    // Isso acontece quando o usuário preenche o endereço no próprio formulário do Stripe
+    if (
+      !finalAddress ||
+      !finalAddress.street ||
+      finalAddress.street === "Não informado"
+    ) {
+      if (paymentIntent.shipping?.address) {
+        const stripeAddr = paymentIntent.shipping.address;
+        finalAddress = {
+          street: stripeAddr.line1 || "Endereço Stripe",
+          number: "", // O Stripe muitas vezes junta numero e rua no line1
+          complement: stripeAddr.line2 || "",
+          city: stripeAddr.city || "",
+          state: stripeAddr.state || "",
+          zipCode: stripeAddr.postal_code || "",
+          country: stripeAddr.country || "BR",
+        };
+        console.log("📦 Endereço recuperado do objeto Shipping do Stripe.");
+      }
+    }
+
     try {
-      // 1. Criar o Pedido com os dados corretos
+      // 1. Criar o Pedido
       const [newOrder] = await db
         .insert(order)
         .values({
           userId: userId,
-          amount: paymentIntent.amount, // Valor total pago (já inclui o frete)
+          amount: paymentIntent.amount,
           status: "paid",
           stripePaymentIntentId: paymentIntent.id,
           stripeClientSecret: paymentIntent.client_secret,
-          shippingAddress: shippingAddress, // Salva o JSON completo do endereço
-          shippingCost: shippingCostValue, // Salva o valor do frete separado
+          shippingAddress: finalAddress, // Salva o endereço recuperado
+          shippingCost: shippingCostValue,
         })
         .returning();
 
       // 2. Criar Itens
-      // Agora 'item' é inferido como WebhookItem, não precisamos de 'any'
       const orderItemsData = items.map((item) => ({
         orderId: newOrder.id,
         productId: item.id,

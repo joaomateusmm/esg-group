@@ -97,7 +97,6 @@ export default async function AdminDashboard() {
   });
 
   const revenueChartData = [];
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const salesChartData = [];
   const today = new Date();
 
