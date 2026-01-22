@@ -5,7 +5,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 
 export type Language = "pt" | "en" | "es";
 
-// 1. Definimos o objeto de fallback fora para poder extrair o tipo dele
+// 1. Definimos o objeto de fallback
 const defaultTranslations = {
   topBar: {
     promo: "Frete Grátis...",
@@ -13,7 +13,8 @@ const defaultTranslations = {
     help: "Ajuda",
   },
   header: {
-    allCategories: "Categorias",
+    allCategories: "Todas as Categorias", // Usado na barra de pesquisa
+    categories: "Categorias", // <--- ADICIONADO (Correção do erro)
     searchPlaceholder: "Buscar...",
     bestDeals: "Ofertas",
     sale: "Promoção",
@@ -39,7 +40,6 @@ type TranslationType = typeof defaultTranslations;
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  // 3. Substituímos 'any' pelo tipo correto
   t: TranslationType;
 }
 
@@ -52,12 +52,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   // Ao iniciar, lê o cookie do Google
   useEffect(() => {
-    // O cookie do google geralmente é 'googtrans'
     const googCookie = getCookie("googtrans");
     if (typeof googCookie === "string") {
-      // O formato é /pt/en ou /auto/en
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const langCode = googCookie.split("/").pop() as any; // Cast forçado temporário para validar string
+      const langCode = googCookie.split("/").pop() as any;
       if (["pt", "en", "es"].includes(langCode)) {
         setLanguageState(langCode as Language);
       }
@@ -65,18 +63,17 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setLanguage = (lang: Language) => {
-    // 1. Define o cookie que o Google Translate lê
-    // Formato: /lingua-origem/lingua-destino
+    // Define o cookie para o Google Translate
     setCookie("googtrans", `/auto/${lang}`, {
       path: "/",
       domain: window.location.hostname,
     });
-    setCookie("googtrans", `/auto/${lang}`, { path: "/" }); // Fallback
+    setCookie("googtrans", `/auto/${lang}`, { path: "/" });
 
-    // 2. Atualiza estado local
+    // Atualiza estado local
     setLanguageState(lang);
 
-    // 3. Recarrega a página para o Google traduzir o DOM
+    // Recarrega a página para aplicar a tradução visual do Google
     window.location.reload();
   };
 
