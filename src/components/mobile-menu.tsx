@@ -1,19 +1,16 @@
 "use client";
 
 import {
-  Armchair,
   ChevronRight,
   DollarSign,
   HelpCircle,
   LayoutGrid,
   Menu,
-  MonitorPlay,
   PackageOpen,
 } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-// import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
@@ -24,26 +21,15 @@ import {
 } from "@/components/ui/sheet";
 import { useLanguage } from "@/contexts/language-context";
 
-// Interfaces (reutilizadas para garantir tipagem)
+// Interfaces
 interface Category {
-  label: string;
-  href: string;
-}
-
-interface Game {
-  label: string;
-  href: string;
-}
-
-interface Streaming {
   label: string;
   href: string;
 }
 
 interface MobileMenuProps {
   categories: Category[];
-  games: Game[];
-  streamings: Streaming[];
+  // Removido games e streamings daqui
   isAffiliate: boolean;
 }
 
@@ -57,12 +43,7 @@ function EmptyState({ label }: { label: string }) {
   );
 }
 
-export function MobileMenu({
-  categories,
-  games,
-  streamings,
-  isAffiliate,
-}: MobileMenuProps) {
+export function MobileMenu({ categories, isAffiliate }: MobileMenuProps) {
   const { t } = useLanguage();
 
   return (
@@ -77,7 +58,6 @@ export function MobileMenu({
         </Button>
       </SheetTrigger>
 
-      {/* Design atualizado: Fundo Branco, Texto Escuro, Sombra suave */}
       <SheetContent
         side="left"
         className="w-[320px] border-r-0 bg-white p-0 text-neutral-900 sm:w-[380px]"
@@ -85,7 +65,6 @@ export function MobileMenu({
         {/* Cabeçalho do Menu */}
         <SheetHeader className="border-b border-neutral-100 bg-neutral-50/50 p-6 text-left">
           <SheetTitle className="flex items-center gap-2 text-xl font-bold tracking-tight text-neutral-900">
-            {/* Se tiver logo, pode colocar aqui, senao usa o texto */}
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-600 font-bold text-white">
               M
             </div>
@@ -133,55 +112,9 @@ export function MobileMenu({
               </div>
             </div>
 
-            {/* Seção 3: moveis */}
-            <div className="mb-6">
-              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold tracking-wider text-neutral-400 uppercase">
-                <Armchair className="h-3 w-3" /> {t.header.games}
-              </h3>
-
-              <div className="flex flex-col gap-1">
-                {games.length > 0 ? (
-                  games.map((g, i) => (
-                    <Link
-                      key={i}
-                      href={g.href || "#"}
-                      className="group flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
-                    >
-                      {g.label}
-                    </Link>
-                  ))
-                ) : (
-                  <EmptyState label="Sem moveis cadastrados" />
-                )}
-              </div>
-            </div>
-
-            {/* Seção 4: Streamings (Com Validação) */}
-            <div className="mb-6">
-              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold tracking-wider text-neutral-400 uppercase">
-                <MonitorPlay className="h-3 w-3" /> Streamings
-              </h3>
-
-              <div className="flex flex-col gap-1">
-                {streamings.length > 0 ? (
-                  streamings.map((s, i) => (
-                    <Link
-                      key={i}
-                      href={s.href || "#"}
-                      className="group flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
-                    >
-                      {s.label}
-                    </Link>
-                  ))
-                ) : (
-                  <EmptyState label="Nenhum serviço de streaming" />
-                )}
-              </div>
-            </div>
-
             <Separator className="my-2 bg-neutral-100" />
 
-            {/* Seção 5: Links Úteis / Footer */}
+            {/* Seção 3: Links Úteis / Footer */}
             <div className="mt-4 flex flex-col gap-2">
               {isAffiliate ? (
                 <Link

@@ -384,12 +384,7 @@ export function Header() {
         <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4 lg:gap-8">
           <div className="flex items-center gap-4">
             {/* MOBILE MENU */}
-            <MobileMenu
-              categories={categories}
-              games={[]}
-              streamings={[]}
-              isAffiliate={isAffiliate}
-            />
+            <MobileMenu categories={categories} isAffiliate={isAffiliate} />
 
             <Link href="/" className="group flex items-center gap-1">
               <span className="font-sans text-2xl font-black tracking-tight text-neutral-900 transition-opacity group-hover:opacity-80">

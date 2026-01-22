@@ -13,8 +13,8 @@ const defaultTranslations = {
     help: "Ajuda",
   },
   header: {
-    allCategories: "Todas as Categorias", // Usado na barra de pesquisa
-    categories: "Categorias", // <--- ADICIONADO (Correção do erro)
+    allCategories: "Todas as Categorias",
+    categories: "Categorias",
     searchPlaceholder: "Buscar...",
     bestDeals: "Ofertas",
     sale: "Promoção",
@@ -26,6 +26,10 @@ const defaultTranslations = {
       total: "Total",
       checkout: "Checkout",
     },
+    // AS CHAVES PRECISAM ESTAR AQUI DENTRO DE 'header':
+    panel: "Painel de Afiliado",
+    affiliate: "Seja um Afiliado",
+    faq: "Ajuda & FAQ",
   },
   product: {
     description: "Descrição",
