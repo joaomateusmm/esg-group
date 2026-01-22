@@ -62,7 +62,8 @@ const InputComponent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <Input
     className={cn(
-      "h-12 rounded-s-none rounded-e-lg border-neutral-200 bg-white text-neutral-900 focus:border-orange-600 focus-visible:ring-orange-600",
+      // ADICIONEI "placeholder:text-neutral-400" AQUI EMBAIXO 👇
+      "h-12 rounded-s-none rounded-e-lg border-neutral-200 bg-white text-neutral-900 placeholder:text-neutral-400 focus:border-orange-600 focus-visible:ring-orange-600",
       className,
     )}
     {...props}

@@ -21,7 +21,7 @@ const Authentication = () => {
     {
       image: "/images/banners/eletrodomesticos.jpg",
       title: "Eletrodomésticos",
-      caption: "Melhores eletros para sua casa.",
+      caption: "Produtos testados e aprovados por milhares de clientes.",
     },
     {
       image: "/images/banners/cozinha.jpg",
@@ -104,8 +104,8 @@ const Authentication = () => {
                   onClick={() => setActiveSlide(idx)}
                   className={`h-1.5 rounded-full transition-all duration-300 ${
                     activeSlide === idx
-                      ? "w-8 bg-orange-600"
-                      : "w-2 bg-white/50 hover:bg-white/80"
+                      ? "h-3 w-8 bg-orange-600"
+                      : "h-3 w-3 bg-white/50 hover:bg-white/80"
                   }`}
                   aria-label={`Ir para slide ${idx + 1}`}
                 />

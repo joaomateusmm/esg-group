@@ -159,6 +159,7 @@ const SignUpForm = ({ switchToSignIn }: { switchToSignIn?: () => void }) => {
                 <FormItem>
                   <FormControl>
                     <PhoneInput
+                      className="placeholder:text-neutral-300"
                       placeholder="(11) 1234-5678"
                       defaultCountry="BR"
                       {...field}
