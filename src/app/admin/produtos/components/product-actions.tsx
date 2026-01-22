@@ -91,7 +91,7 @@ export function ProductActions({ id }: ProductActionsProps) {
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="h-8 w-8 p-0 text-neutral-400 hover:bg-white/10 hover:text-white"
+            className="h-8 w-8 p-0 text-neutral-400 hover:bg-black/5 hover:text-black"
           >
             <span className="sr-only">Abrir menu</span>
             <MoreHorizontal className="h-4 w-4" />
@@ -99,27 +99,27 @@ export function ProductActions({ id }: ProductActionsProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
-          className="border-white/10 bg-[#111] text-white"
+          className="border border-black/10 bg-neutral-100 text-neutral-800"
         >
           <DropdownMenuLabel>Ações</DropdownMenuLabel>
 
           {/* --- AÇÃO DE EDITAR --- */}
           <DropdownMenuItem
-            className="cursor-pointer focus:bg-white/10 focus:text-white"
+            className="cursor-pointer duration-300 hover:bg-black/5"
             onClick={() => router.push(`/admin/produtos/${id}/editar`)}
           >
-            <Edit className="mr-2 h-4 w-4" /> Editar
+            <Edit className="mr-2 h-4 w-4 text-neutral-800" /> Editar
           </DropdownMenuItem>
 
-          <DropdownMenuSeparator className="bg-white/10" />
+          <DropdownMenuSeparator className="bg-black/5" />
           <DropdownMenuItem
-            className="cursor-pointer text-red-500 focus:bg-red-500/10 focus:text-red-500"
+            className="cursor-pointer text-red-700 duration-300 hover:bg-black/5"
             onSelect={(e) => {
               e.preventDefault();
               setShowDeleteDialog(true);
             }}
           >
-            <Trash className="mr-2 h-4 w-4" /> Excluir
+            <Trash className="mr-2 h-4 w-4 text-neutral-800" /> Excluir
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

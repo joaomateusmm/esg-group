@@ -34,9 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ShinyButton } from "@/components/ui/shiny-button";
 
-// --- SCHEMA ---
 const formSchema = z.object({
   code: z.string().min(3, "Mínimo 3 letras").toUpperCase().trim(),
   type: z.enum(["percent", "fixed"]),
@@ -68,9 +66,7 @@ export function NewCouponDialog() {
     mode: "onChange",
   });
 
-  // --- HELPER: Formata valor visualmente (R$ 0,00) ---
   const formatCurrency = (value: number | undefined) => {
-    // Se for undefined ou 0, mostra R$ 0,00
     if (!value) return "R$ 0,00";
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -79,14 +75,11 @@ export function NewCouponDialog() {
     }).format(value);
   };
 
-  // --- HELPER: Lida com a digitação (Mask de centavos) ---
   const handlePriceChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     onChange: (value: number) => void,
   ) => {
-    // Remove tudo que não for dígito
     const rawValue = e.target.value.replace(/\D/g, "");
-    // Divide por 100 para tratar como centavos (ex: 1234 -> 12.34)
     const numericValue = Number(rawValue) / 100;
     onChange(numericValue);
   };
@@ -115,12 +108,14 @@ export function NewCouponDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <ShinyButton className="px-2">Novo Cupom</ShinyButton>
+        <Button className="px-4 py-2 font-medium">Novo Cupom</Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto border-white/10 bg-[#0A0A0A] text-white sm:max-w-[500px]">
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-neutral-200 bg-white text-neutral-900 shadow-lg sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Criar Novo Cupom</DialogTitle>
-          <DialogDescription className="text-neutral-400">
+          <DialogTitle className="text-xl font-bold text-neutral-900">
+            Criar Novo Cupom
+          </DialogTitle>
+          <DialogDescription className="text-neutral-500">
             Configure as regras e a divulgação do desconto.
           </DialogDescription>
         </DialogHeader>
@@ -128,18 +123,20 @@ export function NewCouponDialog() {
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-4 pt-4"
+            className="space-y-5 pt-4"
           >
             <FormField
               control={form.control}
               name="code"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Código do Cupom</FormLabel>
+                  <FormLabel className="font-medium text-neutral-700">
+                    Código do Cupom
+                  </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="EX: NATAL10"
-                      className="border-white/10 bg-white/5 text-white uppercase"
+                      className="border-neutral-300 bg-white text-neutral-900 uppercase placeholder:text-neutral-400 focus:border-orange-500 focus:ring-orange-500"
                       {...field}
                     />
                   </FormControl>
@@ -154,19 +151,31 @@ export function NewCouponDialog() {
                 name="type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tipo</FormLabel>
+                    <FormLabel className="font-medium text-neutral-700">
+                      Tipo
+                    </FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger className="border-white/10 bg-white/5 text-white">
+                        <SelectTrigger className="border-neutral-300 bg-white text-neutral-900 focus:ring-orange-500">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent className="border-white/10 bg-[#111] text-white">
-                        <SelectItem value="percent">Porcentagem (%)</SelectItem>
-                        <SelectItem value="fixed">Valor Fixo (R$)</SelectItem>
+                      <SelectContent className="border-neutral-200 bg-white text-neutral-900 shadow-md">
+                        <SelectItem
+                          value="percent"
+                          className="cursor-pointer hover:bg-neutral-50"
+                        >
+                          Porcentagem (%)
+                        </SelectItem>
+                        <SelectItem
+                          value="fixed"
+                          className="cursor-pointer hover:bg-neutral-50"
+                        >
+                          Valor Fixo (R$)
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </FormItem>
@@ -178,7 +187,7 @@ export function NewCouponDialog() {
                 name="value"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
+                    <FormLabel className="font-medium text-neutral-700">
                       {watchType === "percent"
                         ? "Porcentagem (%)"
                         : "Valor (R$)"}
@@ -189,7 +198,7 @@ export function NewCouponDialog() {
                         placeholder={
                           watchType === "percent" ? "Ex: 10" : "Ex: 20.00"
                         }
-                        className="border-white/10 bg-white/5 text-white [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        className="border-neutral-300 bg-white text-neutral-900 focus:border-orange-500 focus:ring-orange-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                         {...field}
                         value={field.value === 0 ? "" : field.value}
                         onKeyDown={(e) => {
@@ -218,17 +227,18 @@ export function NewCouponDialog() {
               />
             </div>
 
-            {/* --- FORM DE VALOR MÍNIMO (ATUALIZADO) --- */}
             <FormField
               control={form.control}
               name="minValue"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Valor Mínimo do Pedido (R$)</FormLabel>
+                  <FormLabel className="font-medium text-neutral-700">
+                    Valor Mínimo do Pedido (R$)
+                  </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="R$ 0,00"
-                      className="border-white/10 bg-white/5 font-mono text-white"
+                      className="border-neutral-300 bg-white font-mono text-neutral-900 focus:border-orange-500 focus:ring-orange-500"
                       value={formatCurrency(field.value)}
                       onChange={(e) => handlePriceChange(e, field.onChange)}
                     />
@@ -247,12 +257,14 @@ export function NewCouponDialog() {
                 name="maxUses"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Limite de Usos</FormLabel>
+                    <FormLabel className="font-medium text-neutral-700">
+                      Limite de Usos
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         placeholder="Ilimitado"
-                        className="border-white/10 bg-white/5 text-white"
+                        className="border-neutral-300 bg-white text-neutral-900 focus:border-orange-500 focus:ring-orange-500"
                         {...field}
                         value={field.value === 0 ? "" : field.value}
                         onChange={(e) => {
@@ -270,11 +282,13 @@ export function NewCouponDialog() {
                 name="expiresAt"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Validade (Opcional)</FormLabel>
+                    <FormLabel className="font-medium text-neutral-700">
+                      Validade (Opcional)
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="date"
-                        className="block w-full border-white/10 bg-white/5 text-white"
+                        className="block w-full border-neutral-300 bg-white text-neutral-900 focus:border-orange-500 focus:ring-orange-500"
                         {...field}
                         value={field.value || ""}
                       />
@@ -285,9 +299,9 @@ export function NewCouponDialog() {
               />
             </div>
 
-            <div className="mt-6 rounded-lg border border-white/10 bg-white/5 p-4">
-              <div className="mb-4 flex items-center gap-2 text-sm font-medium text-white">
-                <MessageSquareText className="h-4 w-4" />
+            <div className="mt-6 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+              <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-800">
+                <MessageSquareText className="h-4 w-4 text-orange-600" />
                 Personalização do Pop-up (Divulgação)
               </div>
 
@@ -297,11 +311,13 @@ export function NewCouponDialog() {
                   name="popupTitle"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Título do Pop-up</FormLabel>
+                      <FormLabel className="text-neutral-700">
+                        Título do Pop-up
+                      </FormLabel>
                       <FormControl>
                         <Input
                           placeholder="Ex: Oferta Relâmpago! ⚡"
-                          className="border-white/10 bg-black/20 text-white"
+                          className="border-neutral-300 bg-white text-neutral-900 focus:border-orange-500 focus:ring-orange-500"
                           {...field}
                         />
                       </FormControl>
@@ -315,11 +331,13 @@ export function NewCouponDialog() {
                   name="popupDescription"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Descrição / Texto de Apoio</FormLabel>
+                      <FormLabel className="text-neutral-700">
+                        Descrição / Texto de Apoio
+                      </FormLabel>
                       <FormControl>
                         <Input
                           placeholder="Ex: Use este cupom e garanta o melhor preço."
-                          className="border-white/10 bg-black/20 text-white"
+                          className="border-neutral-300 bg-white text-neutral-900 focus:border-orange-500 focus:ring-orange-500"
                           {...field}
                         />
                       </FormControl>
@@ -332,7 +350,7 @@ export function NewCouponDialog() {
 
             <Button
               type="submit"
-              className="w-full bg-[#D00000] font-bold text-white hover:bg-[#a00000]"
+              className="mt-4 w-full bg-orange-600 font-bold text-white shadow-sm hover:bg-orange-700"
               disabled={form.formState.isSubmitting}
             >
               {form.formState.isSubmitting ? (

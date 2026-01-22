@@ -8,6 +8,7 @@ import { Toaster } from "sonner";
 
 import { CouponPopup } from "@/components/coupon-popup"; // Importe o componente que criamos
 import FloatingScrollbar from "@/components/FloatingScrollbar";
+import { GoogleTranslator } from "@/components/google-translator";
 import SmoothScroll from "@/components/SmoothScroll";
 import { LanguageProvider } from "@/contexts/language-context";
 import { db } from "@/db"; // Importe seu db
@@ -87,6 +88,7 @@ export default async function RootLayout({
         suppressHydrationWarning={true}
         className={`${geistSans.variable} ${geistMono.variable} ${montserrat.variable} ${clash.variable} antialiased`}
       >
+        <GoogleTranslator />
         <LanguageProvider>
           <FloatingScrollbar />
           <SmoothScroll>{children}</SmoothScroll>

@@ -107,7 +107,7 @@ export function ProductPurchaseCard({
   return (
     <>
       {/* --- CARD 1: INFORMAÇÕES DE COMPRA --- */}
-      <Card className="border-white/10 bg-[#0A0A0A] shadow-xl shadow-black/50">
+      <Card className="border-neutral-200 bg-white shadow-md">
         <CardContent className="space-y-6 p-6">
           {/* Cabeçalho */}
           <div>
@@ -116,54 +116,56 @@ export function ProductPurchaseCard({
                 <Badge
                   key={cat}
                   variant="secondary"
-                  className="bg-white/5 text-xs text-neutral-400 hover:bg-white/10"
+                  className="bg-neutral-100 text-xs font-medium text-neutral-600 hover:bg-neutral-200"
                 >
                   {cat}
                 </Badge>
               ))}
             </div>
-            <h1 className="font-clash-display text-3xl font-medium text-white">
+            <h1 className="font-clash-display text-3xl leading-tight font-semibold text-neutral-900">
               {product.name}
             </h1>
           </div>
 
-          <Separator className="bg-white/5" />
+          <Separator className="bg-neutral-100" />
 
           {/* Preços */}
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               {(product.discountPrice || appliedCoupon) && (
-                <span className="text-sm text-neutral-500 line-through decoration-white/20">
+                <span className="text-sm text-neutral-400 line-through decoration-neutral-300">
                   {formatPrice(product.price)}
                 </span>
               )}
 
               {originalDiscountPercentage > 0 && !appliedCoupon && (
-                <Badge className="border-0 bg-green-500/10 text-xs text-green-500 hover:bg-green-500/20">
+                <Badge className="border-0 bg-green-50 text-xs text-green-700 hover:bg-green-100">
                   {originalDiscountPercentage}% OFF
                 </Badge>
               )}
               {appliedCoupon && (
-                <Badge className="border-0 bg-blue-500/10 text-xs text-blue-500 hover:bg-blue-500/20">
+                <Badge className="border-0 bg-blue-50 text-xs text-blue-700 hover:bg-blue-100">
                   CUPOM ATIVO
                 </Badge>
               )}
             </div>
 
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-white">
+              <span className="text-4xl font-bold text-neutral-900">
                 {finalPrice === 0 ? "Gratuito" : formatPrice(finalPrice)}
               </span>
             </div>
             {finalPrice > 0 && (
-              <p className="text-sm text-neutral-500">À vista no PIX</p>
+              <p className="text-sm font-medium text-neutral-500">
+                À vista no PIX
+              </p>
             )}
           </div>
 
           {/* Entrega */}
           {product.deliveryMode === "email" && (
-            <div className="flex items-center gap-2 rounded-md border border-[#D00000]/20 bg-[#D00000]/10 p-3 text-sm text-[#D00000]">
-              <Zap className="h-4 w-4 shrink-0 fill-current" />
+            <div className="flex items-center gap-2 rounded-md border border-orange-200 bg-orange-50 p-3 text-sm text-orange-700">
+              <Zap className="h-4 w-4 shrink-0 fill-current text-orange-500" />
               <span className="font-medium">Entrega Automática via E-mail</span>
             </div>
           )}
@@ -176,7 +178,6 @@ export function ProductPurchaseCard({
                 name: product.name,
                 price: initialPrice,
                 image: productImage,
-                // --- CORREÇÃO AQUI ---
                 stock: product.stock,
                 isStockUnlimited: isStockUnlimitedSafe,
               }}
@@ -191,13 +192,12 @@ export function ProductPurchaseCard({
                   price: product.price,
                   discountPrice: product.discountPrice,
                   images: product.images,
-                  // --- ADICIONE ISSO ---
                   stock: product.stock,
-                  isStockUnlimited: isStockUnlimitedSafe, // Use a variável segura que criamos antes
+                  isStockUnlimited: isStockUnlimitedSafe,
                 }}
                 variant="outline"
                 size="lg"
-                className="text-md h-14 flex-1 border-white/10 bg-transparent font-bold text-white hover:bg-white/5"
+                className="text-md h-14 flex-1 border-neutral-300 bg-white font-bold text-neutral-700 shadow-sm hover:bg-neutral-50 hover:text-neutral-900"
               />
 
               <AddToWishlistButton
@@ -216,10 +216,10 @@ export function ProductPurchaseCard({
               {!appliedCoupon ? (
                 <div className="flex gap-2">
                   <div className="relative flex-1">
-                    <Ticket className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+                    <Ticket className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-400" />
                     <Input
                       placeholder="Cupom de desconto"
-                      className="h-10 border-white/10 bg-white/5 pl-9 text-white"
+                      className="h-10 border-neutral-300 bg-white pl-9 text-neutral-900 placeholder:text-neutral-400 focus:border-orange-500 focus:ring-orange-500"
                       value={couponCode}
                       onChange={(e) =>
                         setCouponCode(e.target.value.toUpperCase())
@@ -228,7 +228,7 @@ export function ProductPurchaseCard({
                   </div>
                   <Button
                     variant="secondary"
-                    className="h-10 bg-white/10 text-white hover:bg-white/20"
+                    className="h-10 border border-neutral-200 bg-neutral-100 text-neutral-700 shadow-sm hover:bg-neutral-200"
                     onClick={handleApplyCoupon}
                     disabled={!couponCode || isValidating}
                   >
@@ -236,14 +236,14 @@ export function ProductPurchaseCard({
                   </Button>
                 </div>
               ) : (
-                <div className="flex items-center justify-between rounded-md border border-green-500/20 bg-green-500/10 p-3">
+                <div className="flex items-center justify-between rounded-md border border-green-200 bg-green-50 p-3">
                   <div className="flex items-center gap-2">
-                    <Ticket className="h-4 w-4 text-green-500" />
+                    <Ticket className="h-4 w-4 text-green-600" />
                     <div>
-                      <p className="text-sm font-bold text-green-500">
+                      <p className="text-sm font-bold text-green-700">
                         {appliedCoupon.code}
                       </p>
-                      <p className="text-xs text-green-400/70">
+                      <p className="text-xs text-green-600">
                         Desconto de {formatPrice(appliedCoupon.discount)}{" "}
                         aplicado
                       </p>
@@ -252,7 +252,7 @@ export function ProductPurchaseCard({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 text-green-500 hover:bg-green-500/20 hover:text-green-400"
+                    className="h-6 w-6 text-green-600 hover:bg-green-100"
                     onClick={handleRemoveCoupon}
                   >
                     <X className="h-3 w-3" />
@@ -263,29 +263,34 @@ export function ProductPurchaseCard({
           </div>
 
           {/* Rodapé de Segurança */}
-          <div className="grid grid-cols-2 gap-4 text-xs text-neutral-500">
-            <div className="flex flex-col items-center justify-center gap-1 rounded bg-white/5 p-2 text-center">
-              <ShieldCheck className="h-5 w-5 text-neutral-300" />
+          <div className="grid grid-cols-2 gap-4 text-xs font-medium text-neutral-500">
+            <div className="flex flex-col items-center justify-center gap-1 rounded border border-neutral-100 bg-neutral-50 p-3 text-center">
+              <ShieldCheck className="h-5 w-5 text-neutral-400" />
               <span>Compra 100% Segura</span>
             </div>
-            <div className="flex flex-col items-center justify-center gap-1 rounded bg-white/5 p-2 text-center">
+            <div className="flex flex-col items-center justify-center gap-1 rounded border border-neutral-100 bg-neutral-50 p-3 text-center">
               {isStockUnlimitedSafe ? (
                 <>
-                  <Check className="h-5 w-5 text-green-500" />
-                  <span className="text-green-500">Estoque Ilimitado</span>
+                  <Check className="h-5 w-5 text-green-600" />
+                  <span className="text-green-700">Estoque Ilimitado</span>
                 </>
               ) : (product.stock || 0) > 0 ? (
                 <>
-                  <Lock className="h-5 w-5 text-neutral-300" />
+                  <Lock className="h-5 w-5 text-neutral-400" />
                   <span>
-                    Restam <span className="font-bold">{product.stock}</span>{" "}
+                    Restam{" "}
+                    <span className="font-bold text-neutral-700">
+                      {product.stock}
+                    </span>{" "}
                     unidades.
                   </span>
                 </>
               ) : (
                 <>
                   <XCircle className="h-5 w-5 text-red-600" />
-                  <span className="text-red-800">Produto Esgotado</span>
+                  <span className="font-bold text-red-700">
+                    Produto Esgotado
+                  </span>
                 </>
               )}
             </div>
@@ -295,10 +300,10 @@ export function ProductPurchaseCard({
 
       {/* --- CARD 2: FORMAS DE PAGAMENTO (SEPARADO) --- */}
       {product.paymentMethods && product.paymentMethods.length > 0 && (
-        <Card className="mt-6 border-white/10 bg-[#0A0A0A]">
-          <CardContent>
-            <h4 className="mb-3 flex items-center gap-2 text-sm font-medium text-white">
-              <CreditCard className="h-4 w-4 text-[#D00000]" />
+        <Card className="mt-6 border-neutral-200 bg-white shadow-sm">
+          <CardContent className="pt-6">
+            <h4 className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-900">
+              <CreditCard className="h-4 w-4 text-orange-600" />
               Formas de Pagamento
             </h4>
             <div className="flex flex-wrap gap-2">
@@ -306,7 +311,7 @@ export function ProductPurchaseCard({
                 <Badge
                   key={method}
                   variant="secondary"
-                  className="border-white/5 bg-white/5 font-normal text-neutral-400 hover:bg-white/10"
+                  className="border border-neutral-200 bg-neutral-50 px-3 py-1 font-normal text-neutral-600 hover:bg-neutral-100"
                 >
                   {method === "credit_card"
                     ? "Cartão de Crédito"

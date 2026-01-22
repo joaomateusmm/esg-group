@@ -1,6 +1,11 @@
 "use client";
 
-import { Heart, Loader2, ShoppingCart, TrendingDown } from "lucide-react";
+import {
+  Heart,
+  Loader2,
+  ShoppingCart,
+  TrendingDown,
+} from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
@@ -19,7 +24,6 @@ interface ProductCardProps {
     price: number;
     discountPrice?: number | null;
     images: string[] | null;
-    // --- NOVAS PROPS ---
     stock: number | null;
     isStockUnlimited: boolean;
   };
@@ -56,12 +60,17 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
   const isFree = finalPrice === 0;
 
   // Lógica de Estoque
-  const isOutOfStock = !data.isStockUnlimited && (data.stock ?? 0) <= 0;
+  const stockCount = data.stock ?? 0;
+  const isOutOfStock = !data.isStockUnlimited && stockCount <= 0;
+
+  // Lógica de "Poucas Unidades" (ex: menos de 10) para gerar urgência
+  const isLowStock =
+    !data.isStockUnlimited && stockCount > 0 && stockCount <= 10;
 
   const productImage =
     data.images && data.images.length > 0
       ? data.images[0]
-      : "https://placehold.co/992x658/1a1a1a/FFF.png?text=Sem+Imagem";
+      : "https://placehold.co/992x658/f3f4f6/9ca3af.png?text=Sem+Imagem";
 
   const handleCardClick = () => {
     startTransition(() => {
@@ -103,110 +112,133 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
     <div
       onClick={handleCardClick}
       className={cn(
-        "group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-white/5 bg-white/5 transition-all duration-300 hover:border-white/20 hover:bg-white/10",
+        "group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white transition-all duration-300 hover:border-orange-200 hover:shadow-lg",
         isPending && "pointer-events-none cursor-wait opacity-80",
-        // Se esgotado, diminui um pouco a opacidade geral para indicar indisponibilidade
-        isOutOfStock && "opacity-70",
+        isOutOfStock && "opacity-80 grayscale-[0.5]",
       )}
     >
       {isPending && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[1px]">
-          <Loader2 className="h-10 w-10 animate-spin text-[#D00000]" />
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
+          <Loader2 className="h-10 w-10 animate-spin text-orange-600" />
         </div>
       )}
 
-      <div className="relative aspect-[992/658] w-full overflow-hidden bg-white/5">
+      <div className="relative aspect-square w-full overflow-hidden bg-neutral-50 p-4">
         <Image
           src={productImage}
           alt={data.name}
           fill
           className={cn(
-            "bg-white/5 object-cover transition-transform duration-500 group-hover:scale-105",
+            "object-contain transition-transform duration-500 group-hover:scale-110",
             isPending && "scale-100 blur-[2px]",
           )}
           sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
         />
 
-        {/* OVERLAY ESGOTADO */}
         {isOutOfStock && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/10 backdrop-blur-[1px]">
-            <span className="rotate-[-10deg] rounded-md border-2 border-red-500 px-4 py-2 text-xl font-bold tracking-widest text-red-500 uppercase shadow-lg backdrop-blur-[15px]">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/40 backdrop-blur-[2px]">
+            <span className="rotate-[-10deg] rounded-md border-2 border-red-600 bg-white/80 px-4 py-2 text-lg font-bold tracking-widest text-red-600 uppercase shadow-sm">
               Esgotado
             </span>
           </div>
         )}
 
-        <div className="absolute right-4 bottom-4 z-20 flex translate-y-4 flex-col gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+        <div className="absolute right-3 bottom-3 z-20 flex translate-y-4 flex-col gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
           <Button
             size="icon"
             onClick={handleFavorite}
             className={cn(
-              "h-10 w-10 rounded-full shadow-md backdrop-blur-md duration-300",
+              "h-9 w-9 rounded-full shadow-sm backdrop-blur-md transition-all hover:scale-105",
               isFavorite
-                ? "bg-red-500 text-white hover:bg-red-500 hover:active:scale-95"
-                : "bg-red-800 text-white hover:bg-red-600 hover:active:scale-95",
+                ? "bg-red-500 text-white hover:bg-red-600"
+                : "border border-neutral-200 bg-white text-neutral-600 hover:bg-red-50 hover:text-red-500",
             )}
           >
-            <Heart className={cn("h-5 w-5", isFavorite && "fill-current")} />
+            <Heart className={cn("h-4 w-4", isFavorite && "fill-current")} />
           </Button>
 
           {!isOutOfStock && (
             <Button
               size="icon"
               onClick={handleAddToCart}
-              className="h-10 w-10 rounded-full bg-red-800 text-white shadow-md backdrop-blur-md duration-300 hover:bg-red-600 hover:active:scale-95"
+              className="h-9 w-9 rounded-full bg-orange-600 text-white shadow-sm backdrop-blur-md transition-all hover:scale-105 hover:bg-orange-700"
             >
-              <ShoppingCart className="h-5 w-5" />
+              <ShoppingCart className="h-4 w-4" />
             </Button>
           )}
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col p-5">
-        <span className="text-xs font-medium tracking-wide text-neutral-500 uppercase">
+      <div className="flex flex-1 flex-col border-t border-neutral-100 p-4">
+        <span className="truncate text-[10px] font-bold tracking-wide text-neutral-400 uppercase">
           {categoryName}
         </span>
-        <h3 className="font-clash-display mt-1 line-clamp-1 text-lg font-medium text-white">
+        <h3 className="font-clash-display mt-1 line-clamp-2 min-h-[3rem] text-base font-semibold text-neutral-900 transition-colors group-hover:text-orange-700">
           {data.name}
         </h3>
 
-        <div className="mt-auto flex flex-col pt-4">
+        <div className="mt-auto flex flex-col pt-3">
           {data.discountPrice && !isFree && !isOutOfStock && (
-            <span className="text-xs text-neutral-500 line-through">
+            <span className="text-xs text-neutral-400 line-through">
               {formatPrice(data.price)}
             </span>
           )}
 
           <div className="flex items-center justify-between">
             {isOutOfStock ? (
-              <span className="font-montserrat text-xl font-bold text-white">
+              <span className="font-montserrat text-lg font-bold text-neutral-400">
                 {formatPrice(finalPrice)}
               </span>
             ) : isFree ? (
-              <span className="font-montserrat text-xl font-bold text-white uppercase">
+              <span className="font-montserrat text-lg font-bold text-green-600 uppercase">
                 Grátis
               </span>
             ) : (
-              <span className="font-montserrat text-xl font-bold text-white">
+              <span className="font-montserrat text-lg font-bold text-neutral-900">
                 {formatPrice(finalPrice)}
               </span>
             )}
 
             {discountPercentage > 0 && !isFree && !isOutOfStock && (
-              <span className="flex items-center justify-center gap-1 rounded-md border border-green-500/20 bg-green-500/10 p-1.5 text-xs font-bold text-green-500 shadow-md">
+              <span className="flex items-center justify-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">
                 <TrendingDown className="h-3 w-3" />
                 {discountPercentage}%
               </span>
             )}
           </div>
 
-          <span className="mt-1 text-xs text-neutral-500">
-            {isOutOfStock
-              ? "À vista no PIX"
-              : isFree
-                ? "Download Imediato"
-                : "À vista no PIX"}
-          </span>
+          {/* --- INDICADOR DE ESTOQUE --- */}
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-[10px] font-medium text-neutral-500">
+              {isOutOfStock
+                ? "Indisponível"
+                : isFree
+                  ? "Download Imediato"
+                  : "À vista no PIX"}
+            </span>
+
+            {!isOutOfStock && !data.isStockUnlimited && (
+              <span
+                className={cn(
+                  "flex items-center gap-1 text-[10px] font-medium",
+                  isLowStock ? "text-neutral-500" : "text-neutral-400",
+                )}
+              >
+                Restam
+                <span className="font-bold text-neutral-800">
+                  {" "}
+                  {stockCount}
+                </span>{" "}
+                un.
+              </span>
+            )}
+
+            {data.isStockUnlimited && !isOutOfStock && (
+              <span className="flex items-center gap-1 text-[10px] font-medium text-neutral-500">
+                Estoque Ilimitado
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>

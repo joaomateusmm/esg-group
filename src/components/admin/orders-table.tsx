@@ -5,7 +5,8 @@ import {
   Clock,
   Copy,
   CopyCheck,
-  LucideIcon, // Importação adicionada
+  LucideIcon,
+  Map,
   MapPin,
   MoreHorizontal,
   Package,
@@ -79,34 +80,34 @@ interface OrdersTableProps {
   totalOrders: number;
 }
 
-// CORREÇÃO: Substituído 'any' por 'LucideIcon'
+// CORES DE STATUS (Tema Claro)
 const STATUS_MAP: Record<
   string,
   { label: string; color: string; icon: LucideIcon }
 > = {
   pending: {
     label: "Pendente",
-    color: "bg-yellow-500/10 text-yellow-500",
+    color: "bg-yellow-200 text-yellow-700 border-yellow-200",
     icon: Clock,
   },
   paid: {
     label: "Pago/Preparando",
-    color: "bg-blue-500/10 text-blue-500",
+    color: "bg-neutral-50 text-neutral-600 border-neutral-200",
     icon: Package,
   },
   shipped: {
     label: "Enviado",
-    color: "bg-purple-500/10 text-purple-500",
+    color: "bg-neutral-50 text-neutral-600 border-neutral-200",
     icon: Truck,
   },
   delivered: {
     label: "Entregue",
-    color: "bg-green-500/10 text-green-500",
+    color: "bg-green-200 text-green-700 border-green-200",
     icon: CheckCircle2,
   },
   canceled: {
     label: "Cancelado",
-    color: "bg-red-500/10 text-red-500",
+    color: "bg-red-200 text-red-800 border-red-200",
     icon: XCircle,
   },
 };
@@ -169,7 +170,6 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
   };
 
   const openAddressModal = (order: OrderData) => {
-    // Validação mais permissiva: abre mesmo que incompleto para mostrar o que tem
     setCurrentOrderData(order);
     setAddressModalOpen(true);
   };
@@ -190,6 +190,13 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
     } else {
       toast.error(res.message);
     }
+  };
+
+  const getGoogleMapsLink = (order: OrderData | null) => {
+    if (!order?.shippingAddress) return "#";
+    const { street, number, city, state, zipCode } = order.shippingAddress;
+    const query = `${street}, ${number}, ${city} - ${state}, ${zipCode}`;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
   };
 
   const copyAddressToClipboard = () => {
@@ -217,7 +224,7 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
         {selectedIds.length > 0 && (
           <button
             onClick={handleBulkDelete}
-            className="flex h-10 items-center gap-2 rounded-md border border-red-500/10 bg-red-500/5 px-3 text-sm text-white hover:bg-red-500/20"
+            className="flex h-10 items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 text-sm text-red-600 transition-colors hover:bg-red-100"
           >
             <XCircle className="h-4 w-4" />
             Excluir ({selectedIds.length})
@@ -225,42 +232,60 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
         )}
         <button
           onClick={() => handleSelectAll(true)}
-          className="flex h-10 items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 text-sm text-white hover:bg-white/10"
+          className="flex h-10 items-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-sm text-neutral-600 shadow-sm transition-colors hover:bg-neutral-50"
         >
           <CopyCheck className="h-4 w-4" /> Marcar Todos
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0A]">
+      <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
         <Table>
-          <TableHeader className="bg-white/5 hover:bg-white/5">
-            <TableRow className="border-white/10 hover:bg-white/5">
+          <TableHeader className="bg-neutral-50">
+            <TableRow className="border-neutral-200 hover:bg-neutral-100">
               <TableHead className="w-[40px]">
                 <Checkbox
-                  className="border-white/50 data-[state=checked]:border-[#D00000] data-[state=checked]:bg-[#D00000]"
+                  className="border-neutral-400 data-[state=checked]:border-orange-600 data-[state=checked]:bg-orange-600"
                   checked={
                     data.length > 0 && selectedIds.length === data.length
                   }
                   onCheckedChange={(c) => handleSelectAll(!!c)}
                 />
               </TableHead>
-              <TableHead className="text-neutral-400">Pedido</TableHead>
-              <TableHead className="text-neutral-400">Cliente</TableHead>
-              <TableHead className="text-neutral-400">Status</TableHead>
-              <TableHead className="text-neutral-400">Ação Rápida</TableHead>
-              <TableHead className="text-neutral-400">Total</TableHead>
-              <TableHead className="text-neutral-400">Rastreio</TableHead>
+              <TableHead className="font-semibold text-neutral-600">
+                Pedido
+              </TableHead>
+              <TableHead className="font-semibold text-neutral-600">
+                Cliente
+              </TableHead>
+              <TableHead className="font-semibold text-neutral-600">
+                Status
+              </TableHead>
+              <TableHead className="font-semibold text-neutral-600">
+                Ação Rápida
+              </TableHead>
+              <TableHead className="font-semibold text-neutral-600">
+                Mapa
+              </TableHead>
+              <TableHead className="font-semibold text-neutral-600">
+                Total
+              </TableHead>
+              <TableHead className="font-semibold text-neutral-600">
+                Rastreio
+              </TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {data.length === 0 ? (
-              <TableRow>
+              <TableRow className="border-neutral-100 hover:bg-neutral-50">
                 <TableCell
-                  colSpan={8}
-                  className="h-24 text-center text-neutral-500"
+                  colSpan={9}
+                  className="h-32 text-center text-neutral-500"
                 >
-                  Nenhum pedido encontrado.
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <Package className="h-8 w-8 opacity-20" />
+                    <p>Nenhum pedido encontrado.</p>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
@@ -272,23 +297,25 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
                 return (
                   <TableRow
                     key={order.id}
-                    className="border-white/10 hover:bg-white/5"
+                    className="border-neutral-100 transition-colors hover:bg-neutral-50"
                   >
                     <TableCell>
                       <Checkbox
-                        className="border-white/50 data-[state=checked]:border-[#D00000] data-[state=checked]:bg-[#D00000]"
+                        className="border-neutral-400 data-[state=checked]:border-orange-600 data-[state=checked]:bg-orange-600"
                         checked={selectedIds.includes(order.id)}
                         onCheckedChange={(c) => handleSelectOne(!!c, order.id)}
                       />
                     </TableCell>
-                    <TableCell className="font-mono text-xs text-white">
+                    <TableCell className="font-mono text-xs font-medium text-neutral-900">
                       {order.id.slice(0, 8).toUpperCase()}
-                      <div className="text-[10px] text-neutral-500">
+                      <div className="mt-0.5 text-[10px] text-neutral-500">
                         {new Date(order.createdAt).toLocaleDateString()}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm text-white">{order.userName}</div>
+                      <div className="text-sm font-medium text-neutral-900">
+                        {order.userName}
+                      </div>
                       <div className="text-xs text-neutral-500">
                         {order.userEmail}
                       </div>
@@ -296,7 +323,7 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className={`gap-1.5 border-0 px-2 py-1 font-normal ${statusInfo.color}`}
+                        className={`gap-1.5 border px-2 py-1 font-medium ${statusInfo.color}`}
                       >
                         <StatusIcon className="h-3 w-3" />
                         {statusInfo.label}
@@ -308,9 +335,9 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
                         <Button
                           size="sm"
                           onClick={() => openTrackingModal(order)}
-                          className="h-7 border border-purple-500/20 bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 hover:text-purple-300"
+                          className="h-7 border border-orange-300 bg-orange-100 text-orange-700 hover:bg-orange-200"
                         >
-                          <Truck className="mr-2 h-3 w-3" /> Enviar
+                          <Truck className="mr-0.5 h-3 w-3" /> Enviando
                         </Button>
                       )}
                       {order.status === "shipped" && (
@@ -319,7 +346,7 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
                           onClick={() =>
                             handleStatusChange(order.id, "delivered")
                           }
-                          className="h-7 border border-green-500/20 bg-green-600/20 text-green-400 hover:bg-green-600/30 hover:text-green-300"
+                          className="h-7 border border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
                         >
                           <CheckCircle2 className="mr-2 h-3 w-3" /> Entregue
                         </Button>
@@ -327,20 +354,39 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
                       {(order.status === "delivered" ||
                         order.status === "pending" ||
                         order.status === "canceled") && (
-                        <span className="text-xs text-neutral-600">-</span>
+                        <span className="text-xs text-neutral-400">-</span>
                       )}
                     </TableCell>
 
-                    <TableCell className="font-medium text-white">
+                    {/* COLUNA MAPA */}
+                    <TableCell>
+                      {order.shippingAddress ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            window.open(getGoogleMapsLink(order), "_blank")
+                          }
+                          className="h-7 w-7 border bg-neutral-100 p-0 text-neutral-600 hover:bg-neutral-200"
+                          title="Ver no Google Maps"
+                        >
+                          <Map className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-neutral-400">-</span>
+                      )}
+                    </TableCell>
+
+                    <TableCell className="font-mono font-medium text-neutral-900">
                       {formatCurrency(order.amount)}
                     </TableCell>
                     <TableCell>
                       {order.trackingCode ? (
-                        <span className="font-mono text-xs text-green-400">
+                        <span className="rounded border border-green-200 bg-green-50 px-1.5 py-0.5 font-mono text-xs text-green-700">
                           {order.trackingCode}
                         </span>
                       ) : (
-                        <span className="text-xs text-neutral-600">-</span>
+                        <span className="text-xs text-neutral-400">-</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -349,56 +395,86 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-neutral-400 hover:text-white"
+                            className="h-8 w-8 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
                           >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
                           align="end"
-                          className="w-56 border-white/10 bg-[#111] text-white"
+                          className="w-56 border-neutral-200 bg-white text-neutral-700 shadow-md"
                         >
                           <DropdownMenuLabel>Ações do Pedido</DropdownMenuLabel>
-                          <DropdownMenuSeparator className="bg-white/10" />
+                          <DropdownMenuSeparator className="bg-neutral-100" />
 
                           <DropdownMenuItem
-                            className="cursor-pointer hover:bg-white/10"
+                            className="cursor-pointer hover:bg-neutral-50 focus:bg-neutral-50"
                             onClick={() => openAddressModal(order)}
                           >
                             <MapPin className="mr-2 h-4 w-4" /> Ver Endereço
                           </DropdownMenuItem>
 
                           <DropdownMenuItem
-                            className="cursor-pointer hover:bg-white/10"
+                            className="cursor-pointer hover:bg-neutral-50 focus:bg-neutral-50"
+                            asChild
+                          >
+                            <a
+                              href={getGoogleMapsLink(order)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex w-full items-center"
+                            >
+                              <Map className="mr-2 h-4 w-4" /> Abrir no Google
+                              Maps
+                            </a>
+                          </DropdownMenuItem>
+
+                          <DropdownMenuItem
+                            className="cursor-pointer hover:bg-neutral-50 focus:bg-neutral-50"
                             onClick={() => openTrackingModal(order)}
                           >
                             <Truck className="mr-2 h-4 w-4" /> Editar Rastreio
                           </DropdownMenuItem>
 
                           <DropdownMenuSub>
-                            <DropdownMenuSubTrigger className="cursor-pointer hover:bg-white/10">
+                            <DropdownMenuSubTrigger className="cursor-pointer hover:bg-neutral-50 focus:bg-neutral-50">
                               <Package className="mr-2 h-4 w-4" /> Forçar Status
                             </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent className="border-white/10 bg-[#111] text-white">
+                            <DropdownMenuSubContent className="ml-1 border-neutral-200 bg-white text-neutral-700 shadow-md">
                               <DropdownMenuRadioGroup
                                 value={order.status}
                                 onValueChange={(v) =>
                                   handleStatusChange(order.id, v)
                                 }
                               >
-                                <DropdownMenuRadioItem value="pending">
+                                <DropdownMenuRadioItem
+                                  className="cursor-pointer hover:bg-neutral-50"
+                                  value="pending"
+                                >
                                   Pendente
                                 </DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="paid">
+                                <DropdownMenuRadioItem
+                                  className="cursor-pointer hover:bg-neutral-50"
+                                  value="paid"
+                                >
                                   Pago / Preparando
                                 </DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="shipped">
+                                <DropdownMenuRadioItem
+                                  className="cursor-pointer hover:bg-neutral-50"
+                                  value="shipped"
+                                >
                                   Enviado
                                 </DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="delivered">
+                                <DropdownMenuRadioItem
+                                  className="cursor-pointer hover:bg-neutral-50"
+                                  value="delivered"
+                                >
                                   Entregue
                                 </DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="canceled">
+                                <DropdownMenuRadioItem
+                                  className="cursor-pointer hover:bg-neutral-50"
+                                  value="canceled"
+                                >
                                   Cancelado
                                 </DropdownMenuRadioItem>
                               </DropdownMenuRadioGroup>
@@ -421,7 +497,7 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
 
       {/* --- MODAL DE RASTREIO --- */}
       <Dialog open={trackingModalOpen} onOpenChange={setTrackingModalOpen}>
-        <DialogContent className="border-white/10 bg-[#111] text-white">
+        <DialogContent className="border-neutral-200 bg-white text-neutral-900 sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Código de Rastreio</DialogTitle>
           </DialogHeader>
@@ -430,7 +506,7 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
               placeholder="Ex: AA123456789BR"
               value={trackingCodeInput}
               onChange={(e) => setTrackingCodeInput(e.target.value)}
-              className="border-white/10 bg-white/5 text-white"
+              className="border-neutral-200 bg-neutral-50 text-neutral-900 placeholder:text-neutral-400 focus:border-orange-500 focus:ring-orange-500"
             />
             <p className="mt-2 text-xs text-neutral-500">
               Ao salvar, o status mudará automaticamente para
@@ -438,12 +514,16 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
             </p>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setTrackingModalOpen(false)}>
+            <Button
+              variant="ghost"
+              onClick={() => setTrackingModalOpen(false)}
+              className="text-neutral-600 hover:bg-neutral-100"
+            >
               Cancelar
             </Button>
             <Button
               onClick={saveTracking}
-              className="bg-[#D00000] text-white hover:bg-[#a00000]"
+              className="bg-orange-600 text-white shadow-sm hover:bg-orange-700"
             >
               Salvar e Enviar
             </Button>
@@ -451,57 +531,65 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
         </DialogContent>
       </Dialog>
 
-      {/* --- MODAL DE ENDEREÇO (CORRIGIDO) --- */}
+      {/* --- MODAL DE ENDEREÇO --- */}
       <Dialog open={addressModalOpen} onOpenChange={setAddressModalOpen}>
-        <DialogContent className="border-white/10 bg-[#111] text-white sm:max-w-md">
+        <DialogContent className="border-neutral-200 bg-white text-neutral-900 sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-[#D00000]" /> Endereço de Entrega
+            <DialogTitle className="flex items-center gap-2 text-neutral-900">
+              <MapPin className="h-5 w-5 text-orange-600" /> Endereço de Entrega
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            <div className="space-y-1 rounded-md border border-white/10 bg-white/5 p-4 text-sm">
-              <p className="text-lg font-semibold text-white">
+            <div className="space-y-1 rounded-md border border-neutral-200 bg-neutral-50 p-4 text-sm">
+              <p className="text-lg font-semibold text-neutral-900">
                 {currentOrderData?.userName}
               </p>
               {currentOrderData?.shippingAddress ? (
                 <>
-                  <p className="text-neutral-300">
+                  <p className="text-neutral-600">
                     {currentOrderData.shippingAddress.street ||
                       "Rua não informada"}
                     , {currentOrderData.shippingAddress.number || "S/N"}
                   </p>
                   {currentOrderData.shippingAddress.complement && (
-                    <p className="text-xs text-neutral-400">
+                    <p className="text-xs text-neutral-500">
                       Comp: {currentOrderData.shippingAddress.complement}
                     </p>
                   )}
-                  <p className="text-neutral-300">
+                  <p className="text-neutral-600">
                     {currentOrderData.shippingAddress.city || "Cidade N/A"} -{" "}
                     {currentOrderData.shippingAddress.state || "UF"}
                   </p>
-                  <p className="font-mono text-[#D00000]">
+                  <p className="font-mono font-medium text-orange-600">
                     CEP:{" "}
                     {currentOrderData.shippingAddress.zipCode || "00000-000"}
                   </p>
                 </>
               ) : (
-                <p className="text-red-400 italic">
+                <p className="text-red-500 italic">
                   Dados de endereço não encontrados no pedido.
                 </p>
               )}
             </div>
           </div>
 
-          <DialogFooter className="sm:justify-between">
-            <Button variant="ghost" onClick={() => setAddressModalOpen(false)}>
-              Fechar
+          <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+            <Button
+              onClick={() => {
+                if (currentOrderData) {
+                  window.open(getGoogleMapsLink(currentOrderData), "_blank");
+                }
+              }}
+              className="w-full bg-blue-600 text-white shadow-sm hover:bg-blue-700 sm:w-auto"
+            >
+              <Map className="mr-2 h-4 w-4" /> Ver no Maps
             </Button>
+
             <Button
               onClick={copyAddressToClipboard}
               variant="outline"
-              className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+              className="w-full border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 sm:w-auto"
             >
               <Copy className="mr-2 h-4 w-4" /> Copiar Endereço
             </Button>

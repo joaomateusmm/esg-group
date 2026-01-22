@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 // --- DADOS DOS BANNERS ---
@@ -15,7 +14,6 @@ const BANNERS = [
   {
     id: "quarto",
     src: "/images/banners/quarto.jpg", // Substitua pela sua imagem real
-    alt: "Quarto",
     title: "Quartos",
     description: "Melhores móveis para o seu quarto.",
     href: "/categorias/quarto",
@@ -24,7 +22,6 @@ const BANNERS = [
   {
     id: "eletrodomesticos",
     src: "/images/banners/eletrodomesticos.jpg",
-    alt: "Casa",
     title: "Eletrodomésticos",
     description: "Melhores eletros para sua casa.",
     price: "R$ 49,90", // Exemplo de 'hotspot'
@@ -36,7 +33,6 @@ const BANNERS = [
   {
     id: "imoveis-usados",
     src: "/images/banners/imoveis-usados.jpg",
-    alt: "Imóveis",
     title: "Imóveis Usados",
     description: "Compre imóveis usados no melhor preço.",
     href: "/categorias/imoveis-usados",
@@ -45,7 +41,6 @@ const BANNERS = [
   {
     id: "Cozinha",
     src: "/images/banners/cozinha.jpg",
-    alt: "Cozinha",
     title: "Cozinha",
     description: "Melhores móveis e itens para sua cozinha.",
     href: "/categorias/cozinha",
@@ -64,7 +59,6 @@ const BANNERS = [
   {
     id: "quintal",
     src: "/images/banners/quintal.jpg",
-    alt: "Quintal",
     title: "Quintal",
     description: "Melhores objetos para o seu quintal.",
     href: "/categorias/quintal",
@@ -73,7 +67,6 @@ const BANNERS = [
   {
     id: "disney",
     src: "/images/banners/disney-banner.jpg",
-    alt: "Disney Plus",
     title: "Oferta Relâmpago",
     description: "Disney+ com 50% OFF.",
     href: "/streamings/disney",
@@ -103,7 +96,7 @@ function BannerCard({
       <div className="absolute inset-0 h-full w-full">
         <Image
           src={item.src}
-          alt={item.alt}
+          alt="banner"
           fill
           className="object-cover transition-transform duration-700 will-change-transform group-hover:scale-105"
         />
@@ -111,35 +104,19 @@ function BannerCard({
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 transition-opacity group-hover:opacity-90" />
       </div>
 
-      {/* Exemplo de Hotspot (Bolinha de preço igual ao print no Roblox) */}
-      {item.price && (
-        <div className="absolute bottom-1/2 left-1/2 flex -translate-x-1/2 translate-y-1/2 flex-col items-center gap-2">
-          <div className="relative flex h-8 w-8 items-center justify-center rounded-full border border-white/30 bg-white/10 backdrop-blur-md transition-transform hover:scale-110">
-            <div className="h-3 w-3 rounded-full bg-white shadow-[0_0_10px_white]" />
-          </div>
-          <div className="animate-in fade-in slide-in-from-bottom-2 rounded-lg bg-white px-3 py-1 text-xs font-bold text-black shadow-lg">
-            {item.price}
-          </div>
-        </div>
-      )}
-
       {/* Conteúdo de Texto */}
       <div className="absolute bottom-0 left-0 flex w-full flex-col p-6">
         {item.hasTimer && <CountdownTimer />}
-
-        <span className="mb-1 text-xs font-medium tracking-wider text-neutral-400 uppercase">
-          {item.alt}
-        </span>
         <h3 className="font-clash-display mb-1 text-xl font-semibold text-white md:text-2xl">
           {item.title}
         </h3>
-        <p className="mb-4 line-clamp-2 max-w-[90%] text-sm text-neutral-300">
+        <p className="mb-4 line-clamp-2 max-w-[90%] text-sm font-medium text-neutral-100">
           {item.description}
         </p>
 
         <div className="flex items-center gap-2 text-sm font-medium text-white underline decoration-neutral-500 underline-offset-4 transition-all group-hover:decoration-white">
           Ver Agora{" "}
-          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
         </div>
       </div>
     </Link>

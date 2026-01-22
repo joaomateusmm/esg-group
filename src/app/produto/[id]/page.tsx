@@ -1,9 +1,5 @@
 import { desc, eq, inArray } from "drizzle-orm";
-import {
-  MessageSquare,
-  Star,
-  User, // Ícone
-} from "lucide-react";
+import { MessageSquare, Ruler, Star, User, Weight } from "lucide-react";
 import { headers } from "next/headers";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -11,8 +7,14 @@ import { notFound } from "next/navigation";
 import { DeleteReviewButton } from "@/components/delete-review-button";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
-import { ProductGallery } from "@/components/product-gallery";
 import { ProductPurchaseCard } from "@/components/product-purchase-card";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import { db } from "@/db";
 import { category, product, review, user as userTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
@@ -36,13 +38,11 @@ type ReviewModel = {
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id } = await params;
 
-  // A. Pegar a sessão do usuário atual para saber quem está logado
   const session = await auth.api.getSession({
     headers: await headers(),
   });
   const currentUserId = session?.user?.id;
 
-  // 1. Buscar dados do produto
   const productData = await db.query.product.findFirst({
     where: eq(product.id, id),
   });
@@ -51,7 +51,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
     return notFound();
   }
 
-  // 2. Buscar categorias
   let categoryNames: string[] = [];
   if (productData.categories && productData.categories.length > 0) {
     const categories = await db
@@ -61,7 +60,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
     categoryNames = categories.map((c) => c.name);
   }
 
-  // 3. Buscar avaliações do produto
   const rows = await db
     .select({
       review: review,
@@ -72,7 +70,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
     .where(eq(review.productId, id))
     .orderBy(desc(review.createdAt));
 
-  // Transformamos o resultado do Join no nosso ReviewModel
   const reviews: ReviewModel[] = rows.map((row) => ({
     id: row.review.id,
     userId: row.review.userId,
@@ -87,14 +84,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
       : null,
   }));
 
-  // 4. Calcular média de notas
   const totalReviews = reviews.length;
   const averageRating =
     totalReviews > 0
       ? reviews.reduce((acc, r) => acc + r.rating, 0) / totalReviews
       : 0;
 
-  // Formatadores
   const formatDate = (date: Date) =>
     new Intl.DateTimeFormat("pt-BR", {
       day: "2-digit",
@@ -102,39 +97,130 @@ export default async function ProductPage({ params }: ProductPageProps) {
       year: "numeric",
     }).format(date);
 
+  const productImages =
+    productData.images && productData.images.length > 0
+      ? productData.images
+      : ["https://placehold.co/600x600/f3f4f6/9ca3af.png?text=Sem+Imagem"];
+
   return (
-    <div className="min-h-screen bg-[#010000]">
-      <div className="z-[100] w-full bg-[#010000]">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-center">
-          <Header />
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-7xl px-4 pt-42 pb-12 md:px-8">
+    <div className="min-h-screen bg-[#f9f9f9]">
+      <Header />
+      <div className="mx-auto max-w-7xl px-4 pt-32 pb-12 md:px-8">
         <div className="grid gap-8 lg:grid-cols-12">
-          {/* COLUNA ESQUERDA (Galeria + Descrição) */}
+          {/* --- COLUNA ESQUERDA (Galeria + Descrição) --- */}
           <div className="space-y-8 lg:col-span-7">
-            <ProductGallery
-              images={productData.images || []}
-              productName={productData.name}
-            />
+            {/* CARROSSEL DE IMAGENS */}
+            <div className="w-full rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+              <Carousel className="w-full">
+                <CarouselContent>
+                  {productImages.map((imgSrc, index) => (
+                    <CarouselItem key={index}>
+                      <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg bg-neutral-50 p-4">
+                        <Image
+                          src={imgSrc}
+                          alt={`${productData.name} - Imagem ${index + 1}`}
+                          fill
+                          className="object-contain"
+                          priority={index === 0}
+                        />
+                      </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                {productImages.length > 1 && (
+                  <>
+                    <CarouselPrevious className="left-4 border-neutral-200 bg-white/80 text-neutral-900 hover:bg-white" />
+                    <CarouselNext className="right-4 border-neutral-200 bg-white/80 text-neutral-900 hover:bg-white" />
+                  </>
+                )}
+              </Carousel>
 
-            <div className="rounded-xl border border-white/10 bg-[#0A0A0A] p-6 md:p-8">
-              <h3 className="mb-4 flex items-center gap-2 text-xl font-medium text-white">
-                <span className="h-6 w-1 rounded-full bg-[#D00000]"></span>
-                Descrição
-              </h3>
-              <div className="prose prose-invert max-w-none text-neutral-400">
-                <p className="leading-relaxed whitespace-pre-line">
-                  {productData.description || "Sem descrição disponível."}
-                </p>
+              {productImages.length > 1 && (
+                <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
+                  {productImages.map((imgSrc, idx) => (
+                    <div
+                      key={idx}
+                      className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border border-neutral-200 bg-neutral-50"
+                    >
+                      <Image
+                        src={imgSrc}
+                        alt="thumb"
+                        fill
+                        className="object-cover opacity-70 transition-opacity hover:opacity-100"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* DESCRIÇÃO & ESPECIFICAÇÕES */}
+            <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm md:p-8">
+              {/* DESCRIÇÃO */}
+              <div className="mb-8">
+                <h3 className="mb-4 flex items-center gap-2 text-xl font-bold text-neutral-900">
+                  <span className="h-6 w-1 rounded-full bg-orange-600"></span>
+                  Descrição
+                </h3>
+                <div className="prose prose-neutral max-w-none text-neutral-600">
+                  <p className="leading-relaxed whitespace-pre-line">
+                    {productData.description || "Sem descrição disponível."}
+                  </p>
+                </div>
+              </div>
+
+              {/* ESPECIFICAÇÕES TÉCNICAS */}
+              <div className="border-t border-neutral-100 pt-8">
+                <h3 className="mb-6 flex items-center gap-2 text-xl font-bold text-neutral-900">
+                  <span className="h-6 w-1 rounded-full bg-orange-600"></span>
+                  Especificações Técnicas
+                </h3>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {/* Item: Dimensões */}
+                  <div className="flex items-start gap-3 rounded-lg border border-neutral-100 bg-neutral-50 p-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-orange-600 shadow-sm">
+                      <Ruler className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-800">
+                        Dimensões (Lar. x Alt. x Com.)
+                      </p>
+                      <p className="text-sm text-neutral-500">
+                        {/* CORREÇÃO AQUI: Usando (?? 0) para garantir que não é null */}
+                        {(productData.width ?? 0) > 0 &&
+                        (productData.height ?? 0) > 0 &&
+                        (productData.length ?? 0) > 0
+                          ? `${productData.width}cm x ${productData.height}cm x ${productData.length}cm`
+                          : "Não informado"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Item: Peso */}
+                  <div className="flex items-start gap-3 rounded-lg border border-neutral-100 bg-neutral-50 p-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-orange-600 shadow-sm">
+                      <Weight className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-800">
+                        Peso
+                      </p>
+                      <p className="text-sm text-neutral-500">
+                        {/* CORREÇÃO AQUI TAMBÉM */}
+                        {(productData.weight ?? 0) > 0
+                          ? `${productData.weight} kg`
+                          : "Não informado"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* COLUNA DIREITA (Sidebar de Compra) */}
+          {/* --- COLUNA DIREITA (Sidebar de Compra) --- */}
           <div className="space-y-6 lg:col-span-5">
-            {/* CORREÇÃO DO ERRO DE TIPO: Usando 'as any' para ignorar a falta de paymentMethods/deliveryMode */}
             <ProductPurchaseCard
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               product={productData as any}
@@ -143,24 +229,23 @@ export default async function ProductPage({ params }: ProductPageProps) {
           </div>
         </div>
 
-        {/* --- SECÇÃO INFERIOR: AVALIAÇÕES (FULL WIDTH) --- */}
-        <div className="mt-6 grid gap-8">
-          {/* LADO ESQUERDO: LISTA DE AVALIAÇÕES */}
+        {/* --- SECÇÃO INFERIOR: AVALIAÇÕES --- */}
+        <div className="mt-8 grid gap-8">
           <div className="lg:col-span-7 xl:col-span-8">
-            <div className="h-full rounded-xl border border-white/10 bg-[#0A0A0A] p-6">
-              <div className="mb-6 flex items-center justify-between border-b border-white/5 pb-4">
+            <div className="h-full rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+              <div className="mb-6 flex items-center justify-between border-b border-neutral-100 pb-4">
                 <div>
-                  <h4 className="flex items-center gap-2 text-lg font-medium text-white">
-                    <MessageSquare className="h-5 w-5 text-[#D00000]" />
+                  <h4 className="flex items-center gap-2 text-lg font-bold text-neutral-900">
+                    <MessageSquare className="h-5 w-5 text-orange-600" />
                     Avaliações da Comunidade ({totalReviews})
                   </h4>
                 </div>
                 {totalReviews > 0 && (
-                  <div className="flex items-center gap-2 rounded-full bg-white/5 px-4 py-1">
-                    <div className="flex text-yellow-500">
+                  <div className="flex items-center gap-2 rounded-full border border-orange-100 bg-orange-50 px-4 py-1">
+                    <div className="flex text-orange-500">
                       <Star className="h-5 w-5 fill-current" />
                     </div>
-                    <span className="text-xl font-bold text-white">
+                    <span className="text-xl font-bold text-neutral-900">
                       {averageRating.toFixed(1)}
                     </span>
                     <span className="text-sm text-neutral-500">/ 5.0</span>
@@ -168,16 +253,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 )}
               </div>
 
-              {/* Lista Scrollável com GRID DE 3 COLUNAS */}
-              <div className="scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20 max-h-[600px] overflow-y-auto pr-2">
+              <div className="scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-200 max-h-[600px] overflow-y-auto pr-2">
                 {reviews.length > 0 ? (
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {reviews.map((reviewItem) => (
                       <div
                         key={reviewItem.id}
-                        className="group relative flex flex-col gap-3 rounded-lg border border-white/5 bg-white/[0.02] p-5 transition-colors hover:border-white/10 hover:bg-white/[0.04]"
+                        className="group relative flex flex-col gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-5 transition-all hover:bg-white hover:shadow-md"
                       >
-                        {/* BOTÃO DE DELETAR (LIXEIRA) */}
                         {currentUserId === reviewItem.userId && (
                           <div className="absolute top-3 right-3 opacity-0 transition-opacity group-hover:opacity-100">
                             <DeleteReviewButton
@@ -188,7 +271,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                         )}
 
                         <div className="flex items-center gap-3">
-                          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/10 bg-neutral-800">
+                          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-neutral-200 bg-white">
                             {reviewItem.user?.image ? (
                               <Image
                                 src={reviewItem.user.image}
@@ -198,12 +281,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
                               />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center">
-                                <User className="h-5 w-5 text-neutral-500" />
+                                <User className="h-5 w-5 text-neutral-400" />
                               </div>
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-white">
+                            <p className="truncate text-sm font-semibold text-neutral-900">
                               {reviewItem.user?.name || "Usuário"}
                             </p>
                             <p className="text-xs text-neutral-500">
@@ -218,14 +301,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
                               key={star}
                               className={`h-3 w-3 ${
                                 reviewItem.rating >= star
-                                  ? "fill-yellow-500 text-yellow-500"
-                                  : "fill-transparent text-neutral-700"
+                                  ? "fill-orange-500 text-orange-500"
+                                  : "fill-transparent text-neutral-300"
                               }`}
                             />
                           ))}
                         </div>
 
-                        <p className="line-clamp-4 text-sm leading-relaxed break-words text-neutral-300">
+                        <p className="line-clamp-4 text-sm leading-relaxed break-words text-neutral-600">
                           {reviewItem.comment}
                         </p>
                       </div>
@@ -236,7 +319,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     <p className="text-base text-neutral-500">
                       Ainda não há avaliações para este produto.
                     </p>
-                    <p className="mt-2 text-sm text-neutral-600">
+                    <p className="mt-2 text-sm text-neutral-400">
                       Seja o primeiro a avaliar!
                     </p>
                   </div>

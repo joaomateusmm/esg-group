@@ -45,10 +45,10 @@ export default async function AdminProductsPage({
       {/* --- HEADER DA PÁGINA --- */}
       <div className="flex flex-row items-center justify-between gap-4">
         <div>
-          <h1 className="font-clash-display text-3xl font-medium text-white">
+          <h1 className="font-clash-display text-3xl font-medium text-black">
             Meus Produtos
           </h1>
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-neutral-700">
             Gerencie o catálogo da sua loja.
           </p>
         </div>
@@ -56,12 +56,10 @@ export default async function AdminProductsPage({
         <AddProductButton />
       </div>
 
-      {/* --- TABELA INTERATIVA --- */}
       <ProductsTable
         data={productsData}
         totalProducts={totalProducts}
         limitParam={limitParam}
-        // ALTERAÇÃO 3: Passando a prop que estava faltando
         allCategories={categoriesData}
       />
     </div>

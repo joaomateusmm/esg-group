@@ -1,135 +1,89 @@
 "use client";
 
-import React, { createContext, ReactNode, useContext, useState } from "react";
+import { getCookie,setCookie } from "cookies-next"; // Instale: npm install cookies-next
+import React, { createContext, useContext, useEffect, useState } from "react";
 
-// --- 1. O DICIONÁRIO DE TRADUÇÕES ---
-// Aqui você vai adicionar TODOS os textos do seu site
-const translations = {
-  pt: {
-    topBar: {
-      promo: "Midseason Sale: 20% OFF — Tempo Limitado",
-      storeLocator: "Lojas Físicas",
-      help: "Ajuda: +44 7861 996199",
-    },
-    header: {
-      searchPlaceholder: "O que você procura?",
-      categories: "Categorias",
-      games: "moveis",
-      affiliate: "Seja Afiliado",
-      panel: "Painel Afiliado",
-      faq: "Ajuda & FAQ",
-      allCategories: "Todas as Categorias",
-      bestDeals: "Melhores Ofertas",
-      sale: "Promoção 30% OFF",
-      account: {
-        login: "Entrar",
-        create: "Criar Conta",
-        myAccount: "Minha Conta",
-        orders: "Meus Pedidos",
-        logout: "Sair",
-        welcome: "Bem-vindo",
-      },
-      cart: {
-        title: "Meu Carrinho",
-        empty: "Seu carrinho está vazio",
-        total: "Total",
-        checkout: "Finalizar Compra",
-      },
-      wishlist: {
-        title: "Meus Favoritos",
-        empty: "Lista vazia",
-      },
-    },
-    hero: {
-      shopNow: "Comprar Agora",
-      deals: "Ofertas do Dia",
-    },
-  },
-  en: {
-    topBar: {
-      promo: "Midseason Sale: 20% Off — Limited Time Only",
-      storeLocator: "Store Locator",
-      help: "Help: +44 7861 996199",
-    },
-    header: {
-      searchPlaceholder: "What are you looking for?",
-      categories: "Categories",
-      games: "Games",
-      affiliate: "Become an Affiliate",
-      panel: "Affiliate Panel",
-      faq: "Help & FAQ",
-      allCategories: "All Categories",
-      bestDeals: "Best Deals",
-      sale: "Sale 30% off",
-      account: {
-        login: "Login",
-        create: "Sign Up",
-        myAccount: "My Account",
-        orders: "My Orders",
-        logout: "Logout",
-        welcome: "Welcome",
-      },
-      cart: {
-        title: "My Cart",
-        empty: "Your cart is empty",
-        total: "Total",
-        checkout: "Checkout",
-      },
-      wishlist: {
-        title: "My Wishlist",
-        empty: "Wishlist is empty",
-      },
-    },
-    hero: {
-      shopNow: "Shop Now",
-      deals: "Deals of the Day",
-    },
-  },
-};
+export type Language = "pt" | "en" | "es";
 
-// Tipo para as linguagens disponíveis
-type Language = "pt" | "en";
-
-// Tipo do Contexto
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (typeof translations)["pt"]; // Isso ajuda o autocompletar do VS Code
+  // Mantemos o 't' vazio ou com fallback para não quebrar componentes antigos
+  t: any;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(
   undefined,
 );
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  // Estado que guarda a linguagem atual (padrão 'pt')
-  const [language, setLanguage] = useState<Language>("pt");
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  const [language, setLanguageState] = useState<Language>("pt");
 
-  // Função para mudar a linguagem
-  const handleSetLanguage = (lang: Language) => {
-    setLanguage(lang);
-    // Opcional: Salvar no localStorage para lembrar a escolha do usuário
-    // localStorage.setItem("site-lang", lang);
+  // Ao iniciar, lê o cookie do Google
+  useEffect(() => {
+    // O cookie do google geralmente é 'googtrans'
+    const googCookie = getCookie("googtrans");
+    if (typeof googCookie === "string") {
+      // O formato é /pt/en ou /auto/en
+      const langCode = googCookie.split("/").pop() as Language;
+      if (["pt", "en", "es"].includes(langCode)) {
+        setLanguageState(langCode);
+      }
+    }
+  }, []);
+
+  const setLanguage = (lang: Language) => {
+    // 1. Define o cookie que o Google Translate lê
+    // Formato: /lingua-origem/lingua-destino
+    setCookie("googtrans", `/auto/${lang}`, {
+      path: "/",
+      domain: window.location.hostname,
+    });
+    setCookie("googtrans", `/auto/${lang}`, { path: "/" }); // Fallback
+
+    // 2. Atualiza estado local
+    setLanguageState(lang);
+
+    // 3. Recarrega a página para o Google traduzir o DOM
+    window.location.reload();
   };
 
-  const value = {
-    language,
-    setLanguage: handleSetLanguage,
-    t: translations[language], // Retorna o objeto de tradução correto
+  // Objeto 't' dummy para não quebrar seu código existente
+  // O Google vai traduzir o texto visualmente, então isso aqui importa pouco agora
+  const t = {
+    topBar: { promo: "Frete Grátis...", storeLocator: "Lojas", help: "Ajuda" },
+    header: {
+      allCategories: "Categorias",
+      searchPlaceholder: "Buscar...",
+      bestDeals: "Ofertas",
+      sale: "Promoção",
+      wishlist: { title: "Lista", empty: "Vazia" },
+      account: { myAccount: "Conta", orders: "Pedidos", logout: "Sair" },
+      cart: {
+        title: "Carrinho",
+        empty: "Vazio",
+        total: "Total",
+        checkout: "Checkout",
+      },
+    },
+    product: {
+      description: "Descrição",
+      specs: "Especificações",
+      reviews: "Avaliações",
+    },
   };
 
   return (
-    <LanguageContext.Provider value={value}>
+    <LanguageContext.Provider value={{ language, setLanguage, t }}>
       {children}
     </LanguageContext.Provider>
   );
 }
 
-// Hook personalizado para usar fácil nos componentes
 export function useLanguage() {
   const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error("useLanguage deve ser usado dentro de um LanguageProvider");
+  if (context === undefined) {
+    throw new Error("useLanguage must be used within a LanguageProvider");
   }
   return context;
 }

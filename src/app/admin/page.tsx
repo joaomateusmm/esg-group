@@ -118,124 +118,132 @@ export default async function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-8 p-8">
-      {/* HEADER */}
+    <div className="min-h-screen space-y-8 rounded-2xl bg-[#f9f9f9] p-8 shadow-sm">
       <div>
-        <h1 className="font-clash-display text-3xl font-medium text-white">
+        <h1 className="font-clash-display text-3xl font-medium text-neutral-900">
           Dashboard
         </h1>
-        <p className="text-neutral-400">
+        <p className="text-neutral-500">
           Visão geral e métricas da sua loja em tempo real.
         </p>
       </div>
-
       {/* --- SEÇÃO 1: CARDS MAIORES (KPIs) --- */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Receita */}
-        <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0A] p-6 shadow-lg transition-all hover:border-[#D00000]/30">
-          <div className="absolute -top-4 -right-4 h-24 w-24 rounded-full bg-[#D00000]/5 blur-2xl" />
+        <div className="relative overflow-hidden rounded-xl border border-neutral-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
+          <div className="absolute -top-4 -right-4 h-24 w-24 rounded-full bg-orange-600/5 blur-2xl" />
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-neutral-400">
+            <span className="text-sm font-medium text-neutral-500">
               Receita Total{" "}
-              <span className="text-xs text-neutral-500">(valor real)</span>
+              <span className="text-xs text-neutral-400">(valor real)</span>
             </span>
-            <div className="rounded-full bg-[#D00000]/10 p-2 text-[#D00000]">
+            <div className="rounded-full bg-orange-50 p-2 text-orange-600">
               <DollarSign className="h-5 w-5" />
             </div>
           </div>
           <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-white">
+            <span className="text-3xl font-bold text-neutral-900">
               {formatCurrency(totalRevenue)}
             </span>
-            <span className="text-xs font-medium text-green-500">
+            <span className="rounded bg-green-50 px-1.5 py-0.5 text-xs font-medium text-green-600">
               +12% este mês
             </span>
           </div>
         </div>
 
         {/* Vendas */}
-        <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0A] p-6 shadow-lg transition-all hover:border-[#D00000]/30">
+        <div className="relative overflow-hidden rounded-xl border border-neutral-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-neutral-400">
+            <span className="text-sm font-medium text-neutral-500">
               Vendas Concluídas
             </span>
-            <div className="rounded-full bg-[#D00000]/10 p-2 text-[#D00000]">
+            <div className="rounded-full bg-blue-50 p-2 text-blue-600">
               <Activity className="h-5 w-5" />
             </div>
           </div>
-          <div className="mt-4 text-3xl font-bold text-white">{totalSales}</div>
+          <div className="mt-4 text-3xl font-bold text-neutral-900">
+            {totalSales}
+          </div>
         </div>
 
         {/* Produtos Ativos */}
-        <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0A] p-6 shadow-lg transition-all hover:border-[#D00000]/30">
+        <div className="relative overflow-hidden rounded-xl border border-neutral-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-neutral-400">
+            <span className="text-sm font-medium text-neutral-500">
               Produtos Ativos
             </span>
-            <div className="rounded-full bg-[#D00000]/10 p-2 text-[#D00000]">
+            <div className="rounded-full bg-purple-50 p-2 text-purple-600">
               <Package className="h-5 w-5" />
             </div>
           </div>
-          <div className="mt-4 text-3xl font-bold text-white">
+          <div className="mt-4 text-3xl font-bold text-neutral-900">
             {activeProducts}
           </div>
         </div>
 
         {/* Clientes */}
-        <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0A] p-6 shadow-lg transition-all hover:border-[#D00000]/30">
+        <div className="relative overflow-hidden rounded-xl border border-neutral-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-neutral-400">
+            <span className="text-sm font-medium text-neutral-500">
               Contas Criadas
             </span>
-            <div className="rounded-full bg-[#D00000]/10 p-2 text-[#D00000]">
+            <div className="rounded-full bg-pink-50 p-2 text-pink-600">
               <Users className="h-5 w-5" />
             </div>
           </div>
-          <div className="mt-4 text-3xl font-bold text-white">{totalUsers}</div>
+          <div className="mt-4 text-3xl font-bold text-neutral-900">
+            {totalUsers}
+          </div>
         </div>
       </div>
-
       {/* --- SEÇÃO 2: CARDS MENORES (Operacional) --- */}
       <div>
         <h3 className="mb-4 text-sm font-semibold tracking-wider text-neutral-500 uppercase">
           Detalhes Operacionais
         </h3>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-5">
-          <div className="flex flex-col justify-center rounded-lg border border-white/5 bg-white/[0.02] p-4 hover:bg-white/[0.04]">
-            <div className="mb-2 flex items-center gap-2 text-[#D00000]">
+          {/* Avaliação Média */}
+          <div className="flex flex-col justify-center rounded-lg border border-neutral-200 bg-white p-4 transition-colors hover:bg-neutral-50">
+            <div className="mb-2 flex items-center gap-2 text-yellow-500">
               <Star className="h-4 w-4 fill-current" />
-              <span className="text-xs font-bold">Média</span>
+              <span className="text-xs font-bold text-neutral-600">Média</span>
             </div>
-            <span className="text-xl font-bold text-white">{avgRating}</span>
-            <span className="text-[10px] text-neutral-500">Geral da loja</span>
+            <span className="text-xl font-bold text-neutral-900">
+              {avgRating}
+            </span>
+            <span className="text-[10px] text-neutral-400">Geral da loja</span>
           </div>
 
-          <div className="flex flex-col justify-center rounded-lg border border-white/5 bg-white/[0.02] p-4 hover:bg-white/[0.04]">
+          {/* Categorias */}
+          <div className="flex flex-col justify-center rounded-lg border border-neutral-200 bg-white p-4 transition-colors hover:bg-neutral-50">
             <div className="mb-2 text-neutral-400">
               <Layers className="h-4 w-4" />
             </div>
-            <span className="text-xl font-bold text-white">
+            <span className="text-xl font-bold text-neutral-900">
               {stats.categories}
             </span>
-            <span className="text-[10px] text-neutral-500">Categorias</span>
+            <span className="text-[10px] text-neutral-400">Categorias</span>
           </div>
 
-          <div className="flex flex-col justify-center rounded-lg border border-white/5 bg-white/[0.02] p-4 hover:bg-white/[0.04]">
+          {/* Reviews */}
+          <div className="flex flex-col justify-center rounded-lg border border-neutral-200 bg-white p-4 transition-colors hover:bg-neutral-50">
             <div className="mb-2 text-neutral-400">
               <MessageSquare className="h-4 w-4" />
             </div>
-            <span className="text-xl font-bold text-white">
+            <span className="text-xl font-bold text-neutral-900">
               {stats.reviews}
             </span>
-            <span className="text-[10px] text-neutral-500">Reviews</span>
+            <span className="text-[10px] text-neutral-400">Reviews</span>
           </div>
         </div>
       </div>
-
       {/* --- SEÇÃO 3: GRÁFICOS --- */}
       <div className="flex w-full flex-col gap-5 md:flex-row">
         {/* GRÁFICO 1: RECEITA */}
-        <div className="w-full rounded-xl border border-white/10 bg-[#0A0A0A] p-6">
+        <div className="w-full rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+          {/* Nota: Certifique-se de que o componente RevenueChart também esteja 
+             preparado para renderizar em tema claro (eixos pretos/cinza).
+          */}
           <RevenueChart data={revenueChartData} />
         </div>
       </div>

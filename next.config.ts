@@ -31,7 +31,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "utfs.io", // <--- ADICIONADO PARA UPLOADTHING
+        hostname: "utfs.io", 
+      },
+      {
+        protocol: "https",
+        hostname: "flagcdn.com", 
       },
     ],
   },

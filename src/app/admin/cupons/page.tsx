@@ -21,12 +21,11 @@ import { auth } from "@/lib/auth";
 
 import {
   DeleteCouponButton,
-  FeatureCouponButton, // <--- IMPORTANTE: Importar o botão
+  FeatureCouponButton,
   ToggleCouponButton,
 } from "./coupon-buttons";
 import { NewCouponDialog } from "./new-coupon-dialog";
 
-// Helper ajustado para ser seguro contra null/undefined
 const formatCurrency = (value: number | null | undefined) => {
   if (value === null || value === undefined) return "R$ 0,00";
   return new Intl.NumberFormat("pt-BR", {
@@ -44,135 +43,143 @@ export default async function AdminCouponsPage() {
   });
 
   return (
-    <div className="min-h-screen">
-      <div className="p-2">
-        <div className="mb-6 flex items-center justify-between">
+    <div className="min-h-screen rounded-2xl bg-[#f9f9f9] p-8 shadow-md">
+      {" "}
+      {/* Fundo geral claro */}
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-8 flex items-center justify-between">
           <div className="space-y-1">
-            <h1 className="font-clash-display flex items-center gap-3 text-3xl font-medium text-white">
+            <h1 className="font-clash-display flex items-center gap-3 text-3xl font-medium text-neutral-900">
               Cupons de Desconto
             </h1>
-            <p className="text-neutral-400">
+            <p className="text-neutral-500">
               Crie e gerencie códigos promocionais para sua loja.
             </p>
           </div>
           <NewCouponDialog />
         </div>
 
-        <Card className="border-white/10 bg-[#0A0A0A]">
-          <CardHeader>
-            <CardTitle className="text-white">
+        <Card className="border-neutral-200 bg-white shadow-sm">
+          <CardHeader className="border-b border-neutral-100 pb-4">
+            <CardTitle className="text-lg font-semibold text-neutral-900">
               Cupons Ativos e Inativos
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <Table>
-              <TableHeader>
-                <TableRow className="border-white/10 hover:bg-white/5">
-                  <TableHead className="text-neutral-400">Código</TableHead>
-                  <TableHead className="text-neutral-400">Desconto</TableHead>
-                  <TableHead className="text-neutral-400">Usos</TableHead>
-                  <TableHead className="text-neutral-400">Status</TableHead>
-                  <TableHead className="text-neutral-400">Validade</TableHead>
-                  <TableHead className="text-right text-neutral-400">
+              <TableHeader className="bg-neutral-50">
+                <TableRow className="border-neutral-200 hover:bg-neutral-100">
+                  <TableHead className="font-semibold text-neutral-600">
+                    Código
+                  </TableHead>
+                  <TableHead className="font-semibold text-neutral-600">
+                    Desconto
+                  </TableHead>
+                  <TableHead className="font-semibold text-neutral-600">
+                    Usos
+                  </TableHead>
+                  <TableHead className="font-semibold text-neutral-600">
+                    Status
+                  </TableHead>
+                  <TableHead className="font-semibold text-neutral-600">
+                    Validade
+                  </TableHead>
+                  <TableHead className="text-right font-semibold text-neutral-600">
                     Ações
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {coupons.map((cp) => (
-                  <TableRow
-                    key={cp.id}
-                    className="border-white/10 hover:bg-white/5"
-                  >
-                    <TableCell className="font-mono text-lg font-bold text-white">
-                      {cp.code}
-                      {/* Badge visual se estiver destacado */}
-                      {cp.isFeatured && (
-                        <span className="ml-2 inline-flex items-center rounded-full bg-yellow-500/20 px-2 py-0.5 text-[10px] font-medium text-yellow-500">
-                          Destaque
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-neutral-300">
-                      {cp.type === "percent" ? (
-                        <Badge
-                          variant="secondary"
-                          className="bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
-                        >
-                          {cp.value}% OFF
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant="secondary"
-                          className="bg-green-500/10 text-green-400 hover:bg-green-500/20"
-                        >
-                          {formatCurrency(cp.value)} OFF
-                        </Badge>
-                      )}
-                      {/* Verificação segura: só mostra se existir E for maior que 0 */}
-                      {cp.minValue !== null && cp.minValue > 0 && (
-                        <div className="mt-1 text-xs text-neutral-500">
-                          Mín: {formatCurrency(cp.minValue)}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-neutral-300">
-                      {cp.usedCount} {cp.maxUses ? `/ ${cp.maxUses}` : ""}
-                    </TableCell>
-                    <TableCell>
-                      {cp.isActive ? (
-                        <Badge className="bg-green-500/20 text-green-500 hover:bg-green-500/30">
-                          Ativo
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant="outline"
-                          className="border-neutral-700 text-neutral-500"
-                        >
-                          Inativo
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-neutral-400">
-                      {cp.expiresAt
-                        ? format(new Date(cp.expiresAt), "dd/MM/yyyy", {
-                            locale: ptBR,
-                          })
-                        : "∞"}
-                    </TableCell>
-                    <TableCell className="flex justify-end gap-2 text-right">
-                      {/* --- BOTÕES AQUI --- */}
-                      <FeatureCouponButton
-                        id={cp.id}
-                        isFeatured={cp.isFeatured}
-                      />
-                      <ToggleCouponButton id={cp.id} isActive={cp.isActive} />
-                      <DeleteCouponButton id={cp.id} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-
-                {coupons.length === 0 && (
+                {coupons.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={6}
                       className="h-96 text-center text-neutral-500"
                     >
                       <div className="flex h-full w-full flex-col items-center justify-center gap-4 py-10">
                         <Image
                           src="/images/illustration.svg"
-                          alt="Sem produtos"
+                          alt="Sem cupons"
                           width={300}
                           height={300}
-                          className="opacity-40 grayscale"
+                          className="opacity-50 grayscale"
                         />
-
                         <p className="text-lg font-light text-neutral-400">
                           Nenhum cupom encontrado.
                         </p>
                       </div>
                     </TableCell>
                   </TableRow>
+                ) : (
+                  coupons.map((cp) => (
+                    <TableRow
+                      key={cp.id}
+                      className="border-neutral-100 transition-colors hover:bg-neutral-50"
+                    >
+                      <TableCell className="font-mono text-lg font-bold text-neutral-900">
+                        {cp.code}
+                        {cp.isFeatured && (
+                          <span className="ml-2 inline-flex items-center rounded-full border border-yellow-200 bg-yellow-100 px-2 py-0.5 text-[10px] font-medium text-yellow-700">
+                            Destaque
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium text-neutral-700">
+                        {cp.type === "percent" ? (
+                          <Badge
+                            variant="secondary"
+                            className="border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                          >
+                            {cp.value}% OFF
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="secondary"
+                            className="border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
+                          >
+                            {formatCurrency(cp.value)} OFF
+                          </Badge>
+                        )}
+                        {cp.minValue !== null && cp.minValue > 0 && (
+                          <div className="mt-1 text-xs text-neutral-500">
+                            Mín: {formatCurrency(cp.minValue)}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-neutral-600">
+                        {cp.usedCount} {cp.maxUses ? `/ ${cp.maxUses}` : ""}
+                      </TableCell>
+                      <TableCell>
+                        {cp.isActive ? (
+                          <Badge className="border-green-200 bg-green-100 text-green-700 hover:bg-green-200">
+                            Ativo
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="border-neutral-300 bg-neutral-50 text-neutral-500"
+                          >
+                            Inativo
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-neutral-500">
+                        {cp.expiresAt
+                          ? format(new Date(cp.expiresAt), "dd/MM/yyyy", {
+                              locale: ptBR,
+                            })
+                          : "∞"}
+                      </TableCell>
+                      <TableCell className="flex justify-end gap-2 text-right">
+                        <FeatureCouponButton
+                          id={cp.id}
+                          isFeatured={cp.isFeatured}
+                        />
+                        <ToggleCouponButton id={cp.id} isActive={cp.isActive} />
+                        <DeleteCouponButton id={cp.id} />
+                      </TableCell>
+                    </TableRow>
+                  ))
                 )}
               </TableBody>
             </Table>

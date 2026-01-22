@@ -17,10 +17,10 @@ export default async function CategoriesPage() {
     <div className="space-y-8 p-2 pt-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-clash-display text-3xl font-medium tracking-tight text-white">
+          <h2 className="font-clash-display text-3xl font-medium tracking-tight text-black">
             Categorias
           </h2>
-          <p className="text-neutral-400">
+          <p className="text-neutral-700">
             Gerencie as categorias da sua loja.
           </p>
         </div>

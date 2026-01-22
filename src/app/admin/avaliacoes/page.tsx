@@ -43,28 +43,34 @@ export default async function AdminReviewsPage() {
     .orderBy(desc(review.createdAt));
 
   return (
-    <div className="space-y-6 p-2">
+    <div className="space-y-6 p-8">
       <div>
-        <h1 className="font-clash-display flex items-center gap-3 text-3xl font-medium text-white">
+        <h1 className="font-clash-display flex items-center gap-3 text-3xl font-medium text-neutral-900">
           Gerenciar Avaliações
         </h1>
-        <p className="text-neutral-400">
+        <p className="text-neutral-500">
           Veja o que os clientes estão falando sobre seus produtos.
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0A]">
+      <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
         <Table>
-          <TableHeader className="bg-white/5">
-            <TableRow className="border-white/10 hover:bg-white/5">
-              <TableHead className="text-neutral-400">Cliente</TableHead>
-              <TableHead className="text-neutral-400">Produto</TableHead>
-              <TableHead className="text-neutral-400">Nota</TableHead>
+          <TableHeader className="bg-neutral-50">
+            <TableRow className="border-neutral-200 hover:bg-neutral-100">
+              <TableHead className="font-semibold text-neutral-600">
+                Cliente
+              </TableHead>
+              <TableHead className="font-semibold text-neutral-600">
+                Produto
+              </TableHead>
+              <TableHead className="font-semibold text-neutral-600">
+                Nota
+              </TableHead>
               {/* Largura fixa no cabeçalho ajuda a coluna a não colapsar */}
-              <TableHead className="w-[300px] text-neutral-400">
+              <TableHead className="w-[300px] font-semibold text-neutral-600">
                 Comentário
               </TableHead>
-              <TableHead className="text-right text-neutral-400">
+              <TableHead className="text-right font-semibold text-neutral-600">
                 Data
               </TableHead>
               <TableHead className="w-[50px]"></TableHead>
@@ -83,7 +89,7 @@ export default async function AdminReviewsPage() {
                       alt="Sem produtos"
                       width={300}
                       height={300}
-                      className="opacity-40 grayscale"
+                      className="opacity-50 grayscale"
                     />
 
                     <p className="text-lg font-light text-neutral-400">
@@ -96,12 +102,12 @@ export default async function AdminReviewsPage() {
               reviews.map((item) => (
                 <TableRow
                   key={item.id}
-                  className="border-white/10 hover:bg-white/5"
+                  className="border-neutral-100 transition-colors hover:bg-neutral-50"
                 >
                   {/* CLIENTE */}
                   <TableCell className="align-middle">
                     <div className="flex items-center gap-3">
-                      <div className="relative h-8 w-8 overflow-hidden rounded-full bg-neutral-800">
+                      <div className="relative h-8 w-8 overflow-hidden rounded-full border border-neutral-200 bg-neutral-100">
                         {item.userImage && (
                           <Image
                             src={item.userImage}
@@ -112,7 +118,7 @@ export default async function AdminReviewsPage() {
                         )}
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-white">
+                        <span className="text-sm font-medium text-neutral-900">
                           {item.userName || "Anônimo"}
                         </span>
                         <span className="text-xs text-neutral-500">
@@ -125,7 +131,7 @@ export default async function AdminReviewsPage() {
                   {/* PRODUTO */}
                   <TableCell className="align-middle">
                     <div className="flex items-center gap-2">
-                      <div className="relative h-8 w-12 overflow-hidden rounded bg-neutral-800">
+                      <div className="relative h-8 w-12 overflow-hidden rounded border border-neutral-200 bg-neutral-100">
                         {item.productImage && item.productImage[0] && (
                           <Image
                             src={item.productImage[0]}
@@ -135,7 +141,11 @@ export default async function AdminReviewsPage() {
                           />
                         )}
                       </div>
-                      <span className="max-w-[150px] truncate text-sm text-neutral-300">
+                      {/* CORREÇÃO DO ERRO TS: Adicionado || "" para garantir string */}
+                      <span
+                        className="max-w-[150px] truncate text-sm text-neutral-700"
+                        title={item.productName || ""}
+                      >
                         {item.productName}
                       </span>
                     </div>
@@ -143,21 +153,20 @@ export default async function AdminReviewsPage() {
 
                   {/* NOTA */}
                   <TableCell className="align-middle">
-                    <div className="flex items-center gap-1 text-yellow-500">
+                    <div className="flex items-center gap-1 text-orange-500">
                       <Star className="h-4 w-4 fill-current" />
-                      <span className="font-bold text-white">
+                      <span className="font-bold text-neutral-900">
                         {item.rating.toFixed(1)}
                       </span>
                     </div>
                   </TableCell>
 
-                  {/* COMENTÁRIO - CORREÇÃO COMPLETA */}
+                  {/* COMENTÁRIO */}
                   <TableCell className="align-middle">
-                    {/* A div interna restringe a largura e força a quebra */}
                     <div className="w-[300px]">
-                      <p className="text-sm break-words whitespace-normal text-neutral-400">
+                      <p className="text-sm break-words whitespace-normal text-neutral-600">
                         {item.comment || (
-                          <span className="italic opacity-50">
+                          <span className="text-neutral-400 italic opacity-50">
                             Sem comentário
                           </span>
                         )}
@@ -166,7 +175,7 @@ export default async function AdminReviewsPage() {
                   </TableCell>
 
                   {/* DATA */}
-                  <TableCell className="text-right align-middle text-xs text-neutral-500">
+                  <TableCell className="text-right align-middle font-mono text-xs text-neutral-500">
                     {formatDate(item.createdAt)}
                   </TableCell>
 

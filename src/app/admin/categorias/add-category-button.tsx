@@ -25,7 +25,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { ShinyButton } from "@/components/ui/shiny-button";
 import { Textarea } from "@/components/ui/textarea";
 
 import { createCategory } from "./actions";
@@ -51,8 +50,6 @@ export function AddCategoryButton() {
         setOpen(false);
         form.reset();
       } catch {
-        // CORREÇÃO: Removi o (error) já que não estava sendo usado.
-        // Se quiser usar no futuro para logar, use: catch (error) { console.error(error); ... }
         toast.error("Erro ao criar categoria.");
       }
     });
@@ -61,14 +58,16 @@ export function AddCategoryButton() {
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <ShinyButton className="gap-2 bg-[#D00000] text-white hover:bg-[#a00000]">
+        <Button className="gap-2 bg-neutral-900 text-white shadow-md transition-all hover:bg-neutral-800 hover:shadow-lg">
           Nova Categoria
-        </ShinyButton>
+        </Button>
       </AlertDialogTrigger>
-      <AlertDialogContent className="border-white/10 bg-[#111] text-white sm:max-w-[425px]">
+      <AlertDialogContent className="border-neutral-200 bg-white text-neutral-900 shadow-lg sm:max-w-[425px]">
         <AlertDialogHeader>
-          <AlertDialogTitle>Criar Categoria</AlertDialogTitle>
-          <AlertDialogDescription className="text-neutral-400">
+          <AlertDialogTitle className="text-neutral-900">
+            Criar Categoria
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-neutral-500">
             Adicione uma nova categoria para organizar seus produtos.
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -80,11 +79,11 @@ export function AddCategoryButton() {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome</FormLabel>
+                  <FormLabel className="text-neutral-700">Nome</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Ex: Mod Gráfico"
-                      className="border-white/10 bg-white/5 text-white"
+                      placeholder="Ex: Eletrodomésticos"
+                      className="border-neutral-300 bg-white text-neutral-900 focus:border-orange-500 focus:ring-orange-500"
                       {...field}
                     />
                   </FormControl>
@@ -97,11 +96,13 @@ export function AddCategoryButton() {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Descrição (Opcional)</FormLabel>
+                  <FormLabel className="text-neutral-700">
+                    Descrição (Opcional)
+                  </FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Breve descrição..."
-                      className="resize-none border-white/10 bg-white/5 text-white"
+                      className="resize-none border-neutral-300 bg-white text-neutral-900 focus:border-orange-500 focus:ring-orange-500"
                       {...field}
                     />
                   </FormControl>
@@ -110,12 +111,12 @@ export function AddCategoryButton() {
               )}
             />
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-white/10 bg-transparent text-white hover:bg-white/10 hover:text-white">
+              <AlertDialogCancel className="border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900">
                 Cancelar
               </AlertDialogCancel>
               <Button
                 type="submit"
-                className="bg-[#D00000] text-white hover:bg-[#a00000]"
+                className="bg-orange-600 text-white shadow-sm hover:bg-orange-700"
                 disabled={isPending}
               >
                 {isPending ? "Salvando..." : "Salvar Categoria"}

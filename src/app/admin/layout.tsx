@@ -27,17 +27,17 @@ export default async function AdminLayout({
   return (
     // SidebarProvider gerencia o estado da sidebar (aberta/fechada)
     <SidebarProvider>
-      <div className="font-montserrat flex min-h-screen w-full bg-[#050505] text-white">
+      <div className="font-montserrat flex min-h-screen w-full bg-[#e4e4e4] text-black">
         {/* Passamos os dados do usuário para a Sidebar */}
         <AdminSidebar user={session.user} />
 
         {/* SidebarInset é onde o conteúdo da página será renderizado */}
-        <SidebarInset className="flex-1 overflow-hidden bg-[#050505]">
+        <SidebarInset className="flex-1 overflow-hidden bg-[#FFFFFF]">
           {/* Header Mobile / Trigger da Sidebar */}
           <header className="flex h-16 shrink-0 items-center gap-2 border-b border-white/5 px-4">
-            <SidebarTrigger className="text-white hover:bg-white/10" />
+            <SidebarTrigger className="text-neutral-700 hover:bg-white/10" />
             <div className="mx-2 h-4 w-[1px] bg-white/10" />
-            <span className="text-sm font-medium text-neutral-400">
+            <span className="text-sm font-medium text-neutral-700">
               Área Administrativa
             </span>
           </header>

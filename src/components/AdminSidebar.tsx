@@ -41,19 +41,19 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
   const pathname = usePathname();
 
   return (
-    <Sidebar className="border-r border-white/10 bg-[#0A0A0A] text-white">
+    <Sidebar className="border-r border-neutral-200 bg-white text-neutral-900">
       {/* --- HEADER (Logo) --- */}
-      <SidebarHeader className="flex h-20 justify-center border-b border-white/5 px-6">
+      <SidebarHeader className="flex h-20 justify-center border-b border-neutral-100 px-6">
         <div className="flex items-center justify-center gap-2 py-6">
           <Image
-            src="/images/logo.png"
-            alt="Logo Sub Mind"
-            width={50}
-            height={50}
+            src="/images/logo.png" // Certifique-se que o logo funciona em fundo claro ou use uma versão dark do logo
+            alt="Logo ESG Group"
+            width={35}
+            height={35}
             className="object-cover"
           />
-          <span className="font-clash-display text-2xl font-medium">
-            ESG-Group
+          <span className="text-xl font-semibold text-neutral-700">
+            ESG Group
           </span>
         </div>
       </SidebarHeader>
@@ -66,7 +66,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
             <SidebarMenuButton
               asChild
               isActive={pathname === "/admin"}
-              className="h-12 text-neutral-400 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#D00000]/10 data-[active=true]:text-[#D00000]"
+              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600"
             >
               <Link href="/admin">
                 <LayoutDashboard className="mr-2 h-5 w-5" />
@@ -74,25 +74,27 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          {/* Dashboard */}
+
+          {/* Pedidos */}
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
               isActive={pathname === "/admin/pedidos"}
-              className="h-12 text-neutral-400 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#D00000]/10 data-[active=true]:text-[#D00000]"
+              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600"
             >
               <Link href="/admin/pedidos">
                 <Truck className="mr-2 h-5 w-5" />
-                <span>Pedidos </span>
+                <span>Pedidos</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
+
           {/* Produtos */}
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
               isActive={pathname.startsWith("/admin/produtos")}
-              className="h-12 text-neutral-400 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#D00000]/10 data-[active=true]:text-[#D00000]"
+              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600"
             >
               <Link href="/admin/produtos">
                 <Package className="mr-2 h-5 w-5" />
@@ -100,12 +102,13 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
+
           {/* Categorias */}
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
               isActive={pathname.startsWith("/admin/categorias")}
-              className="h-12 text-neutral-400 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#D00000]/10 data-[active=true]:text-[#D00000]"
+              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600"
             >
               <Link href="/admin/categorias">
                 <Blocks className="mr-2 h-5 w-5" />
@@ -113,51 +116,27 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          {/* moveis */}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={pathname.startsWith("/admin/moveis")}
-              className="h-12 text-neutral-400 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#D00000]/10 data-[active=true]:text-[#D00000]"
-            >
-              <Link href="/admin/moveis">
-                <Gamepad2 className="mr-2 h-5 w-5" />
-                <span>Móveis</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          {/* Streamings */}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={pathname.startsWith("/admin/streamings")}
-              className="h-12 text-neutral-400 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#D00000]/10 data-[active=true]:text-[#D00000]"
-            >
-              <Link href="/admin/streamings">
-                <TvMinimalPlay className="mr-2 h-5 w-5" />
-                <span>Streamings</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+
           {/* Afiliados */}
-          <SidebarMenuItem>
+          {/* <SidebarMenuItem>
             <SidebarMenuButton
               asChild
               isActive={pathname.startsWith("/admin/afiliados")}
-              className="h-12 text-neutral-400 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#D00000]/10 data-[active=true]:text-[#D00000]"
+              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600"
             >
               <Link href="/admin/afiliados">
                 <Users className="mr-2 h-5 w-5" />
                 <span>Afiliados</span>
               </Link>
             </SidebarMenuButton>
-          </SidebarMenuItem>
-          {/* Avaliaçoes */}
+          </SidebarMenuItem> */}
+
+          {/* Avaliações */}
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
               isActive={pathname === "/admin/avaliacoes"}
-              className="h-12 text-neutral-400 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#D00000]/10 data-[active=true]:text-[#D00000]"
+              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600"
             >
               <Link href="/admin/avaliacoes">
                 <Star className="mr-2 h-5 w-5" />
@@ -165,12 +144,13 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
+
           {/* Cupons */}
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
               isActive={pathname.startsWith("/admin/cupons")}
-              className="h-12 text-neutral-400 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#D00000]/10 data-[active=true]:text-[#D00000]"
+              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600"
             >
               <Link href="/admin/cupons">
                 <TicketPercent className="mr-2 h-5 w-5" />
@@ -178,12 +158,15 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
+
+          {/* Separador */}
+          <div className="my-4 h-[1px] bg-neutral-100" />
+
           {/* Voltar ao Site */}
-          <div className="my-4 h-[1px] bg-white/10" /> {/* Separador */}
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="h-12 text-neutral-400 hover:bg-white/5 hover:text-white"
+              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
             >
               <Link href="/">
                 <Home className="mr-2 h-5 w-5" />
@@ -195,16 +178,16 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
       </SidebarContent>
 
       {/* --- FOOTER (Usuário) --- */}
-      <SidebarFooter className="border-t border-white/5 p-4">
-        <div className="flex items-center gap-3 rounded-xl bg-white/5 p-3">
-          <Avatar className="h-9 w-9 border border-white/10">
+      <SidebarFooter className="border-t border-neutral-100 p-4">
+        <div className="flex cursor-pointer items-center gap-3 rounded-xl bg-neutral-50 p-3 transition-colors hover:bg-neutral-100">
+          <Avatar className="h-9 w-9 border border-neutral-200">
             <AvatarImage src={user.image || ""} />
-            <AvatarFallback className="bg-[#D00000] font-bold text-white">
+            <AvatarFallback className="bg-orange-600 font-bold text-white">
               {user.name.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col overflow-hidden text-left">
-            <span className="truncate text-sm font-medium text-white">
+            <span className="truncate text-sm font-semibold text-neutral-900">
               {user.name}
             </span>
             <span className="truncate text-xs text-neutral-500">Admin</span>

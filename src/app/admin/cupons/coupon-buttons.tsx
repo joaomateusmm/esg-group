@@ -29,7 +29,8 @@ export function DeleteCouponButton({ id }: { id: string }) {
     <Button
       size="icon"
       variant="ghost"
-      className="h-8 w-8 text-red-500 hover:bg-red-500/10 hover:text-red-400"
+      className="h-8 w-8 bg-black/5 text-red-500 duration-300 hover:bg-black/5 hover:text-red-500 hover:shadow-sm"
+      title="Deletar este cupom"
       onClick={handleDelete}
       disabled={loading}
     >
@@ -65,7 +66,8 @@ export function ToggleCouponButton({
     <Button
       size="icon"
       variant="ghost"
-      className="h-8 w-8 text-neutral-400 hover:text-white"
+      className="h-8 w-8 bg-black/5 duration-300 hover:bg-black/5 hover:shadow-sm"
+      title="Desligar ou Ligar este cupom"
       onClick={handleToggle}
       disabled={loading}
     >
@@ -107,10 +109,10 @@ export function FeatureCouponButton({
     <Button
       size="icon"
       variant="ghost"
-      className={`h-8 w-8 transition-colors ${
+      className={`h-8 w-8 ${
         isFeatured
-          ? "bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20"
-          : "text-neutral-500 hover:bg-white/5 hover:text-white"
+          ? "bg-yellow-500/10 text-yellow-500 duration-300 hover:bg-yellow-500/20 hover:text-yellow-600"
+          : "bg-black/5 text-neutral-700 duration-300 hover:bg-black/5 hover:shadow-sm"
       }`}
       onClick={handleFeature}
       disabled={loading}

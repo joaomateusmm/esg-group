@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { ShinyButton } from "@/components/ui/shiny-button";
+import { Button } from "@/components/ui/button";
 
 export function AddProductButton() {
   const router = useRouter();
@@ -19,7 +19,7 @@ export function AddProductButton() {
   };
 
   return (
-    <ShinyButton
+    <Button
       onClick={handleClick}
       className={`font-montserrat min-w-[170px] justify-center font-light transition-all ${
         // 3. Adicionamos estilo visual de "desabilitado" manualmente
@@ -34,6 +34,6 @@ export function AddProductButton() {
       ) : (
         "Adicionar Produto"
       )}
-    </ShinyButton>
+    </Button>
   );
 }

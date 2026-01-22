@@ -38,7 +38,7 @@ const faqData = [
 
 const FaqSection = () => {
   return (
-    <section className="relative my-20 bg-[#010000] py-10">
+    <section className="relative mb-15 bg-[#fff] py-10">
       <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

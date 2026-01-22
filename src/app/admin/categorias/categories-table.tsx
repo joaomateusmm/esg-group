@@ -51,7 +51,6 @@ export function CategoriesTable({ data }: CategoriesTableProps) {
         setSelectedIds([]);
         toast.success("Categorias excluídas.");
       } catch {
-        // CORREÇÃO: Removi a variável (error) já que não era usada.
         toast.error("Erro ao excluir.");
       }
     });
@@ -67,7 +66,7 @@ export function CategoriesTable({ data }: CategoriesTableProps) {
             size="sm"
             onClick={handleBulkDelete}
             disabled={isPending}
-            className="bg-red-600 hover:bg-red-700"
+            className="bg-red-600 text-white shadow-sm hover:bg-red-700"
           >
             <Trash2 className="mr-2 h-4 w-4" />
             Excluir ({selectedIds.length})
@@ -76,22 +75,26 @@ export function CategoriesTable({ data }: CategoriesTableProps) {
       </div>
 
       {/* Tabela */}
-      <div className="rounded-md border border-white/10 bg-[#0A0A0A]">
+      <div className="rounded-md border border-neutral-200 bg-white shadow-sm">
         <Table>
-          <TableHeader className="bg-white/5">
-            <TableRow className="border-white/10 hover:bg-white/5">
+          <TableHeader className="bg-neutral-50">
+            <TableRow className="border-neutral-200 hover:bg-neutral-100">
               <TableHead className="w-[40px]">
                 <Checkbox
-                  className="border-white/50 data-[state=checked]:border-[#D00000] data-[state=checked]:bg-[#D00000]"
+                  className="border-neutral-400 data-[state=checked]:border-orange-600 data-[state=checked]:bg-orange-600"
                   checked={
                     data.length > 0 && selectedIds.length === data.length
                   }
                   onCheckedChange={(c) => handleSelectAll(!!c)}
                 />
               </TableHead>
-              <TableHead className="text-neutral-400">Nome</TableHead>
-              <TableHead className="text-neutral-400">Descrição</TableHead>
-              <TableHead className="text-right text-neutral-400">
+              <TableHead className="font-semibold text-neutral-600">
+                Nome
+              </TableHead>
+              <TableHead className="font-semibold text-neutral-600">
+                Descrição
+              </TableHead>
+              <TableHead className="text-right font-semibold text-neutral-600">
                 Criado em
               </TableHead>
               <TableHead className="w-[50px]"></TableHead>
@@ -106,11 +109,11 @@ export function CategoriesTable({ data }: CategoriesTableProps) {
                 >
                   <div className="flex h-full w-full flex-col items-center justify-center gap-4 py-10">
                     <Image
-                      src="/images/illustration.svg"
+                      src="/images/illustration.svg" // Garanta que essa imagem funciona no claro ou troque
                       alt="Sem produtos"
-                      width={300}
-                      height={300}
-                      className="opacity-40 grayscale"
+                      width={200}
+                      height={200}
+                      className="opacity-50 grayscale"
                     />
                     <p className="text-lg font-light text-neutral-400">
                       Nenhuma categoria encontrada.
@@ -122,22 +125,22 @@ export function CategoriesTable({ data }: CategoriesTableProps) {
               data.map((item) => (
                 <TableRow
                   key={item.id}
-                  className="border-white/10 hover:bg-white/5"
+                  className="border-neutral-100 transition-colors hover:bg-neutral-50"
                 >
                   <TableCell>
                     <Checkbox
-                      className="border-white/50 data-[state=checked]:border-[#D00000] data-[state=checked]:bg-[#D00000]"
+                      className="border-neutral-400 data-[state=checked]:border-orange-600 data-[state=checked]:bg-orange-600"
                       checked={selectedIds.includes(item.id)}
                       onCheckedChange={(c) => handleSelectOne(!!c, item.id)}
                     />
                   </TableCell>
-                  <TableCell className="font-medium text-white">
+                  <TableCell className="font-medium text-neutral-900">
                     {item.name}
                   </TableCell>
-                  <TableCell className="text-neutral-400">
+                  <TableCell className="text-neutral-500">
                     {item.description || "-"}
                   </TableCell>
-                  <TableCell className="text-right text-neutral-400">
+                  <TableCell className="text-right text-neutral-500">
                     {new Date(item.createdAt).toLocaleDateString("pt-BR")}
                   </TableCell>
                   <TableCell>
