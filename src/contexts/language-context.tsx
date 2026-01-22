@@ -8,7 +8,8 @@ export type Language = "pt" | "en" | "es";
 // 1. Definimos o objeto de fallback
 const defaultTranslations = {
   topBar: {
-    promo: "Frete Grátis...",
+    promo:
+      "Frete Grátis Para Qualquer Produto em Nossa Loja! | 5% OFF Com o Cupom: GROUPESG",
     storeLocator: "Lojas",
     help: "Ajuda",
   },
