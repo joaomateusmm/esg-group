@@ -1,7 +1,6 @@
-import { count, desc } from "drizzle-orm";
+import { count, desc, ilike, or } from "drizzle-orm"; // 1. ADICIONADO: ilike e or
 
 import { db } from "@/db";
-// ALTERAÇÃO 1: Adicionei 'category' na importação
 import { category, product } from "@/db/schema";
 
 import { AddProductButton } from "./components/add-button";
@@ -10,16 +9,32 @@ import { ProductsTable } from "./components/products-table";
 export default async function AdminProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ limit?: string }>;
+  // 2. ATUALIZADO: Adicionado 'search' na tipagem
+  searchParams: Promise<{ limit?: string; search?: string }>;
 }) {
   const params = await searchParams;
+
   const limitParam = params.limit ?? "10";
   const limit = limitParam === "all" ? undefined : Number(limitParam);
 
-  // 1. Busca os produtos
+  // 3. NOVO: Pega o termo de pesquisa
+  const searchTerm = params.search;
+
+  // 4. LÓGICA DE FILTRO
+  // Se existir pesquisa, cria a condição: Nome PARECIDO COM ... OU ID PARECIDO COM ...
+  // O `%` serve para buscar em qualquer parte do texto (ex: "adei" acha "Cadeira")
+  const searchFilter = searchTerm
+    ? or(
+        ilike(product.name, `%${searchTerm}%`),
+        ilike(product.id, `%${searchTerm}%`),
+      )
+    : undefined;
+
+  // 5. QUERY PRINCIPAL COM FILTRO
   const productsQuery = db
     .select()
     .from(product)
+    .where(searchFilter) // Aplica o filtro aqui (se for undefined, o Drizzle ignora)
     .orderBy(desc(product.createdAt));
 
   if (limit) {
@@ -28,11 +43,11 @@ export default async function AdminProductsPage({
 
   const productsData = await productsQuery;
 
-  // 2. Conta o total de produtos
+  // 6. CONTAGEM (Opcional: Filtrar o total também ou mostrar total geral)
+  // Aqui mantive a contagem TOTAL da loja, mas podes filtrar se quiseres
   const totalCountResult = await db.select({ value: count() }).from(product);
   const totalProducts = totalCountResult[0].value;
 
-  // ALTERAÇÃO 2: Busca todas as categorias (apenas ID e Nome) para passar para a tabela
   const categoriesData = await db
     .select({
       id: category.id,

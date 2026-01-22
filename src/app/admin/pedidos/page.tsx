@@ -2,7 +2,7 @@ import { count, desc, eq } from "drizzle-orm";
 
 import { OrdersTable } from "@/components/admin/orders-table";
 import { db } from "@/db";
-import { order, user } from "@/db/schema";
+import { order, orderItem, product, user } from "@/db/schema";
 
 type ShippingAddress = {
   street: string;
@@ -15,8 +15,9 @@ type ShippingAddress = {
 };
 
 export default async function AdminOrdersPage() {
+  // CORREÇÃO: Usamos 'selectDistinctOn' logo no início
   const orders = await db
-    .select({
+    .selectDistinctOn([order.id], {
       id: order.id,
       status: order.status,
       amount: order.amount,
@@ -24,20 +25,28 @@ export default async function AdminOrdersPage() {
       trackingCode: order.trackingCode,
       shippingAddress: order.shippingAddress,
 
-      // DADOS DO PEDIDO (PRIORIDADE 1)
+      // --- DADOS DO PRODUTO ---
+      productImages: product.images,
+      productId: product.id,
+
+      // DADOS DO PEDIDO
       orderCustomerName: order.customerName,
       orderCustomerEmail: order.customerEmail,
       orderUserPhone: order.userPhone,
 
-      // DADOS DA CONTA (PRIORIDADE 2 - FALLBACK)
+      // DADOS DA CONTA
       userId: order.userId,
       accountName: user.name,
       accountEmail: user.email,
-      accountPhone: user.phoneNumber, // <--- ADICIONADO: Puxa o telefone salvo no cadastro
+      accountPhone: user.phoneNumber,
     })
     .from(order)
     .leftJoin(user, eq(order.userId, user.id))
-    .orderBy(desc(order.createdAt));
+    .leftJoin(orderItem, eq(order.id, orderItem.orderId))
+    .leftJoin(product, eq(orderItem.productId, product.id))
+    // NOTA: O 'distinctOn' foi removido daqui de baixo e movido para o topo.
+    // O PostgreSQL EXIGE que a primeira ordenação seja a mesma do distinctOn (order.id)
+    .orderBy(order.id, desc(order.createdAt));
 
   const [totalResult] = await db.select({ count: count() }).from(order);
 
@@ -49,30 +58,34 @@ export default async function AdminOrdersPage() {
     trackingCode: o.trackingCode,
     shippingAddress: o.shippingAddress as unknown as ShippingAddress,
 
-    // LÓGICA DE EXIBIÇÃO:
+    // Lógica para definir a imagem e ID
+    productImage:
+      o.productImages && o.productImages.length > 0 ? o.productImages[0] : null,
+    productId: o.productId || null,
 
-    // Nome: Pedido > Conta > Padrão
     userName: o.orderCustomerName || o.accountName || "Usuário Desconhecido",
-
-    // Email: Pedido > Conta > Padrão
     userEmail: o.orderCustomerEmail || o.accountEmail || "Sem Email",
-
-    // Telefone: Pedido > Conta > Nulo
-    // AQUI ESTÁ A CORREÇÃO: Se não tiver no pedido, usa o da conta
     userPhone: o.orderUserPhone || o.accountPhone,
 
     itemsCount: 0,
   }));
 
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight text-black">
-          Gerenciar Pedidos
-        </h2>
+    <div className="flex-1 space-y-8 px-2 pt-6">
+      <div>
+        <h1 className="font-clash-display text-3xl font-medium text-black">
+          Meus Pedidos
+        </h1>
+        <p className="text-sm text-neutral-700">
+          Gerencie o todos os pedidos da sua loja.
+        </p>
       </div>
 
-      <OrdersTable data={formattedOrders} totalOrders={totalResult.count} />
+      <OrdersTable
+        data={formattedOrders}
+        totalOrders={totalResult.count}
+        limitParam={""}
+      />
     </div>
   );
 }

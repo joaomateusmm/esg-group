@@ -1,9 +1,16 @@
 "use client";
 
-import { ChevronDown, CopyCheck, ImageIcon, SquareCheck } from "lucide-react";
+import {
+  ChevronDown,
+  CopyCheck,
+  ImageIcon,
+  Search,
+  SquareCheck,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+// 1. ADICIONADOS IMPORTS DE NAVEGAÇÃO
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -39,7 +46,6 @@ import {
 import { deleteProducts } from "../../../../actions/create-product";
 import { ProductActions } from "./product-actions";
 
-// Tipo auxiliar para as categorias
 interface CategoryData {
   id: string;
   name: string;
@@ -60,9 +66,27 @@ export function ProductsTable({
   allCategories,
 }: ProductsTableProps) {
   const router = useRouter();
+  // 2. HOOKS PARA LER A URL
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  // 3. FUNÇÃO DE PESQUISA (Atualiza a URL)
+  const handleSearch = (term: string) => {
+    const params = new URLSearchParams(searchParams);
+
+    if (term) {
+      params.set("search", term);
+    } else {
+      params.delete("search");
+    }
+
+    // Substitui a URL atual mantendo o scroll na mesma posição
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -114,6 +138,19 @@ export function ProductsTable({
     <>
       {/* --- FILTROS E BOTÕES --- */}
       <div className="mb-4 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+        <div className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-sm text-neutral-600 shadow-sm duration-300">
+          <Search className="mr-1 h-4 w-4 text-neutral-500" />
+          <input
+            // 4. INPUT CONECTADO
+            placeholder="Pesquisar Produto..."
+            type="text"
+            // Pega o valor atual da URL para não perder ao recarregar
+            defaultValue={searchParams.get("search")?.toString()}
+            // Atualiza a URL quando o usuário digita
+            onChange={(e) => handleSearch(e.target.value)}
+            className="w-auto p-1 duration-300 hover:bg-neutral-50 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none active:scale-95"
+          />
+        </div>
         <div className="ml-auto flex items-center justify-center gap-3">
           {selectedIds.length > 0 && (
             <button

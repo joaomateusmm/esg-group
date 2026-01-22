@@ -2,19 +2,24 @@
 
 import {
   CheckCircle2,
+  ChevronDown,
   Clock,
   Copy,
   CopyCheck,
+  Image as ImageIcon,
   LucideIcon,
   Map,
   MapPin,
   MoreHorizontal,
   Package,
   Phone,
+  Search, // Icone de busca
+  SquareCheck, // Icone de seleção
   Truck,
   XCircle,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -23,6 +28,16 @@ import {
   updateOrderStatus,
   updateTrackingCode,
 } from "@/actions/admin-orders";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -63,6 +78,11 @@ interface OrderData {
   userName: string;
   userEmail: string;
   userPhone?: string | null;
+
+  // Campos de Produto
+  productImage?: string | null;
+  productId?: string | null;
+
   createdAt: Date;
   trackingCode?: string | null;
   itemsCount: number;
@@ -80,6 +100,7 @@ interface OrderData {
 interface OrdersTableProps {
   data: OrderData[];
   totalOrders: number;
+  limitParam: string; // Adicionado para controlar o dropdown de quantidade
 }
 
 const STATUS_MAP: Record<
@@ -113,56 +134,81 @@ const STATUS_MAP: Record<
   },
 };
 
-// Adicione isso no topo do arquivo orders-table.tsx, fora do componente principal
 const formatPhoneNumber = (phone: string | null | undefined) => {
   if (!phone) return null;
-
-  // Remove tudo que não for número
   const cleaned = phone.replace(/\D/g, "");
-
-  // Lógica para números do Brasil (assumindo que começam com 55 ou apenas DDD)
-  // Remove o 55 se tiver 13 digitos (55 + 11 + 9 + 8 digitos)
   const numbersOnly =
     cleaned.length > 11 && cleaned.startsWith("55")
       ? cleaned.slice(2)
       : cleaned;
 
-  // Formata: (XX) XXXXX-XXXX
   if (numbersOnly.length === 11) {
     return numbersOnly.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
   }
-  // Formata fixo: (XX) XXXX-XXXX
   if (numbersOnly.length === 10) {
     return numbersOnly.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
   }
-
-  return phone; // Retorna original se não reconhecer o padrão
+  return phone;
 };
 
-export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
+export function OrdersTable({
+  data,
+  totalOrders,
+  limitParam,
+}: OrdersTableProps) {
   const router = useRouter();
+  // Hooks de URL para pesquisa e paginação
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isPending, startTransition] = useTransition();
 
+  // Estados dos Modais
   const [trackingModalOpen, setTrackingModalOpen] = useState(false);
   const [addressModalOpen, setAddressModalOpen] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false); // Modal de delete bonito
 
   const [currentOrderData, setCurrentOrderData] = useState<OrderData | null>(
     null,
   );
   const [trackingCodeInput, setTrackingCodeInput] = useState("");
 
+  // --- FUNÇÕES DE SELEÇÃO ---
   const handleSelectAll = (checked: boolean) => {
-    setSelectedIds(checked ? data.map((o) => o.id) : []);
+    if (checked) {
+      setSelectedIds(data.map((o) => o.id));
+    } else {
+      setSelectedIds([]);
+    }
   };
 
   const handleSelectOne = (checked: boolean, id: string) => {
-    setSelectedIds((prev) =>
-      checked ? [...prev, id] : prev.filter((item) => item !== id),
-    );
+    if (checked) {
+      setSelectedIds((prev) => [...prev, id]);
+    } else {
+      setSelectedIds((prev) => prev.filter((item) => item !== id));
+    }
   };
 
+  const handleSelectPage = () => {
+    const pageIds = data.map((order) => order.id);
+    setSelectedIds(pageIds);
+    toast.success(`${pageIds.length} pedidos desta página selecionados.`);
+  };
+
+  // --- FUNÇÃO DE PESQUISA ---
+  const handleSearch = (term: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (term) {
+      params.set("search", term);
+    } else {
+      params.delete("search");
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  // --- AÇÕES DO PEDIDO ---
   const handleStatusChange = (id: string, newStatus: string) => {
     startTransition(async () => {
       const res = await updateOrderStatus(id, newStatus);
@@ -176,12 +222,12 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
   };
 
   const handleBulkDelete = () => {
-    if (!confirm("Tem certeza? Isso apagará os pedidos selecionados.")) return;
     startTransition(async () => {
       const res = await deleteOrders(selectedIds);
       if (res.success) {
         toast.success(res.message);
         setSelectedIds([]);
+        setShowDeleteDialog(false);
         router.refresh();
       } else {
         toast.error(res.message);
@@ -202,12 +248,10 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
 
   const saveTracking = async () => {
     if (!currentOrderData) return;
-
     const res = await updateTrackingCode(
       currentOrderData.id,
       trackingCodeInput,
     );
-
     if (res.success) {
       await updateOrderStatus(currentOrderData.id, "shipped");
       toast.success("Rastreio salvo e pedido marcado como Em Trânsito!");
@@ -238,6 +282,15 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
     toast.success("Endereço copiado!");
   };
 
+  const copyProductId = (id: string | null | undefined) => {
+    if (!id) {
+      toast.error("ID do produto indisponível.");
+      return;
+    }
+    navigator.clipboard.writeText(id);
+    toast.success("ID do Produto copiado!");
+  };
+
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -246,22 +299,48 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
 
   return (
     <>
-      <div className="mb-4 flex items-center justify-end gap-3">
-        {selectedIds.length > 0 && (
+      {/* --- HEADER COM FILTROS E AÇÕES (Igual Produtos) --- */}
+      <div className="mb-4 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+        {/* Barra de Pesquisa */}
+        <div className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-sm text-neutral-600 shadow-sm duration-300">
+          <Search className="mr-1 h-4 w-4 text-neutral-500" />
+          <input
+            placeholder="Pesquisar Pedido..."
+            type="text"
+            defaultValue={searchParams.get("search")?.toString()}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="w-auto p-1 duration-300 hover:bg-neutral-50 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none active:scale-95"
+          />
+        </div>
+
+        {/* Botões de Ação em Massa */}
+        <div className="ml-auto flex items-center justify-center gap-3">
+          {selectedIds.length > 0 && (
+            <button
+              onClick={() => setShowDeleteDialog(true)}
+              className="animate-in fade-in zoom-in flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 text-sm text-red-600 duration-300 hover:bg-red-100"
+            >
+              <SquareCheck className="h-4 w-4" />
+              Excluir ({selectedIds.length})
+            </button>
+          )}
+
           <button
-            onClick={handleBulkDelete}
-            className="flex h-10 items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 text-sm text-red-600 transition-colors hover:bg-red-100"
+            onClick={handleSelectPage}
+            className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-sm text-neutral-600 shadow-sm duration-300 hover:bg-neutral-50 active:scale-95"
           >
-            <XCircle className="h-4 w-4" />
-            Excluir ({selectedIds.length})
+            <SquareCheck className="h-4 w-4" />
+            Marcar Página
           </button>
-        )}
-        <button
-          onClick={() => handleSelectAll(true)}
-          className="flex h-10 items-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-sm text-neutral-600 shadow-sm transition-colors hover:bg-neutral-50"
-        >
-          <CopyCheck className="h-4 w-4" /> Marcar Todos
-        </button>
+
+          <button
+            onClick={() => handleSelectAll(true)}
+            className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-sm text-neutral-600 shadow-sm duration-300 hover:bg-neutral-50 active:scale-95"
+          >
+            <CopyCheck className="h-4 w-4" />
+            Marcar Todos
+          </button>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
@@ -272,13 +351,18 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
                 <Checkbox
                   className="border-neutral-400 data-[state=checked]:border-orange-600 data-[state=checked]:bg-orange-600"
                   checked={
-                    data.length > 0 && selectedIds.length === data.length
+                    data.length > 0 &&
+                    selectedIds.length === data.length &&
+                    data.every((item) => selectedIds.includes(item.id))
                   }
                   onCheckedChange={(c) => handleSelectAll(!!c)}
                 />
               </TableHead>
               <TableHead className="font-semibold text-neutral-600">
                 Pedido
+              </TableHead>
+              <TableHead className="font-semibold text-neutral-600">
+                Prod. Comprado
               </TableHead>
               <TableHead className="font-semibold text-neutral-600">
                 Cliente
@@ -305,7 +389,7 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
             {data.length === 0 ? (
               <TableRow className="border-neutral-100 hover:bg-neutral-50">
                 <TableCell
-                  colSpan={9}
+                  colSpan={10}
                   className="h-32 text-center text-neutral-500"
                 >
                   <div className="flex flex-col items-center justify-center gap-2">
@@ -320,8 +404,6 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
                   STATUS_MAP[order.status] || STATUS_MAP["pending"];
                 const StatusIcon = statusInfo.icon;
 
-                // Tenta pegar o telefone do usuário (já vem com fallback da Page)
-                // OU do endereço de envio
                 const displayPhone =
                   order.userPhone || order.shippingAddress?.phone;
 
@@ -329,6 +411,9 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
                   <TableRow
                     key={order.id}
                     className="border-neutral-100 transition-colors hover:bg-neutral-50"
+                    data-state={
+                      selectedIds.includes(order.id) ? "selected" : ""
+                    }
                   >
                     <TableCell>
                       <Checkbox
@@ -343,25 +428,53 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
                         {new Date(order.createdAt).toLocaleDateString()}
                       </div>
                     </TableCell>
+
+                    {/* --- COLUNA PRODUTO --- */}
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-neutral-200 bg-white">
+                          {order.productImage ? (
+                            <img
+                              src={order.productImage}
+                              alt="Produto"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <ImageIcon className="h-4 w-4 text-neutral-300" />
+                          )}
+                        </div>
+
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          disabled={!order.productId}
+                          className="h-8 w-8 text-neutral-500 hover:bg-neutral-100 hover:text-orange-600 disabled:opacity-30"
+                          onClick={() => copyProductId(order.productId)}
+                          title={
+                            order.productId
+                              ? "Copiar ID do Produto"
+                              : "ID Indisponível"
+                          }
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+
                     <TableCell>
                       <div className="flex flex-col gap-1">
-                        {/* Nome com destaque */}
                         <span className="font-semibold text-neutral-900">
                           {order.userName}
                         </span>
-
-                        {/* Email mais discreto */}
                         <span className="text-xs text-neutral-500">
                           {order.userEmail}
                         </span>
-
-                        {/* TELEFONE COM DESIGN NOVO */}
                         {displayPhone ? (
                           <div
                             className="flex w-fit cursor-pointer items-center gap-1.5 rounded-md border border-neutral-200/20 bg-neutral-50/20 px-2 py-1 transition-colors hover:bg-white"
                             title="Clique para copiar"
                             onClick={(e) => {
-                              e.stopPropagation(); // Evita clicar na linha da tabela
+                              e.stopPropagation();
                               navigator.clipboard.writeText(displayPhone);
                               toast.success("Telefone copiado!");
                             }}
@@ -417,7 +530,6 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
                       )}
                     </TableCell>
 
-                    {/* COLUNA MAPA */}
                     <TableCell>
                       {order.shippingAddress ? (
                         <Button
@@ -550,11 +662,101 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
         </Table>
       </div>
 
-      <div className="mt-4 text-center text-sm text-neutral-500">
-        Total de {totalOrders} pedidos registrados.
+      {/* --- RODAPÉ (Paginação e Limit) --- */}
+      <div className="mt-4 flex flex-col items-center justify-between gap-4 md:flex-row">
+        <p className="text-sm text-neutral-500">
+          Exibindo {data.length} de {totalOrders} pedidos.
+        </p>
+
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-neutral-500">Visualizar</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
+                >
+                  {limitParam === "all" ? "Todos" : limitParam}
+                  <ChevronDown className="ml-2 h-3 w-3 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="border-neutral-200 bg-white text-neutral-700 shadow-md"
+              >
+                <Link href="?limit=10" scroll={false}>
+                  <DropdownMenuItem className="cursor-pointer hover:bg-neutral-50 focus:bg-neutral-50">
+                    10
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="?limit=20" scroll={false}>
+                  <DropdownMenuItem className="cursor-pointer hover:bg-neutral-50 focus:bg-neutral-50">
+                    20
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="?limit=30" scroll={false}>
+                  <DropdownMenuItem className="cursor-pointer hover:bg-neutral-50 focus:bg-neutral-50">
+                    30
+                  </DropdownMenuItem>
+                </Link>
+                <DropdownMenuSeparator className="bg-neutral-100" />
+                <Link href="?limit=all" scroll={false}>
+                  <DropdownMenuItem className="cursor-pointer hover:bg-neutral-50 focus:bg-neutral-50">
+                    Todos
+                  </DropdownMenuItem>
+                </Link>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+              disabled
+            >
+              Anterior
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
+            >
+              Próxima
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {/* --- MODAL DE RASTREIO --- */}
+      {/* --- DIALOG DE EXCLUSÃO EM MASSA (NOVO) --- */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="border-neutral-200 bg-white text-neutral-900 shadow-lg sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tem certeza absoluta?</AlertDialogTitle>
+            <AlertDialogDescription className="text-neutral-500">
+              Isso excluirá permanentemente{" "}
+              <strong>{selectedIds.length}</strong> pedidos selecionados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-red-600 text-white shadow-sm hover:bg-red-700"
+              disabled={isPending}
+            >
+              {isPending ? "Excluindo..." : "Excluir Selecionados"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* MODAL DE RASTREIO (MANTIDO) */}
       <Dialog open={trackingModalOpen} onOpenChange={setTrackingModalOpen}>
         <DialogContent className="border-neutral-200 bg-white text-neutral-900 sm:max-w-md">
           <DialogHeader>
@@ -590,7 +792,7 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
         </DialogContent>
       </Dialog>
 
-      {/* --- MODAL DE ENDEREÇO --- */}
+      {/* MODAL DE ENDEREÇO (MANTIDO) */}
       <Dialog open={addressModalOpen} onOpenChange={setAddressModalOpen}>
         <DialogContent className="border-neutral-200 bg-white text-neutral-900 sm:max-w-md">
           <DialogHeader>
@@ -605,7 +807,6 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
                 {currentOrderData?.userName}
               </p>
 
-              {/* Exibição do Telefone no Modal também */}
               {(currentOrderData?.userPhone ||
                 currentOrderData?.shippingAddress?.phone) && (
                 <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-neutral-700">

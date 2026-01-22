@@ -91,26 +91,18 @@ export const product = pgTable("product", {
   description: text("description"),
   price: integer("price").notNull(), // Em centavos
   discountPrice: integer("discountPrice"), // Em centavos
-
   images: text("images").array(),
   categories: text("categories").array(), // Array de IDs de categorias
-
-  // --- NOVOS CAMPOS FÍSICOS ---
   weight: real("weight").default(0), // Peso em KG (ex: 0.500 para 500g)
   width: integer("width").default(0), // Largura em cm
   height: integer("height").default(0), // Altura em cm
   length: integer("length").default(0), // Comprimento em cm
   sku: text("sku"), // Código de estoque (opcional, mas bom para logística)
-
   stock: integer("stock").default(0),
   isStockUnlimited: boolean("isStockUnlimited").notNull().default(false),
-
   status: text("status").notNull().default("draft"), // draft, active, archived
   sales: integer("sales").notNull().default(0),
-
-  // Campos de Afiliado
   affiliateRate: integer("affiliateRate").default(10), // Porcentagem de comissão
-
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
     .notNull()
