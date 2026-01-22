@@ -1,15 +1,46 @@
 "use client";
 
-import { getCookie,setCookie } from "cookies-next"; // Instale: npm install cookies-next
+import { getCookie, setCookie } from "cookies-next";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 export type Language = "pt" | "en" | "es";
 
+// 1. Definimos o objeto de fallback fora para poder extrair o tipo dele
+const defaultTranslations = {
+  topBar: {
+    promo: "Frete Grátis...",
+    storeLocator: "Lojas",
+    help: "Ajuda",
+  },
+  header: {
+    allCategories: "Categorias",
+    searchPlaceholder: "Buscar...",
+    bestDeals: "Ofertas",
+    sale: "Promoção",
+    wishlist: { title: "Lista", empty: "Vazia" },
+    account: { myAccount: "Conta", orders: "Pedidos", logout: "Sair" },
+    cart: {
+      title: "Carrinho",
+      empty: "Vazio",
+      total: "Total",
+      checkout: "Checkout",
+    },
+  },
+  product: {
+    description: "Descrição",
+    specs: "Especificações",
+    reviews: "Avaliações",
+  },
+};
+
+// 2. Criamos um Tipo baseado na estrutura do objeto acima
+type TranslationType = typeof defaultTranslations;
+
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  // Mantemos o 't' vazio ou com fallback para não quebrar componentes antigos
-  t: any;
+  // 3. Substituímos 'any' pelo tipo correto
+  t: TranslationType;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(
@@ -25,9 +56,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     const googCookie = getCookie("googtrans");
     if (typeof googCookie === "string") {
       // O formato é /pt/en ou /auto/en
-      const langCode = googCookie.split("/").pop() as Language;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const langCode = googCookie.split("/").pop() as any; // Cast forçado temporário para validar string
       if (["pt", "en", "es"].includes(langCode)) {
-        setLanguageState(langCode);
+        setLanguageState(langCode as Language);
       }
     }
   }, []);
@@ -48,33 +80,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     window.location.reload();
   };
 
-  // Objeto 't' dummy para não quebrar seu código existente
-  // O Google vai traduzir o texto visualmente, então isso aqui importa pouco agora
-  const t = {
-    topBar: { promo: "Frete Grátis...", storeLocator: "Lojas", help: "Ajuda" },
-    header: {
-      allCategories: "Categorias",
-      searchPlaceholder: "Buscar...",
-      bestDeals: "Ofertas",
-      sale: "Promoção",
-      wishlist: { title: "Lista", empty: "Vazia" },
-      account: { myAccount: "Conta", orders: "Pedidos", logout: "Sair" },
-      cart: {
-        title: "Carrinho",
-        empty: "Vazio",
-        total: "Total",
-        checkout: "Checkout",
-      },
-    },
-    product: {
-      description: "Descrição",
-      specs: "Especificações",
-      reviews: "Avaliações",
-    },
-  };
-
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider
+      value={{ language, setLanguage, t: defaultTranslations }}
+    >
       {children}
     </LanguageContext.Provider>
   );
