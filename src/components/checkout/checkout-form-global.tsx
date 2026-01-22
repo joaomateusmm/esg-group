@@ -17,7 +17,7 @@ import { useCartStore } from "@/store/cart-store";
 export function CheckoutForm() {
   const stripe = useStripe();
   const elements = useElements();
-  const { items, getTotalPrice } = useCartStore(); // Pegamos os itens do carrinho
+  const { items, getTotalPrice } = useCartStore();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
@@ -25,9 +25,16 @@ export function CheckoutForm() {
   const [deliveryDays, setDeliveryDays] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  // ESTADO PARA GUARDAR OS DADOS DO ENDEREÇO
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [addressDetails, setAddressDetails] = useState<any>(null);
+
   // Função chamada quando o endereço muda no Stripe
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleAddressChange = async (event: any) => {
+    // Guarda os dados do endereço sempre que mudar
+    setAddressDetails(event.value);
+
     if (!event.complete) return;
 
     const address = event.value.address;
@@ -35,18 +42,12 @@ export function CheckoutForm() {
     setIsCalculatingShipping(true);
 
     try {
-      // Chamamos nossa Server Action passando Endereço + Itens
       const result = await calculateShippingAction({
         destinationPostalCode: address.postal_code,
         destinationCountry: address.country,
-        // Mapeamos os itens do carrinho para o formato que a action espera
         items: items.map((item) => ({
           id: item.id,
           quantity: item.quantity,
-          // AQUI É O PULO DO GATO:
-          // Se o seu objeto 'product' no carrinho já tiver peso, passe aqui.
-          // Se não, a Action vai usar o peso padrão que definimos lá.
-          // weight: item.weight,
         })),
       });
 
@@ -54,8 +55,7 @@ export function CheckoutForm() {
       setDeliveryDays(result.estimatedDays);
     } catch (error) {
       console.error("Erro ao calcular frete:", error);
-      // Fallback de segurança se a API falhar
-      setShippingCost(3000);
+      setShippingCost(3000); // Fallback
     } finally {
       setIsCalculatingShipping(false);
     }
@@ -63,19 +63,44 @@ export function CheckoutForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe || !elements) return;
+
+    if (!stripe || !elements) {
+      return;
+    }
 
     setIsLoading(true);
 
-    // O Stripe processa o pagamento do valor TOTAL (definido no backend na criação do Intent)
-    // ATENÇÃO: Num cenário real avançado, você precisaria atualizar o PaymentIntent
-    // no backend com o valor do frete novo antes de confirmar.
-    // Para simplificar agora, assumimos que o valor do frete será cobrado ou ajustado.
+    // Trigger form validation
+    const { error: submitError } = await elements.submit();
+    if (submitError) {
+      setMessage(submitError.message || "Erro na validação do formulário.");
+      setIsLoading(false);
+      return;
+    }
+
+    // PREPARA OS DADOS DE ENDEREÇO E TELEFONE
+    // Se o AddressElement capturou o telefone, ele estará em addressDetails.phone
+    const shippingDetails = addressDetails
+      ? {
+          name: addressDetails.name,
+          phone: addressDetails.phone,
+          address: {
+            line1: addressDetails.address.line1,
+            line2: addressDetails.address.line2,
+            city: addressDetails.address.city,
+            state: addressDetails.address.state,
+            postal_code: addressDetails.address.postal_code,
+            country: addressDetails.address.country,
+          },
+        }
+      : undefined;
 
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
         return_url: `${window.location.origin}/checkout/success`,
+        // FORÇA O ENVIO DOS DADOS DE ENTREGA
+        shipping: shippingDetails,
       },
     });
 
@@ -88,7 +113,6 @@ export function CheckoutForm() {
     setIsLoading(false);
   };
 
-  // Soma o subtotal dos produtos + o frete calculado
   const total = getTotalPrice() + shippingCost;
 
   const formatPrice = (val: number) =>
@@ -138,7 +162,6 @@ export function CheckoutForm() {
             Resumo do Pedido
           </h2>
 
-          {/* Lista compacta de itens */}
           <div className="mb-4 max-h-40 overflow-y-auto pr-2">
             {items.map((item) => (
               <div key={item.id} className="mb-2 flex justify-between text-sm">

@@ -18,7 +18,7 @@ const defaultTranslations = {
     categories: "Categorias",
     searchPlaceholder: "Buscar...",
     bestDeals: "Ofertas",
-    sale: "Promoção",
+    sale: "Serviços",
     wishlist: { title: "Lista", empty: "Vazia" },
     account: { myAccount: "Conta", orders: "Pedidos", logout: "Sair" },
     cart: {

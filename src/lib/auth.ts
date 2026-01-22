@@ -9,20 +9,31 @@ export const auth = betterAuth({
     provider: "pg", // Você está usando Neon (Postgres)
     schema: schema,
   }),
+
   user: {
-    // Configuração crucial para o Painel Admin
+    // Configuração para campos extras na tabela user
     additionalFields: {
+      // 1. Configuração do Cargo (Mantida)
       role: {
         type: "string",
         required: false,
         defaultValue: "user",
-        input: false, // Impede que o usuário defina seu próprio cargo no frontend
+        input: false, // O usuário NÃO pode escolher ser admin
+      },
+
+      // 2. Configuração do Telefone (ADICIONADA)
+      phoneNumber: {
+        type: "string", // Tipo de dado (texto)
+        required: false, // Não é obrigatório no nível do banco (pode vir null de login social)
+        input: true, // <--- O SEGREDO: Permite receber este dado do frontend
       },
     },
   },
+
   emailAndPassword: {
     enabled: true,
   },
+
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,

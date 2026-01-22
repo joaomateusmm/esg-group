@@ -26,7 +26,7 @@ function SuccessContent() {
   }, [redirectStatus, clearCart]);
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-4 py-16 text-center">
+    <div className="flex flex-1 flex-col items-center justify-center px-4 pt-42 pb-18 text-center">
       <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-green-100 text-green-600">
         <CheckCircle2 className="h-12 w-12" />
       </div>

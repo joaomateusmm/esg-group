@@ -50,21 +50,34 @@ export async function POST(req: Request) {
     const items = JSON.parse(itemsJson) as WebhookItem[];
     const shippingCostValue = shippingCost ? parseInt(shippingCost) : 0;
 
-    // --- LÓGICA DE RECUPERAÇÃO DE ENDEREÇO (AQUI ESTÁ A CORREÇÃO) ---
+    // --- CAPTURA DE DADOS DO CLIENTE (Nome, Email, Telefone) DO STRIPE ---
+    // Usamos 'as any' para garantir acesso a propriedades que o TS do Stripe pode esconder
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const customerDetails = (paymentIntent as any).customer_details;
+    const shipping = paymentIntent.shipping;
+
+    // Prioridade: Shipping -> Customer Details -> Valor Default
+    const stripeName =
+      shipping?.name || customerDetails?.name || "Cliente sem nome";
+    const stripeEmail = customerDetails?.email || null; // O email geralmente vem em customer_details
+
+    // Telefone
+    const stripePhone = shipping?.phone || customerDetails?.phone || null;
+
+    // --- LÓGICA DE RECUPERAÇÃO DE ENDEREÇO ---
     // 1. Tenta pegar dos metadados (se o seu front enviou)
     let finalAddress = shippingAddressJson
       ? JSON.parse(shippingAddressJson)
       : null;
 
-    // 2. Se não tiver nos metadados (ou for "Não informado"), pega do objeto nativo do Stripe
-    // Isso acontece quando o usuário preenche o endereço no próprio formulário do Stripe
+    // 2. Se não tiver nos metadados, pega do objeto nativo do Stripe
     if (
       !finalAddress ||
       !finalAddress.street ||
       finalAddress.street === "Não informado"
     ) {
-      if (paymentIntent.shipping?.address) {
-        const stripeAddr = paymentIntent.shipping.address;
+      if (shipping?.address) {
+        const stripeAddr = shipping.address;
         finalAddress = {
           street: stripeAddr.line1 || "Endereço Stripe",
           number: "", // O Stripe muitas vezes junta numero e rua no line1
@@ -73,8 +86,14 @@ export async function POST(req: Request) {
           state: stripeAddr.state || "",
           zipCode: stripeAddr.postal_code || "",
           country: stripeAddr.country || "BR",
+          phone: stripePhone, // Adiciona o telefone ao objeto de endereço
         };
         console.log("📦 Endereço recuperado do objeto Shipping do Stripe.");
+      }
+    } else {
+      // Se já tinha endereço dos metadados, garante que o telefone do Stripe seja adicionado se faltar
+      if (!finalAddress.phone && stripePhone) {
+        finalAddress.phone = stripePhone;
       }
     }
 
@@ -88,8 +107,13 @@ export async function POST(req: Request) {
           status: "paid",
           stripePaymentIntentId: paymentIntent.id,
           stripeClientSecret: paymentIntent.client_secret,
-          shippingAddress: finalAddress, // Salva o endereço recuperado
+          shippingAddress: finalAddress, // Salva o endereço COM telefone
           shippingCost: shippingCostValue,
+
+          // --- SALVANDO DADOS DO CHECKOUT ---
+          customerName: stripeName, // Salva o nome digitado no Stripe
+          customerEmail: stripeEmail, // Salva o email digitado no Stripe
+          userPhone: stripePhone, // Salva o telefone digitado no Stripe
         })
         .returning();
 

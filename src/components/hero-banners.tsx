@@ -33,8 +33,8 @@ const BANNERS = [
   {
     id: "imoveis-usados",
     src: "/images/banners/imoveis-usados.jpg",
-    title: "Imóveis Usados",
-    description: "Compre imóveis usados no melhor preço.",
+    title: "Móveis Usados",
+    description: "Compre móveis usados no melhor preço na Inglaterra.",
     href: "/categorias/imoveis-usados",
     position: "center-main", // O Banner Gigante
   },

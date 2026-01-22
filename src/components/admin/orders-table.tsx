@@ -10,6 +10,7 @@ import {
   MapPin,
   MoreHorizontal,
   Package,
+  Phone,
   Truck,
   XCircle,
 } from "lucide-react";
@@ -55,13 +56,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-// Tipos
 interface OrderData {
   id: string;
   status: string;
   amount: number;
   userName: string;
   userEmail: string;
+  userPhone?: string | null;
   createdAt: Date;
   trackingCode?: string | null;
   itemsCount: number;
@@ -72,6 +73,7 @@ interface OrderData {
     city: string;
     state: string;
     zipCode: string;
+    phone?: string | null;
   };
 }
 
@@ -80,24 +82,23 @@ interface OrdersTableProps {
   totalOrders: number;
 }
 
-// CORES DE STATUS (Tema Claro)
 const STATUS_MAP: Record<
   string,
   { label: string; color: string; icon: LucideIcon }
 > = {
   pending: {
     label: "Pendente",
-    color: "bg-yellow-200 text-yellow-700 border-yellow-200",
+    color: "bg-purple-200 text-purple-700 border-purple-200",
     icon: Clock,
   },
   paid: {
-    label: "Pago/Preparando",
-    color: "bg-neutral-50 text-neutral-600 border-neutral-200",
+    label: "Pago",
+    color: "bg-green-50 text-green-600 border-green-200",
     icon: Package,
   },
   shipped: {
-    label: "Enviado",
-    color: "bg-neutral-50 text-neutral-600 border-neutral-200",
+    label: "Em Trânsito",
+    color: "bg-orange-100 text-orange-600 border-orange-200",
     icon: Truck,
   },
   delivered: {
@@ -112,13 +113,38 @@ const STATUS_MAP: Record<
   },
 };
 
+// Adicione isso no topo do arquivo orders-table.tsx, fora do componente principal
+const formatPhoneNumber = (phone: string | null | undefined) => {
+  if (!phone) return null;
+
+  // Remove tudo que não for número
+  const cleaned = phone.replace(/\D/g, "");
+
+  // Lógica para números do Brasil (assumindo que começam com 55 ou apenas DDD)
+  // Remove o 55 se tiver 13 digitos (55 + 11 + 9 + 8 digitos)
+  const numbersOnly =
+    cleaned.length > 11 && cleaned.startsWith("55")
+      ? cleaned.slice(2)
+      : cleaned;
+
+  // Formata: (XX) XXXXX-XXXX
+  if (numbersOnly.length === 11) {
+    return numbersOnly.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+  }
+  // Formata fixo: (XX) XXXX-XXXX
+  if (numbersOnly.length === 10) {
+    return numbersOnly.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+  }
+
+  return phone; // Retorna original se não reconhecer o padrão
+};
+
 export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
   const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isPending, startTransition] = useTransition();
 
-  // --- ESTADOS DOS MODAIS ---
   const [trackingModalOpen, setTrackingModalOpen] = useState(false);
   const [addressModalOpen, setAddressModalOpen] = useState(false);
 
@@ -184,7 +210,7 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
 
     if (res.success) {
       await updateOrderStatus(currentOrderData.id, "shipped");
-      toast.success("Rastreio salvo e pedido marcado como Enviado!");
+      toast.success("Rastreio salvo e pedido marcado como Em Trânsito!");
       setTrackingModalOpen(false);
       router.refresh();
     } else {
@@ -294,6 +320,11 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
                   STATUS_MAP[order.status] || STATUS_MAP["pending"];
                 const StatusIcon = statusInfo.icon;
 
+                // Tenta pegar o telefone do usuário (já vem com fallback da Page)
+                // OU do endereço de envio
+                const displayPhone =
+                  order.userPhone || order.shippingAddress?.phone;
+
                 return (
                   <TableRow
                     key={order.id}
@@ -313,11 +344,39 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm font-medium text-neutral-900">
-                        {order.userName}
-                      </div>
-                      <div className="text-xs text-neutral-500">
-                        {order.userEmail}
+                      <div className="flex flex-col gap-1">
+                        {/* Nome com destaque */}
+                        <span className="font-semibold text-neutral-900">
+                          {order.userName}
+                        </span>
+
+                        {/* Email mais discreto */}
+                        <span className="text-xs text-neutral-500">
+                          {order.userEmail}
+                        </span>
+
+                        {/* TELEFONE COM DESIGN NOVO */}
+                        {displayPhone ? (
+                          <div
+                            className="flex w-fit cursor-pointer items-center gap-1.5 rounded-md border border-neutral-200/20 bg-neutral-50/20 px-2 py-1 transition-colors hover:bg-white"
+                            title="Clique para copiar"
+                            onClick={(e) => {
+                              e.stopPropagation(); // Evita clicar na linha da tabela
+                              navigator.clipboard.writeText(displayPhone);
+                              toast.success("Telefone copiado!");
+                            }}
+                          >
+                            <Copy className="h-3 w-3 text-neutral-600" />
+                            <span className="font-mono text-[11px] font-medium text-neutral-500">
+                              {formatPhoneNumber(displayPhone)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="mt-1 flex items-center gap-1 text-[10px] text-neutral-400 italic">
+                            <Phone className="h-3 w-3 opacity-50" />
+                            Sem telefone
+                          </span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -335,9 +394,9 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
                         <Button
                           size="sm"
                           onClick={() => openTrackingModal(order)}
-                          className="h-7 border border-orange-300 bg-orange-100 text-orange-700 hover:bg-orange-200"
+                          className="h-7 cursor-pointer border border-orange-300 bg-orange-100 text-orange-700 hover:bg-orange-200"
                         >
-                          <Truck className="mr-0.5 h-3 w-3" /> Enviando
+                          <Truck className="mr-0.5 h-3 w-3" /> Em Trânsito
                         </Button>
                       )}
                       {order.status === "shipped" && (
@@ -346,7 +405,7 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
                           onClick={() =>
                             handleStatusChange(order.id, "delivered")
                           }
-                          className="h-7 border border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
+                          className="h-7 cursor-pointer border border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
                         >
                           <CheckCircle2 className="mr-2 h-3 w-3" /> Entregue
                         </Button>
@@ -367,7 +426,7 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
                           onClick={() =>
                             window.open(getGoogleMapsLink(order), "_blank")
                           }
-                          className="h-7 w-7 border bg-neutral-100 p-0 text-neutral-600 hover:bg-neutral-200"
+                          className="h-7 w-7 cursor-pointer border bg-neutral-100 p-0 text-neutral-600 hover:bg-neutral-200"
                           title="Ver no Google Maps"
                         >
                           <Map className="h-4 w-4" />
@@ -457,13 +516,13 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
                                   className="cursor-pointer hover:bg-neutral-50"
                                   value="paid"
                                 >
-                                  Pago / Preparando
+                                  Pago
                                 </DropdownMenuRadioItem>
                                 <DropdownMenuRadioItem
                                   className="cursor-pointer hover:bg-neutral-50"
                                   value="shipped"
                                 >
-                                  Enviado
+                                  Em Trânsito
                                 </DropdownMenuRadioItem>
                                 <DropdownMenuRadioItem
                                   className="cursor-pointer hover:bg-neutral-50"
@@ -509,8 +568,8 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
               className="border-neutral-200 bg-neutral-50 text-neutral-900 placeholder:text-neutral-400 focus:border-orange-500 focus:ring-orange-500"
             />
             <p className="mt-2 text-xs text-neutral-500">
-              Ao salvar, o status mudará automaticamente para
-              &quot;Enviado&quot;.
+              Ao salvar, o status mudará automaticamente para &quot;Em
+              Trânsito&quot;.
             </p>
           </div>
           <DialogFooter>
@@ -545,6 +604,17 @@ export function OrdersTable({ data, totalOrders }: OrdersTableProps) {
               <p className="text-lg font-semibold text-neutral-900">
                 {currentOrderData?.userName}
               </p>
+
+              {/* Exibição do Telefone no Modal também */}
+              {(currentOrderData?.userPhone ||
+                currentOrderData?.shippingAddress?.phone) && (
+                <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-neutral-700">
+                  <Phone className="h-3 w-3 text-orange-600" />
+                  {currentOrderData.userPhone ||
+                    currentOrderData.shippingAddress?.phone}
+                </p>
+              )}
+
               {currentOrderData?.shippingAddress ? (
                 <>
                   <p className="text-neutral-600">

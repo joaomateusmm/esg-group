@@ -4,7 +4,6 @@ import { OrdersTable } from "@/components/admin/orders-table";
 import { db } from "@/db";
 import { order, user } from "@/db/schema";
 
-// Definimos o tipo exato que o componente OrdersTable espera
 type ShippingAddress = {
   street: string;
   number: string;
@@ -12,10 +11,10 @@ type ShippingAddress = {
   city: string;
   state: string;
   zipCode: string;
+  phone?: string;
 };
 
 export default async function AdminOrdersPage() {
-  // 1. Busca os pedidos com dados do usuário
   const orders = await db
     .select({
       id: order.id,
@@ -24,9 +23,17 @@ export default async function AdminOrdersPage() {
       createdAt: order.createdAt,
       trackingCode: order.trackingCode,
       shippingAddress: order.shippingAddress,
+
+      // DADOS DO PEDIDO (PRIORIDADE 1)
+      orderCustomerName: order.customerName,
+      orderCustomerEmail: order.customerEmail,
+      orderUserPhone: order.userPhone,
+
+      // DADOS DA CONTA (PRIORIDADE 2 - FALLBACK)
       userId: order.userId,
-      userName: user.name,
-      userEmail: user.email,
+      accountName: user.name,
+      accountEmail: user.email,
+      accountPhone: user.phoneNumber, // <--- ADICIONADO: Puxa o telefone salvo no cadastro
     })
     .from(order)
     .leftJoin(user, eq(order.userId, user.id))
@@ -34,17 +41,26 @@ export default async function AdminOrdersPage() {
 
   const [totalResult] = await db.select({ count: count() }).from(order);
 
-  // 3. Formata os dados para a tabela
   const formattedOrders = orders.map((o) => ({
     id: o.id,
     status: o.status,
     amount: o.amount,
     createdAt: o.createdAt,
     trackingCode: o.trackingCode,
-    // CORREÇÃO: Cast seguro de JSON para o tipo específico via 'unknown'
     shippingAddress: o.shippingAddress as unknown as ShippingAddress,
-    userName: o.userName || "Usuário Deletado",
-    userEmail: o.userEmail || "Sem Email",
+
+    // LÓGICA DE EXIBIÇÃO:
+
+    // Nome: Pedido > Conta > Padrão
+    userName: o.orderCustomerName || o.accountName || "Usuário Desconhecido",
+
+    // Email: Pedido > Conta > Padrão
+    userEmail: o.orderCustomerEmail || o.accountEmail || "Sem Email",
+
+    // Telefone: Pedido > Conta > Nulo
+    // AQUI ESTÁ A CORREÇÃO: Se não tiver no pedido, usa o da conta
+    userPhone: o.orderUserPhone || o.accountPhone,
+
     itemsCount: 0,
   }));
 

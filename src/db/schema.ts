@@ -21,6 +21,7 @@ export const user = pgTable("user", {
   updatedAt: timestamp("updatedAt").notNull(),
   role: text("role").notNull().default("user"),
   isAffiliate: boolean("isAffiliate").notNull().default(false),
+  phoneNumber: text("phoneNumber"),
 });
 
 export const session = pgTable("session", {
@@ -143,25 +144,21 @@ export const order = pgTable("order", {
   userId: text("userId")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-
   amount: integer("amount").notNull(), // Valor TOTAL (Produtos + Frete)
   status: text("status").notNull().default("pending"), // pending, paid, shipped, delivered, canceled
-
-  // --- INTEGRAÇÃO STRIPE ---
   stripePaymentIntentId: text("stripePaymentIntentId"), // ID para rastrear no Stripe
   stripeClientSecret: text("stripeClientSecret"),
-
-  // --- DADOS DE ENTREGA ---
-  // Salvamos o endereço como JSON para garantir histórico (se o user mudar o endereço do perfil, o pedido antigo não muda)
   shippingAddress: json("shippingAddress"),
   shippingCost: integer("shippingCost").default(0), // Custo do frete em centavos
   trackingCode: text("trackingCode"), // Código de rastreio (Correios/Transportadora)
 
+  customerName: text("customerName"), // <--- NOVO: Nome digitado no checkout
+  customerEmail: text("customerEmail"), // <--- NOVO: Email usado no checkout (se diferente da conta)
+  userPhone: text("userPhone"),
   couponId: text("couponId").references(() => coupon.id, {
     onDelete: "set null",
   }),
   discountAmount: integer("discountAmount").default(0),
-
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
     .notNull()

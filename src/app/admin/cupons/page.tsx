@@ -43,7 +43,7 @@ export default async function AdminCouponsPage() {
   });
 
   return (
-    <div className="min-h-screen rounded-2xl bg-[#f9f9f9] p-8 shadow-md">
+    <div className="min-h-screen bg-[#fff] ">
       {" "}
       {/* Fundo geral claro */}
       <div className="mx-auto max-w-7xl">

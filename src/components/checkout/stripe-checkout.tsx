@@ -15,7 +15,7 @@ const stripePromise = loadStripe(
 );
 
 export function StripeCheckout() {
-  const { items, getTotalPrice } = useCartStore();
+  const { items } = useCartStore();
   const [clientSecret, setClientSecret] = useState("");
 
   useEffect(() => {

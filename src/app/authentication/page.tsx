@@ -14,25 +14,24 @@ const Authentication = () => {
   // --- CONTEÚDO DOS SLIDES ---
   const slidesData: Slide[] = [
     {
-      // CORREÇÃO: Adicionada a barra "/" no início de todos os caminhos
-      image: "/images/banner/banner-1.webp",
-      title: "Domine seu Jogo",
-      caption: "Acesse as melhores configs privadas e eleve seu nível.",
+      image: "/images/banners/imoveis-usados.jpg",
+      title: "Móveis Usados",
+      caption: "Compre móveis usados no melhor preço na Inglaterra.",
     },
     {
-      image: "/images/banner/banner-2.webp",
-      title: "Exclusividade e Segurança",
-      caption: "Produtos testados e aprovados por milhares de clientes.",
+      image: "/images/banners/eletrodomesticos.jpg",
+      title: "Eletrodomésticos",
+      caption: "Melhores eletros para sua casa.",
     },
     {
-      image: "/images/banner/banner-3.webp",
+      image: "/images/banners/cozinha.jpg",
       title: "Comunidade Premium",
       caption: "Junte-se à elite dos jogadores e tenha suporte dedicado.",
     },
     {
-      image: "/images/banner/banner-4.webp",
+      image: "/images/banners/quarto.jpg",
       title: "Contas Exclusivas",
-      caption: "Obtenha as melhores contas para começar nos moveis com estilo.",
+      caption: "Obtenha as melhores contas para começar nos games com estilo.",
     },
   ];
 
@@ -68,10 +67,10 @@ const Authentication = () => {
   }, [slidesData.length]);
 
   return (
-    <div className="font-montserrat min-h-screen bg-[#000000] text-white">
+    <div className="font-montserrat min-h-screen bg-white text-neutral-900">
       <div className="flex h-screen w-full">
         {/* --- ESQUERDA: CARROSSEL DE IMAGENS --- */}
-        <aside className="relative hidden h-screen w-[60vw] overflow-hidden lg:flex">
+        <aside className="relative hidden h-screen w-[60vw] overflow-hidden bg-neutral-100 lg:flex">
           <div className="absolute inset-0 h-full w-full">
             {slidesData.map((slide, index) => (
               <div
@@ -84,7 +83,8 @@ const Authentication = () => {
                   className="h-full w-full bg-cover bg-center"
                   style={{ backgroundImage: `url(${slide.image})` }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-black/40 to-transparent" />
+                {/* Gradiente escuro sobre a imagem para garantir legibilidade do texto branco sobre ela */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               </div>
             ))}
           </div>
@@ -93,7 +93,7 @@ const Authentication = () => {
             <h2 className="font-clash-display text-5xl font-medium tracking-wide drop-shadow-lg">
               {slidesData[activeSlide].title}
             </h2>
-            <p className="mt-4 max-w-lg text-lg text-neutral-300 drop-shadow-md">
+            <p className="mt-4 max-w-lg text-lg text-neutral-200 drop-shadow-md">
               {slidesData[activeSlide].caption}
             </p>
 
@@ -104,8 +104,8 @@ const Authentication = () => {
                   onClick={() => setActiveSlide(idx)}
                   className={`h-1.5 rounded-full transition-all duration-300 ${
                     activeSlide === idx
-                      ? "w-8 bg-[#D00000]"
-                      : "w-2 bg-white/30 hover:bg-white/50"
+                      ? "w-8 bg-orange-600"
+                      : "w-2 bg-white/50 hover:bg-white/80"
                   }`}
                   aria-label={`Ir para slide ${idx + 1}`}
                 />
@@ -115,7 +115,7 @@ const Authentication = () => {
         </aside>
 
         {/* --- DIREITA: FORMULÁRIOS --- */}
-        <main className="flex h-screen w-full flex-1 flex-col items-center justify-center bg-gradient-to-t from-red-900/30 via-black to-black p-8 lg:w-[40vw]">
+        <main className="flex h-screen w-full flex-1 flex-col items-center justify-center bg-white p-8 lg:w-[40vw]">
           <div className="w-full max-w-md">
             <Tabs value={currentForm} className="w-full">
               {/* Container com altura mínima para evitar pulos de layout */}

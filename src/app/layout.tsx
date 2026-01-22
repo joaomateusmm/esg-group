@@ -44,7 +44,7 @@ const clash = localFont({
 export const metadata: Metadata = {
   title: "ESG Group - Ecommerce",
   description:
-    "A melhor loja de Citizens, Configs Privadas e Mod Sons premium, oferecendo soluções inovadoras e de alta qualidade para melhorar a sua experiencia de jogo.",
+    "Compre móveis e Contrate serviços, no melhor preço da Inglaterra.",
 };
 
 export default async function RootLayout({
@@ -88,9 +88,9 @@ export default async function RootLayout({
         suppressHydrationWarning={true}
         className={`${geistSans.variable} ${geistMono.variable} ${montserrat.variable} ${clash.variable} antialiased`}
       >
+        <FloatingScrollbar />
         <GoogleTranslator />
         <LanguageProvider>
-          <FloatingScrollbar />
           <SmoothScroll>{children}</SmoothScroll>
 
           {/* Inserimos o Pop-up aqui, passando os dados */}

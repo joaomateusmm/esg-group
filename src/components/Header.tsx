@@ -285,7 +285,7 @@ export function Header() {
   return (
     <header className="fixed top-0 z-50 w-full flex-col shadow-sm">
       {/* --- BARRA LARANJA (TOP BAR) --- */}
-      <div className="w-full bg-orange-600 px-4 py-2 text-xs font-medium text-white md:px-8">
+      <div className="w-full bg-orange-600 px-4 py-3 text-xs font-medium text-white md:px-8">
         <div className="mx-auto flex max-w-[1440px] items-center justify-between">
           <div className="flex items-center gap-4">
             <DropdownMenu>
@@ -354,7 +354,7 @@ export function Header() {
           </div>
 
           <div className="hidden items-center gap-2 md:flex">
-            <span className="opacity-90">{t.topBar.promo}</span>
+            <span className="text-[14px] font-medium">{t.topBar.promo}</span>
           </div>
 
           <div className="flex items-center gap-6">

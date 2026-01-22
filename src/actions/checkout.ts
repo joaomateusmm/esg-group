@@ -3,8 +3,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 
-// Removemos Resend por enquanto, pois o email de produto físico é diferente (tracking)
-// Se quiser email, precisa criar um novo template "Pedido Recebido"
 import { db } from "@/db";
 import { coupon, order, orderItem, product, user } from "@/db/schema";
 import { auth } from "@/lib/auth";
@@ -15,6 +13,17 @@ type CartItemInput = {
   price: number;
   quantity: number;
   image?: string;
+};
+
+// Tipo para o endereço recebido no checkout gratuito
+type ShippingAddressInput = {
+  street: string;
+  number: string;
+  complement?: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  phone?: string;
 };
 
 // --- FUNÇÃO AUXILIAR PARA CALCULAR TUDO COM CUPOM ---
@@ -59,11 +68,6 @@ async function calculateOrderTotals(
   return { subtotal, discountAmount, finalTotal, activeCouponId };
 }
 
-// ==============================================================================
-// 1. CHECKOUT PAGO (PREPARAÇÃO)
-// ==============================================================================
-// No novo fluxo do Stripe, esta função apenas valida estoque e cria/atualiza usuário
-// O pagamento real acontece no cliente via Stripe Elements
 export async function createCheckoutSession(
   items: CartItemInput[],
   guestInfo?: { email: string; name: string },
@@ -92,61 +96,43 @@ export async function createCheckoutSession(
 
   const session = await auth.api.getSession({ headers: await headers() });
 
-  let userId: string;
-  let userEmail: string;
-  let userName: string;
-
-  if (session) {
-    userId = session.user.id;
-    userEmail = session.user.email;
-    userName = session.user.name;
-  } else {
+  if (!session) {
     if (!guestInfo?.email) throw new Error("E-mail obrigatório.");
     const email = guestInfo.email.toLowerCase();
     const existingUser = await db.query.user.findFirst({
       where: eq(user.email, email),
     });
 
-    if (existingUser) {
-      userId = existingUser.id;
-      userEmail = existingUser.email;
-      userName = existingUser.name;
-    } else {
+    if (!existingUser) {
       const now = new Date();
-      const [newUser] = await db
-        .insert(user)
-        .values({
-          id: crypto.randomUUID(),
-          name: guestInfo.name || "Visitante",
-          email: email,
-          image: "",
-          emailVerified: false,
-          createdAt: now,
-          updatedAt: now,
-          role: "user",
-        })
-        .returning();
-      userId = newUser.id;
-      userEmail = newUser.email;
-      userName = newUser.name;
+      await db.insert(user).values({
+        id: crypto.randomUUID(),
+        name: guestInfo.name || "Visitante",
+        email: email,
+        image: "",
+        emailVerified: false,
+        createdAt: now,
+        updatedAt: now,
+        role: "user",
+      });
     }
   }
 
   // Se o total for zero, redireciona para o fluxo gratuito
   const { finalTotal } = await calculateOrderTotals(items, couponCode);
+
   if (finalTotal === 0) {
     return await createFreeOrder(items, guestInfo, couponCode);
   }
+
   return { success: true };
 }
 
-// ==============================================================================
-// 2. CHECKOUT GRATUITO
-// ==============================================================================
 export async function createFreeOrder(
   items: CartItemInput[],
   guestInfo?: { email: string; name: string },
   couponCode?: string,
+  shippingAddress?: ShippingAddressInput,
 ) {
   // --- VERIFICAÇÃO DE ESTOQUE ---
   for (const item of items) {
@@ -172,15 +158,9 @@ export async function createFreeOrder(
   const session = await auth.api.getSession({ headers: await headers() });
 
   let userId: string;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  let userEmail: string;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  let userName: string;
 
   if (session) {
     userId = session.user.id;
-    userEmail = session.user.email;
-    userName = session.user.name;
   } else {
     if (!guestInfo?.email) throw new Error("E-mail obrigatório.");
     const email = guestInfo.email.toLowerCase();
@@ -190,8 +170,6 @@ export async function createFreeOrder(
 
     if (existingUser) {
       userId = existingUser.id;
-      userEmail = existingUser.email;
-      userName = existingUser.name;
     } else {
       const now = new Date();
       const [newUser] = await db
@@ -208,8 +186,6 @@ export async function createFreeOrder(
         })
         .returning();
       userId = newUser.id;
-      userEmail = newUser.email;
-      userName = newUser.name;
     }
   }
 
@@ -227,9 +203,10 @@ export async function createFreeOrder(
       amount: 0,
       discountAmount: discountAmount,
       couponId: activeCouponId,
-      status: "completed", // Gratuito já nasce completo
-      // Campos físicos opcionais zerados para pedido grátis
+      status: "completed",
       shippingCost: 0,
+      shippingAddress: shippingAddress ? shippingAddress : null,
+      userPhone: shippingAddress?.phone,
     })
     .returning();
 
@@ -265,9 +242,6 @@ export async function createFreeOrder(
       })
       .where(eq(coupon.id, activeCouponId));
   }
-
-  // TODO: Enviar email de confirmação de pedido físico (não link de download)
-  // await sendOrderConfirmationEmail(...)
 
   const cookieStore = await cookies();
   if (cookieStore.get("affiliate_code")) cookieStore.delete("affiliate_code");
