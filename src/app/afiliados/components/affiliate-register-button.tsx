@@ -17,10 +17,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ShinyButton } from "@/components/ui/shiny-button";
 import { authClient } from "@/lib/auth-client"; // Importar authClient
 
 export function AffiliateRegisterButton() {
@@ -90,9 +90,9 @@ export function AffiliateRegisterButton() {
           handleOpenModal();
         }}
       >
-        <ShinyButton className="w-full rounded-lg bg-white px-8 py-4 font-bold text-black transition-colors hover:bg-neutral-200 disabled:opacity-50">
+        <Button className="w-full rounded-lg bg-white px-8 py-4 font-bold text-black transition-colors hover:bg-neutral-200 disabled:opacity-50">
           Tornar-se Afiliado
-        </ShinyButton>
+        </Button>
       </AlertDialogTrigger>
 
       <AlertDialogContent className="border border-white/10 bg-[#0A0A0A] text-white sm:max-w-[500px]">
