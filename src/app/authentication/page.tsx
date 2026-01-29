@@ -8,9 +8,6 @@ import { Tabs } from "@/components/ui/tabs";
 import SignInForm from "./components/sign-in-form";
 import SignUpForm from "./components/sign-up-form";
 
-// Força o modo dinâmico para garantir que a Vercel não tente estatizar a página
-export const dynamic = "force-dynamic";
-
 type Slide = { image: string; title: string; caption: string };
 
 // --- COMPONENTE COM A LÓGICA (O CORPO DA PÁGINA) ---

@@ -14,9 +14,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-// 2. FORÇAR MODO DINÂMICO
-// Isso impede o Next.js de tentar gerar essa página estaticamente no build.
-export const dynamic = "force-dynamic";
 
 const faqData = [
   {

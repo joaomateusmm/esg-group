@@ -10,9 +10,6 @@ import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart-store";
 
-// 1. FORÇAR MODO DINÂMICO
-export const dynamic = "force-dynamic";
-
 // 2. CRIAR UM COMPONENTE INTERNO PARA A LÓGICA
 // Isso isola completamente os hooks do Store e do Stripe dentro de um escopo seguro.
 function CheckoutContent() {

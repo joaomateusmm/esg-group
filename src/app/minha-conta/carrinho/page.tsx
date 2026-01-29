@@ -24,9 +24,6 @@ import { Separator } from "@/components/ui/separator";
 import { authClient } from "@/lib/auth-client";
 import { useCartStore } from "@/store/cart-store";
 
-// 1. FORÇAR MODO DINÂMICO
-export const dynamic = "force-dynamic";
-
 // 2. COMPONENTE INTERNO COM A LÓGICA
 function CartContent() {
   const [mounted, setMounted] = useState(false);

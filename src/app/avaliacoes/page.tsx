@@ -13,9 +13,6 @@ import {
   user as userTable,
 } from "@/db/schema";
 
-// 2. FORÇAR MODO DINÂMICO
-export const dynamic = "force-dynamic";
-
 const formatDate = (date: Date) =>
   new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",

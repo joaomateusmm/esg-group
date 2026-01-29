@@ -7,9 +7,6 @@ import { Header } from "@/components/Header";
 import { SpotlightCard } from "@/components/spotlight-card";
 import { Button } from "@/components/ui/button";
 
-// 2. FORÇAR MODO DINÂMICO
-export const dynamic = "force-dynamic";
-
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-[#010000] selection:bg-[#D00000] selection:text-white">

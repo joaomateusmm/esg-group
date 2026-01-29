@@ -5,9 +5,6 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { SpotlightCard } from "@/components/spotlight-card";
 
-// 2. FORÇAR MODO DINÂMICO
-export const dynamic = "force-dynamic";
-
 export default function PrivacyPolicyPage() {
   const sections = [
     {

@@ -15,8 +15,6 @@ import { auth } from "@/lib/auth";
 
 import { AffiliateRegisterButton } from "./components/affiliate-register-button";
 
-export const dynamic = "force-dynamic";
-
 export default async function AffiliatePage() {
   const session = await auth.api.getSession({
     headers: await headers(),

@@ -7,10 +7,6 @@ import { category, product } from "@/db/schema";
 import { AddProductButton } from "./components/add-button";
 import { ProductsTable } from "./components/products-table";
 
-// 2. FORÇAR MODO DINÂMICO
-// Admin precisa de dados frescos sempre, não queremos cache estático aqui.
-export const dynamic = "force-dynamic";
-
 export default async function AdminProductsPage({
   searchParams,
 }: {

@@ -12,11 +12,6 @@ import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart-store";
 import { useWishlistStore, WishlistItem } from "@/store/wishlist-store";
 
-// 2. FORÇAR RENDERIZAÇÃO DINÂMICA
-// Embora seja uma página "use client", o Next.js tenta pré-renderizar o esqueleto dela.
-// O force-dynamic garante que ela não tente ser estática.
-export const dynamic = "force-dynamic";
-
 export default function WishlistPage() {
   const [mounted, setMounted] = useState(false);
 

@@ -70,9 +70,6 @@ import {
 } from "../../../../actions/create-product";
 import { getCategories } from "./get-categories";
 
-// 2. FORÇAR MODO DINÂMICO
-export const dynamic = "force-dynamic";
-
 // --- SCHEMA ATUALIZADO COM FRETE ---
 const formSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),

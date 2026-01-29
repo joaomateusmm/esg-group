@@ -14,9 +14,6 @@ import { db } from "@/db";
 import { order, orderItem, product } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
-// 2. FORÇAR RENDERIZAÇÃO DINÂMICA
-export const dynamic = "force-dynamic";
-
 export default async function MyPurchasesPage({
   searchParams,
 }: {

@@ -7,11 +7,6 @@ import { Header } from "@/components/Header";
 import { SpotlightCard } from "@/components/spotlight-card";
 import { Button } from "@/components/ui/button";
 
-// 2. FORÇAR MODO DINÂMICO
-// Isso impede o Next.js de tentar gerar essa página estaticamente no build,
-// eliminando o erro de "missing suspense boundary" durante a pré-renderização.
-export const dynamic = "force-dynamic";
-
 export default function ContactPage() {
   return (
     <div className="min-h-screen bg-[#010000] selection:bg-[#D00000] selection:text-white">

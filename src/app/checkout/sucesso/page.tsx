@@ -10,9 +10,6 @@ import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart-store";
 
-// 1. FORÇAR MODO DINÂMICO (Isso é crucial para resolver o erro persistente)
-export const dynamic = "force-dynamic";
-
 function SuccessContent() {
   const searchParams = useSearchParams();
   const clearCart = useCartStore((state) => state.clearCart);
