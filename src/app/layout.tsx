@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm"; // Import necessário
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Montserrat } from "next/font/google";
 import localFont from "next/font/local";
+import { Suspense } from "react";
 import { Toaster } from "sonner";
 
 import { CouponPopup } from "@/components/coupon-popup"; // Importe o componente que criamos
@@ -88,16 +89,18 @@ export default async function RootLayout({
         suppressHydrationWarning={true}
         className={`${geistSans.variable} ${geistMono.variable} ${montserrat.variable} ${clash.variable} antialiased`}
       >
-        <FloatingScrollbar />
-        <GoogleTranslator />
-        <LanguageProvider>
-          <SmoothScroll>{children}</SmoothScroll>
+        <Suspense fallback={null}>
+          <FloatingScrollbar />
+          <GoogleTranslator />
+          <LanguageProvider>
+            <SmoothScroll>{children}</SmoothScroll>
 
-          {/* Inserimos o Pop-up aqui, passando os dados */}
-          <CouponPopup coupon={activePromo} />
+            {/* Inserimos o Pop-up aqui, passando os dados */}
+            <CouponPopup coupon={activePromo} />
 
-          <Toaster position="top-left" />
-        </LanguageProvider>
+            <Toaster position="top-left" />
+          </LanguageProvider>
+        </Suspense>
       </body>
     </html>
   );
