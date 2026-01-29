@@ -8,37 +8,13 @@ import { Tabs } from "@/components/ui/tabs";
 import SignInForm from "./components/sign-in-form";
 import SignUpForm from "./components/sign-up-form";
 
-// Força o Next.js a tratar esta rota como dinâmica
+// Força o modo dinâmico para garantir que a Vercel não tente estatizar a página
 export const dynamic = "force-dynamic";
 
 type Slide = { image: string; title: string; caption: string };
 
-// 1. Criamos um componente interno para a lógica dos formulários
-const AuthContent = ({
-  currentForm,
-  isFadingOut,
-  switchForm,
-}: {
-  currentForm: "sign-in" | "sign-up";
-  isFadingOut: boolean;
-  switchForm: (target: "sign-in" | "sign-up") => void;
-}) => {
-  return (
-    <div
-      className={`transition-all duration-300 ease-in-out ${
-        isFadingOut ? "translate-x-4 opacity-0" : "translate-x-0 opacity-100"
-      }`}
-    >
-      {currentForm === "sign-in" ? (
-        <SignInForm switchToSignUp={() => switchForm("sign-up")} />
-      ) : (
-        <SignUpForm switchToSignIn={() => switchForm("sign-in")} />
-      )}
-    </div>
-  );
-};
-
-const Authentication = () => {
+// --- COMPONENTE COM A LÓGICA (O CORPO DA PÁGINA) ---
+const AuthenticationLayout = () => {
   const slidesData: Slide[] = [
     {
       image: "/images/banners/imoveis-usados.jpg",
@@ -73,9 +49,7 @@ const Authentication = () => {
     setIsFadingOut(true);
     setTimeout(() => {
       setCurrentForm(target);
-      requestAnimationFrame(() => {
-        setIsFadingOut(false);
-      });
+      requestAnimationFrame(() => setIsFadingOut(false));
     }, 300);
   };
 
@@ -137,20 +111,19 @@ const Authentication = () => {
           <div className="w-full max-w-md">
             <Tabs value={currentForm} className="w-full">
               <div className="relative min-h-[600px] w-full">
-                {/* O SUSPENSE deve envolver diretamente quem usa useSearchParams */}
-                <Suspense
-                  fallback={
-                    <div className="flex h-96 items-center justify-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
-                    </div>
-                  }
+                <div
+                  className={`transition-all duration-300 ease-in-out ${
+                    isFadingOut
+                      ? "translate-x-4 opacity-0"
+                      : "translate-x-0 opacity-100"
+                  }`}
                 >
-                  <AuthContent
-                    currentForm={currentForm}
-                    isFadingOut={isFadingOut}
-                    switchForm={switchForm}
-                  />
-                </Suspense>
+                  {currentForm === "sign-in" ? (
+                    <SignInForm switchToSignUp={() => switchForm("sign-up")} />
+                  ) : (
+                    <SignUpForm switchToSignIn={() => switchForm("sign-in")} />
+                  )}
+                </div>
               </div>
             </Tabs>
           </div>
@@ -160,4 +133,23 @@ const Authentication = () => {
   );
 };
 
-export default Authentication;
+// --- COMPONENTE PRINCIPAL (O QUE O NEXT EXPORTA) ---
+// Envolvemos TUDO em Suspense para que o Next.js não tente renderizar nada no servidor
+export default function AuthenticationPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen w-full items-center justify-center bg-white">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-10 w-10 animate-spin text-orange-600" />
+            <p className="animate-pulse text-neutral-500">
+              Carregando autenticação...
+            </p>
+          </div>
+        </div>
+      }
+    >
+      <AuthenticationLayout />
+    </Suspense>
+  );
+}
