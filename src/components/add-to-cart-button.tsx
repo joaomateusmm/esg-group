@@ -4,7 +4,7 @@ import { ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils"; // Import útil para garantir que classes extras funcionem bem
+import { cn } from "@/lib/utils";
 import { useCartStore } from "@/store/cart-store";
 
 interface AddToCartButtonProps {
@@ -60,10 +60,12 @@ export function AddToCartButton({
       onClick={handleAddToCart}
       variant={variant}
       size={size}
-      disabled={isOutOfStock} // Desabilita visualmente e funcionalmente
+      disabled={isOutOfStock}
       className={cn(
+        // ADICIONADO: Transição suave e movimento para cima no hover
+        "cursor-pointer transition-transform duration-200 hover:-translate-y-1",
         className,
-        // Estilo opcional para quando estiver desabilitado (caso o disabled padrão não seja suficiente)
+        // Estilo para quando estiver sem estoque
         isOutOfStock && "cursor-not-allowed opacity-50",
       )}
     >

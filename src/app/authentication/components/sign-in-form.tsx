@@ -44,7 +44,6 @@ const SignInForm = ({ switchToSignUp }: { switchToSignUp?: () => void }) => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [isDiscordLoading, setIsDiscordLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   async function onSubmit(values: FormValues) {
@@ -71,15 +70,6 @@ const SignInForm = ({ switchToSignUp }: { switchToSignUp?: () => void }) => {
       await authClient.signIn.social({ provider: "google" });
     } finally {
       setIsGoogleLoading(false);
-    }
-  };
-
-  const handleSignInWithDiscord = async () => {
-    setIsDiscordLoading(true);
-    try {
-      await authClient.signIn.social({ provider: "discord" });
-    } finally {
-      setIsDiscordLoading(false);
     }
   };
 
@@ -168,7 +158,7 @@ const SignInForm = ({ switchToSignUp }: { switchToSignUp?: () => void }) => {
             <Button
               type="submit"
               className="h-12 w-full bg-orange-600 font-bold text-white transition-transform hover:scale-[1.01] hover:bg-orange-700"
-              disabled={isLoading || isGoogleLoading || isDiscordLoading}
+              disabled={isLoading || isGoogleLoading}
             >
               {isLoading ? (
                 <>
@@ -194,7 +184,7 @@ const SignInForm = ({ switchToSignUp }: { switchToSignUp?: () => void }) => {
               <Button
                 type="button"
                 onClick={handleSignInWithGoogle}
-                disabled={isLoading || isGoogleLoading || isDiscordLoading}
+                disabled={isLoading || isGoogleLoading}
                 className="group h-12 w-full cursor-pointer border border-neutral-200 bg-white text-neutral-600 transition-all duration-300 hover:bg-neutral-50 hover:text-neutral-900"
               >
                 {isGoogleLoading ? (

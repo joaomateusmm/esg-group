@@ -1,11 +1,16 @@
 "use server";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
+import Stripe from "stripe";
 
 import { db } from "@/db";
 import { coupon, order, orderItem, product, user } from "@/db/schema";
 import { auth } from "@/lib/auth";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2025-02-24.acacia" as unknown as Stripe.LatestApiVersion,
+});
 
 type CartItemInput = {
   id: string;
@@ -13,9 +18,9 @@ type CartItemInput = {
   price: number;
   quantity: number;
   image?: string;
+  currency?: string;
 };
 
-// Tipo para o endereço recebido no checkout gratuito
 type ShippingAddressInput = {
   street: string;
   number: string;
@@ -26,7 +31,7 @@ type ShippingAddressInput = {
   phone?: string;
 };
 
-// --- FUNÇÃO AUXILIAR PARA CALCULAR TUDO COM CUPOM ---
+// --- FUNÇÃO AUXILIAR PARA CALCULAR TUDO (COM FRETE) ---
 async function calculateOrderTotals(
   items: CartItemInput[],
   couponCode?: string,
@@ -34,6 +39,37 @@ async function calculateOrderTotals(
   const subtotal = Math.round(
     items.reduce((acc, item) => acc + item.price * item.quantity, 0),
   );
+
+  let totalShippingCost = 0;
+
+  const productIds = items.map((i) => i.id);
+
+  let productsDb: {
+    id: string;
+    shippingType: string | null;
+    fixedShippingPrice: number | null;
+  }[] = [];
+
+  if (productIds.length > 0) {
+    productsDb = await db.query.product.findMany({
+      where: inArray(product.id, productIds),
+      columns: {
+        id: true,
+        shippingType: true,
+        fixedShippingPrice: true,
+      },
+    });
+  }
+
+  for (const item of items) {
+    const prodInfo = productsDb.find((p) => p.id === item.id);
+
+    if (prodInfo) {
+      if (prodInfo.shippingType === "fixed") {
+        totalShippingCost += (prodInfo.fixedShippingPrice || 0) * item.quantity;
+      }
+    }
+  }
 
   let discountAmount = 0;
   let activeCouponId: string | null = null;
@@ -58,105 +94,65 @@ async function calculateOrderTotals(
       }
 
       if (discountAmount > subtotal) discountAmount = subtotal;
-
       activeCouponId = foundCoupon.id;
     }
   }
 
-  const finalTotal = subtotal - discountAmount;
+  const totalWithDiscount = subtotal - discountAmount;
+  const finalTotal = totalWithDiscount + totalShippingCost;
 
-  return { subtotal, discountAmount, finalTotal, activeCouponId };
+  return {
+    subtotal,
+    discountAmount,
+    shippingCost: totalShippingCost,
+    finalTotal,
+    activeCouponId,
+  };
 }
 
+// --- ACTION EXPORTADA PARA O FRONTEND PEGAR O FRETE ---
+export async function getCartShippingCost(items: CartItemInput[]) {
+  const { shippingCost } = await calculateOrderTotals(items);
+  return { price: shippingCost };
+}
+
+// --- CRIAÇÃO DE SESSÃO DE CHECKOUT (STRIPE) ---
 export async function createCheckoutSession(
   items: CartItemInput[],
   guestInfo?: { email: string; name: string },
   couponCode?: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _returnUrl?: string,
 ) {
-  // --- VERIFICAÇÃO DE ESTOQUE ---
+  // 1. Detecta a moeda do primeiro item (Default GBP se não houver)
+  const firstCurrency = items[0]?.currency || "GBP";
+
+  if (items[0]?.currency) {
+    const hasMixedCurrencies = items.some(
+      (item) => item.currency && item.currency !== firstCurrency,
+    );
+    if (hasMixedCurrencies) {
+      throw new Error("Cannot checkout with mixed currencies.");
+    }
+  }
+
   for (const item of items) {
     const productInDb = await db.query.product.findFirst({
       where: eq(product.id, item.id),
     });
 
-    if (!productInDb) {
-      throw new Error(`Produto ${item.name} não encontrado.`);
-    }
+    if (!productInDb) throw new Error(`Produto ${item.name} não encontrado.`);
 
     if (
       !productInDb.isStockUnlimited &&
       productInDb.stock !== null &&
       productInDb.stock < item.quantity
     ) {
-      throw new Error(
-        `O produto "${productInDb.name}" esgotou ou não tem a quantidade solicitada (Restam: ${productInDb.stock}).`,
-      );
+      throw new Error(`O produto "${productInDb.name}" esgotou.`);
     }
   }
 
   const session = await auth.api.getSession({ headers: await headers() });
-
-  if (!session) {
-    if (!guestInfo?.email) throw new Error("E-mail obrigatório.");
-    const email = guestInfo.email.toLowerCase();
-    const existingUser = await db.query.user.findFirst({
-      where: eq(user.email, email),
-    });
-
-    if (!existingUser) {
-      const now = new Date();
-      await db.insert(user).values({
-        id: crypto.randomUUID(),
-        name: guestInfo.name || "Visitante",
-        email: email,
-        image: "",
-        emailVerified: false,
-        createdAt: now,
-        updatedAt: now,
-        role: "user",
-      });
-    }
-  }
-
-  // Se o total for zero, redireciona para o fluxo gratuito
-  const { finalTotal } = await calculateOrderTotals(items, couponCode);
-
-  if (finalTotal === 0) {
-    return await createFreeOrder(items, guestInfo, couponCode);
-  }
-
-  return { success: true };
-}
-
-export async function createFreeOrder(
-  items: CartItemInput[],
-  guestInfo?: { email: string; name: string },
-  couponCode?: string,
-  shippingAddress?: ShippingAddressInput,
-) {
-  // --- VERIFICAÇÃO DE ESTOQUE ---
-  for (const item of items) {
-    const productInDb = await db.query.product.findFirst({
-      where: eq(product.id, item.id),
-    });
-
-    if (!productInDb) {
-      throw new Error(`Produto ${item.name} não encontrado.`);
-    }
-
-    if (
-      !productInDb.isStockUnlimited &&
-      productInDb.stock !== null &&
-      productInDb.stock < item.quantity
-    ) {
-      throw new Error(
-        `O produto "${productInDb.name}" esgotou (Restam: ${productInDb.stock}).`,
-      );
-    }
-  }
-
-  const session = await auth.api.getSession({ headers: await headers() });
-
   let userId: string;
 
   if (session) {
@@ -189,7 +185,267 @@ export async function createFreeOrder(
     }
   }
 
-  const { finalTotal, discountAmount, activeCouponId } =
+  const { finalTotal, discountAmount, activeCouponId, shippingCost } =
+    await calculateOrderTotals(items, couponCode);
+
+  if (finalTotal === 0) {
+    return await createFreeOrder(items, guestInfo, couponCode);
+  }
+
+  try {
+    const [newOrder] = await db
+      .insert(order)
+      .values({
+        userId: userId,
+        amount: finalTotal,
+        discountAmount: discountAmount,
+        couponId: activeCouponId,
+        status: "pending",
+        paymentMethod: "card",
+        shippingCost: shippingCost,
+
+        // ADICIONADO: Salvando a moeda no banco
+        currency: firstCurrency,
+
+        customerName: guestInfo?.name || session?.user.name,
+        customerEmail: guestInfo?.email || session?.user.email,
+
+        // Inicializa logística como parada até pagamento confirmar
+        fulfillmentStatus: "idle",
+      })
+      .returning();
+
+    await db.insert(orderItem).values(
+      items.map((item) => ({
+        orderId: newOrder.id,
+        productId: item.id,
+        productName: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        image: item.image,
+      })),
+    );
+
+    const lineItems = items.map((item) => ({
+      price_data: {
+        currency: (firstCurrency || "brl").toLowerCase(),
+        product_data: {
+          name: item.name,
+          images: item.image ? [item.image] : [],
+        },
+        unit_amount: Math.round(item.price),
+      },
+      quantity: item.quantity,
+    }));
+
+    if (shippingCost > 0) {
+      lineItems.push({
+        price_data: {
+          currency: (firstCurrency || "brl").toLowerCase(),
+          product_data: {
+            name: "Frete / Shipping",
+            images: [],
+          },
+          unit_amount: shippingCost,
+        },
+        quantity: 1,
+      });
+    }
+
+    const stripeSession = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: lineItems,
+      mode: "payment",
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/sucesso?orderId=${newOrder.id}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/cancelado`,
+      customer_email: guestInfo?.email || session?.user.email,
+      metadata: {
+        orderId: newOrder.id,
+        userId: userId,
+      },
+    });
+
+    return { success: true, url: stripeSession.url };
+  } catch (error) {
+    console.error("Erro ao criar sessão Stripe:", error);
+    throw new Error("Erro ao iniciar pagamento.");
+  }
+}
+
+// --- PAGAMENTO NA ENTREGA (COD) ---
+export async function createOrderCOD(
+  items: CartItemInput[],
+  guestInfo?: { email: string; name: string },
+  couponCode?: string,
+  shippingAddress?: ShippingAddressInput,
+) {
+  // 1. Detecta a moeda
+  const firstCurrency = items[0]?.currency || "GBP";
+
+  for (const item of items) {
+    const productInDb = await db.query.product.findFirst({
+      where: eq(product.id, item.id),
+    });
+    if (!productInDb) throw new Error(`Produto ${item.name} não encontrado.`);
+    if (
+      !productInDb.isStockUnlimited &&
+      productInDb.stock !== null &&
+      productInDb.stock < item.quantity
+    ) {
+      throw new Error(`O produto "${productInDb.name}" esgotou.`);
+    }
+  }
+
+  const session = await auth.api.getSession({ headers: await headers() });
+  let userId: string;
+
+  if (session) {
+    userId = session.user.id;
+  } else {
+    if (!guestInfo?.email) throw new Error("E-mail obrigatório.");
+    const email = guestInfo.email.toLowerCase();
+    const existingUser = await db.query.user.findFirst({
+      where: eq(user.email, email),
+    });
+    if (existingUser) {
+      userId = existingUser.id;
+    } else {
+      const now = new Date();
+      const [newUser] = await db
+        .insert(user)
+        .values({
+          id: crypto.randomUUID(),
+          name: guestInfo.name || "Visitante",
+          email: email,
+          image: "",
+          emailVerified: false,
+          createdAt: now,
+          updatedAt: now,
+          role: "user",
+        })
+        .returning();
+      userId = newUser.id;
+    }
+  }
+
+  const { finalTotal, discountAmount, activeCouponId, shippingCost } =
+    await calculateOrderTotals(items, couponCode);
+
+  // CRIA O PEDIDO COD
+  const [newOrder] = await db
+    .insert(order)
+    .values({
+      userId: userId,
+      amount: finalTotal,
+      discountAmount: discountAmount,
+      couponId: activeCouponId,
+      status: "pending",
+      paymentMethod: "cod",
+      shippingCost: shippingCost,
+
+      // ADICIONADO: Salvando a moeda
+      currency: firstCurrency,
+
+      shippingAddress: shippingAddress ? shippingAddress : null,
+      userPhone: shippingAddress?.phone,
+
+      // COD já nasce com logística ativa (preparação)
+      fulfillmentStatus: "processing",
+    })
+    .returning();
+
+  await db.insert(orderItem).values(
+    items.map((item) => ({
+      orderId: newOrder.id,
+      productId: item.id,
+      productName: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      image: item.image,
+    })),
+  );
+
+  for (const item of items) {
+    await db
+      .update(product)
+      .set({ sales: sql`${product.sales} + ${item.quantity}` })
+      .where(eq(product.id, item.id));
+    await db
+      .update(product)
+      .set({ stock: sql`${product.stock} - ${item.quantity}` })
+      .where(and(eq(product.id, item.id), eq(product.isStockUnlimited, false)));
+  }
+
+  if (activeCouponId) {
+    await db
+      .update(coupon)
+      .set({ usedCount: sql`${coupon.usedCount} + 1` })
+      .where(eq(coupon.id, activeCouponId));
+  }
+
+  const cookieStore = await cookies();
+  if (cookieStore.get("affiliate_code")) cookieStore.delete("affiliate_code");
+
+  return { success: true, orderId: newOrder.id };
+}
+
+// --- FLUXO GRATUITO ---
+export async function createFreeOrder(
+  items: CartItemInput[],
+  guestInfo?: { email: string; name: string },
+  couponCode?: string,
+  shippingAddress?: ShippingAddressInput,
+) {
+  // 1. Detecta a moeda
+  const firstCurrency = items[0]?.currency || "GBP";
+
+  for (const item of items) {
+    const productInDb = await db.query.product.findFirst({
+      where: eq(product.id, item.id),
+    });
+    if (!productInDb) throw new Error(`Produto ${item.name} não encontrado.`);
+    if (
+      !productInDb.isStockUnlimited &&
+      productInDb.stock !== null &&
+      productInDb.stock < item.quantity
+    ) {
+      throw new Error(`O produto "${productInDb.name}" esgotou.`);
+    }
+  }
+
+  const session = await auth.api.getSession({ headers: await headers() });
+  let userId: string;
+
+  if (session) {
+    userId = session.user.id;
+  } else {
+    if (!guestInfo?.email) throw new Error("E-mail obrigatório.");
+    const email = guestInfo.email.toLowerCase();
+    const existingUser = await db.query.user.findFirst({
+      where: eq(user.email, email),
+    });
+    if (existingUser) {
+      userId = existingUser.id;
+    } else {
+      const now = new Date();
+      const [newUser] = await db
+        .insert(user)
+        .values({
+          id: crypto.randomUUID(),
+          name: guestInfo.name || "Visitante",
+          email: email,
+          image: "",
+          emailVerified: false,
+          createdAt: now,
+          updatedAt: now,
+          role: "user",
+        })
+        .returning();
+      userId = newUser.id;
+    }
+  }
+
+  const { finalTotal, discountAmount, activeCouponId, shippingCost } =
     await calculateOrderTotals(items, couponCode);
 
   if (finalTotal > 0) {
@@ -204,9 +460,17 @@ export async function createFreeOrder(
       discountAmount: discountAmount,
       couponId: activeCouponId,
       status: "completed",
-      shippingCost: 0,
+      paymentMethod: "free",
+      shippingCost: shippingCost,
+
+      // ADICIONADO: Salvando a moeda
+      currency: firstCurrency,
+
       shippingAddress: shippingAddress ? shippingAddress : null,
       userPhone: shippingAddress?.phone,
+
+      // Grátis também já nasce com logística ativa
+      fulfillmentStatus: "processing",
     })
     .returning();
 
@@ -221,13 +485,11 @@ export async function createFreeOrder(
     })),
   );
 
-  // --- ATUALIZAÇÃO DE ESTOQUE ---
   for (const item of items) {
     await db
       .update(product)
       .set({ sales: sql`${product.sales} + ${item.quantity}` })
       .where(eq(product.id, item.id));
-
     await db
       .update(product)
       .set({ stock: sql`${product.stock} - ${item.quantity}` })
@@ -237,9 +499,7 @@ export async function createFreeOrder(
   if (activeCouponId) {
     await db
       .update(coupon)
-      .set({
-        usedCount: sql`${coupon.usedCount} + 1`,
-      })
+      .set({ usedCount: sql`${coupon.usedCount} + 1` })
       .where(eq(coupon.id, activeCouponId));
   }
 

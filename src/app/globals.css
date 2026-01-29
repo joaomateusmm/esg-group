@@ -179,6 +179,14 @@ body {
   -ms-overflow-style: none;
 }
 
+.sombra-footer {
+  box-shadow: 5px 4px 10px rgba(0, 0, 0, 0.45);
+}
+
+.sombra-legal {
+  box-shadow: 5px 4px 10px rgba(0, 0, 0, 0.45);
+}
+
 /* Recomendado pelo Lenis para garantir performance */
 html.lenis,
 html.lenis body {

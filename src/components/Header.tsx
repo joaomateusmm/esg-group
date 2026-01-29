@@ -7,29 +7,24 @@ import {
   Loader2,
   LogOut,
   MapPin,
-  Minus, // Importado
-  Plus, // Importado
   Search,
   ShoppingBag,
   Sun,
-  ThumbsUp,
-  Trash2, // Importado
   User,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react"; // 1. IMPORTAR SUSPENSE
 import { toast } from "sonner";
 
 import { checkAffiliateStatus } from "@/actions/check-affiliate-status";
 import { checkStockAvailability } from "@/actions/check-stock";
-import { createCheckoutSession } from "@/actions/checkout";
 import { getAllCategories } from "@/actions/get-all-categories";
 import { searchProductsAction } from "@/actions/search-products";
+import { CartSheet } from "@/components/cart-sheet";
 import { MobileMenu } from "@/components/mobile-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -97,9 +92,9 @@ function HeaderIconButton({
   );
 }
 
-export function Header() {
+// --- 2. TRANSFORMAR O ANTIGO 'Header' EM 'HeaderContent' ---
+function HeaderContent() {
   const [mounted, setMounted] = useState(false);
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   // ESTADOS
   const [categories, setCategories] = useState<CategoryLink[]>([]);
@@ -117,12 +112,7 @@ export function Header() {
 
   const { t, language, setLanguage } = useLanguage();
 
-  const {
-    items: cartItems,
-    removeItem: removeCartItem,
-    updateQuantity,
-    getTotalPrice,
-  } = useCartStore();
+  const { items: cartItems, removeItem: removeCartItem } = useCartStore();
 
   const { items: wishlistItems, removeItem: removeWishlistItem } =
     useWishlistStore();
@@ -201,8 +191,6 @@ export function Header() {
   }, []);
 
   const formatPrice = (value: number) => {
-    // Convertemos language para string para evitar erros de tipo se o contexto
-    // ainda não tiver "es" definido na tipagem.
     const lang = language as string;
 
     let currency = "BRL";
@@ -212,7 +200,7 @@ export function Header() {
       currency = "USD";
       locale = "en-US";
     } else if (lang === "es") {
-      currency = "EUR"; // Ou USD, dependendo da sua preferência
+      currency = "EUR";
       locale = "es-ES";
     }
 
@@ -228,47 +216,8 @@ export function Header() {
     });
   };
 
-  async function handleCheckout() {
-    if (!session) {
-      toast.error(
-        language === "pt"
-          ? "Faça login para continuar."
-          : "Please login to continue.",
-      );
-      router.push("/authentication");
-      return;
-    }
-    try {
-      setIsCheckingOut(true);
-      const checkoutItems = cartItems.map((item) => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        image: item.image,
-      }));
-
-      const result = await createCheckoutSession(checkoutItems);
-
-      if (result && result.success) {
-        toast.success(
-          language === "pt" ? "Iniciando pagamento..." : "Starting checkout...",
-        );
-        router.push("/checkout");
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error(
-        language === "pt" ? "Erro ao processar." : "Error processing.",
-      );
-    } finally {
-      setIsCheckingOut(false);
-    }
-  }
-
   if (!mounted) return null;
 
-  // --- LÓGICA DE EXIBIÇÃO DE IDIOMAS ---
   const lang = language as string;
 
   let currentFlag = "https://flagcdn.com/w40/br.png";
@@ -334,7 +283,6 @@ export function Header() {
                   <span className="text-sm font-medium">English</span>
                 </DropdownMenuItem>
 
-                {/* Opção Espanhol adicionada */}
                 <DropdownMenuItem
                   onClick={() => setLanguage("es")}
                   className="cursor-pointer gap-3 rounded-sm px-3 py-2 transition-colors hover:bg-neutral-50 focus:bg-neutral-50"
@@ -386,8 +334,18 @@ export function Header() {
             {/* MOBILE MENU */}
             <MobileMenu categories={categories} isAffiliate={isAffiliate} />
 
-            <Link href="/" className="group flex items-center gap-1">
-              <span className="font-sans text-2xl font-black tracking-tight text-neutral-900 transition-opacity group-hover:opacity-80">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg">
+                <Image
+                  src="/images/logo.png"
+                  alt="Logo ESG Group"
+                  width={40}
+                  height={40}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              {/* Nome da loja escuro */}
+              <span className="font-montserrat text-2xl font-bold text-neutral-800">
                 ESG Group
               </span>
             </Link>
@@ -463,20 +421,14 @@ export function Header() {
 
           <div className="flex items-center gap-2 sm:gap-6">
             <Link
-              href="#"
+              href="/categorias/promocoes"
               className="hidden items-center gap-2 text-neutral-700 transition-colors hover:text-orange-600 xl:flex"
             >
               <Flame className="h-5 w-5" />
               <span className="text-sm font-bold">{t.header.bestDeals}</span>
             </Link>
-            <Link
-              href="#"
-              className="hidden items-center gap-2 text-neutral-700 transition-colors hover:text-orange-600 xl:flex"
-            >
-              <ThumbsUp className="h-5 w-5" />
-              <span className="text-sm font-medium">{t.header.sale}</span>
-            </Link>
 
+            {/* 1. FAVORITOS (PRIMEIRO) */}
             <Sheet>
               <SheetTrigger asChild>
                 <div className="hidden sm:block">
@@ -532,6 +484,10 @@ export function Header() {
               </SheetContent>
             </Sheet>
 
+            {/* 2. CARRINHO (SEGUNDO) */}
+            <CartSheet />
+
+            {/* 3. USER/MINHA CONTA (TERCEIRO) */}
             {session ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -582,113 +538,23 @@ export function Header() {
                 <HeaderIconButton icon={User} />
               </Link>
             )}
-
-            <Sheet>
-              <SheetTrigger asChild>
-                <div>
-                  <HeaderIconButton
-                    icon={ShoppingBag}
-                    badgeCount={cartItems.length}
-                  />
-                </div>
-              </SheetTrigger>
-              <SheetContent className="flex h-full flex-col bg-white text-neutral-900 sm:max-w-[400px]">
-                <SheetHeader className="border-b border-neutral-100 pb-4">
-                  <SheetTitle>{t.header.cart.title}</SheetTitle>
-                </SheetHeader>
-                <div className="scrollbar-thin scrollbar-thumb-neutral-200 scrollbar-track-transparent flex-1 overflow-y-auto py-4">
-                  {cartItems.length === 0 ? (
-                    <div className="flex h-full flex-col items-center justify-center gap-2 text-neutral-500">
-                      <ShoppingBag className="h-12 w-12 opacity-20" />
-                      <p>{t.header.cart.empty}</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      {cartItems.map((item) => (
-                        <div key={item.id} className="flex gap-4">
-                          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md border border-neutral-200 bg-neutral-50">
-                            {item.image && (
-                              <Image
-                                src={item.image}
-                                alt={item.name}
-                                fill
-                                className="object-cover"
-                              />
-                            )}
-                          </div>
-                          <div className="flex flex-1 flex-col justify-between">
-                            <div>
-                              <h4 className="line-clamp-2 text-sm font-medium text-neutral-900">
-                                {item.name}
-                              </h4>
-                              <p className="mt-1 text-sm font-bold text-orange-600">
-                                {formatPrice(item.price)}
-                              </p>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center rounded-md border border-neutral-200 bg-white">
-                                <button
-                                  onClick={() =>
-                                    updateQuantity(item.id, "decrease")
-                                  }
-                                  disabled={item.quantity <= 1}
-                                  className="p-1 px-2 text-neutral-600 hover:bg-neutral-100 disabled:opacity-50"
-                                >
-                                  <Minus className="h-3 w-3" />
-                                </button>
-                                <span className="w-8 text-center text-xs font-semibold text-neutral-900">
-                                  {item.quantity}
-                                </span>
-                                <button
-                                  onClick={() =>
-                                    updateQuantity(item.id, "increase")
-                                  }
-                                  className="p-1 px-2 text-neutral-600 hover:bg-neutral-100"
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </button>
-                              </div>
-                              <button
-                                onClick={() => removeCartItem(item.id)}
-                                className="text-neutral-400 transition-colors hover:text-red-500"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                {cartItems.length > 0 && (
-                  <div className="border-t border-neutral-100 bg-white pt-6">
-                    <div className="mb-4 flex items-center justify-between">
-                      <span className="font-medium text-neutral-600">
-                        {t.header.cart.total}
-                      </span>
-                      <span className="text-xl font-bold text-neutral-900">
-                        {formatPrice(getTotalPrice())}
-                      </span>
-                    </div>
-                    <Button
-                      onClick={handleCheckout}
-                      disabled={isCheckingOut}
-                      className="h-12 w-full bg-orange-600 text-base font-bold text-white shadow-sm transition-all hover:bg-orange-700 active:scale-[0.98]"
-                    >
-                      {isCheckingOut ? (
-                        <Loader2 className="mr-2 animate-spin" />
-                      ) : (
-                        t.header.cart.checkout
-                      )}
-                    </Button>
-                  </div>
-                )}
-              </SheetContent>
-            </Sheet>
           </div>
         </div>
       </div>
     </header>
+  );
+}
+
+// --- 3. EXPORTAR O COMPONENTE PRINCIPAL ENVOLVIDO EM SUSPENSE ---
+export function Header() {
+  return (
+    // Fallback vazio ou simples para o header não "piscar" muito
+    <Suspense
+      fallback={
+        <div className="fixed top-0 z-50 h-[120px] w-full bg-white shadow-sm" />
+      }
+    >
+      <HeaderContent />
+    </Suspense>
   );
 }

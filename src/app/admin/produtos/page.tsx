@@ -1,4 +1,5 @@
-import { count, desc, ilike, or } from "drizzle-orm"; // 1. ADICIONADO: ilike e or
+import { count, desc, ilike, or } from "drizzle-orm";
+import { Suspense } from "react"; // 1. IMPORTAR SUSPENSE
 
 import { db } from "@/db";
 import { category, product } from "@/db/schema";
@@ -6,10 +7,13 @@ import { category, product } from "@/db/schema";
 import { AddProductButton } from "./components/add-button";
 import { ProductsTable } from "./components/products-table";
 
+// 2. FORÇAR MODO DINÂMICO
+// Admin precisa de dados frescos sempre, não queremos cache estático aqui.
+export const dynamic = "force-dynamic";
+
 export default async function AdminProductsPage({
   searchParams,
 }: {
-  // 2. ATUALIZADO: Adicionado 'search' na tipagem
   searchParams: Promise<{ limit?: string; search?: string }>;
 }) {
   const params = await searchParams;
@@ -17,12 +21,9 @@ export default async function AdminProductsPage({
   const limitParam = params.limit ?? "10";
   const limit = limitParam === "all" ? undefined : Number(limitParam);
 
-  // 3. NOVO: Pega o termo de pesquisa
   const searchTerm = params.search;
 
-  // 4. LÓGICA DE FILTRO
-  // Se existir pesquisa, cria a condição: Nome PARECIDO COM ... OU ID PARECIDO COM ...
-  // O `%` serve para buscar em qualquer parte do texto (ex: "adei" acha "Cadeira")
+  // LÓGICA DE FILTRO
   const searchFilter = searchTerm
     ? or(
         ilike(product.name, `%${searchTerm}%`),
@@ -30,11 +31,11 @@ export default async function AdminProductsPage({
       )
     : undefined;
 
-  // 5. QUERY PRINCIPAL COM FILTRO
+  // QUERY PRINCIPAL COM FILTRO
   const productsQuery = db
     .select()
     .from(product)
-    .where(searchFilter) // Aplica o filtro aqui (se for undefined, o Drizzle ignora)
+    .where(searchFilter)
     .orderBy(desc(product.createdAt));
 
   if (limit) {
@@ -43,8 +44,7 @@ export default async function AdminProductsPage({
 
   const productsData = await productsQuery;
 
-  // 6. CONTAGEM (Opcional: Filtrar o total também ou mostrar total geral)
-  // Aqui mantive a contagem TOTAL da loja, mas podes filtrar se quiseres
+  // CONTAGEM
   const totalCountResult = await db.select({ value: count() }).from(product);
   const totalProducts = totalCountResult[0].value;
 
@@ -71,12 +71,22 @@ export default async function AdminProductsPage({
         <AddProductButton />
       </div>
 
-      <ProductsTable
-        data={productsData}
-        totalProducts={totalProducts}
-        limitParam={limitParam}
-        allCategories={categoriesData}
-      />
+      {/* 3. ENVOLVER A TABELA EM SUSPENSE */}
+      {/* Como a tabela usa recursos de cliente para filtrar/paginar via URL, ela precisa do Suspense */}
+      <Suspense
+        fallback={
+          <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-neutral-200 bg-neutral-50 text-neutral-400">
+            Carregando tabela...
+          </div>
+        }
+      >
+        <ProductsTable
+          data={productsData}
+          totalProducts={totalProducts}
+          limitParam={limitParam}
+          allCategories={categoriesData}
+        />
+      </Suspense>
     </div>
   );
 }

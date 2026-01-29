@@ -28,7 +28,7 @@ export default async function ProductCatalog() {
     .filter((cat) => cat.products.length > 0);
 
   return (
-    <section className="relative z-10 w-full px-4 pb-24 md:px-8">
+    <section className="relative z-10 w-full px-4 pb-20 md:px-8">
       <div className="mx-auto max-w-[1400px]">
         {/* Cabeçalho Geral */}
         <div className="mb-8 flex flex-col text-start">

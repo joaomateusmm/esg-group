@@ -3,8 +3,8 @@ import { Package } from "lucide-react";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Suspense } from "react"; // 1. Importar Suspense
 
-// IMPORTANTE: Importe o novo card
 import { OrderCard } from "@/components/account/order-card";
 import { OrderTabs } from "@/components/account/order-tabs";
 import { Footer } from "@/components/Footer";
@@ -13,6 +13,9 @@ import { Button } from "@/components/ui/button";
 import { db } from "@/db";
 import { order, orderItem, product } from "@/db/schema";
 import { auth } from "@/lib/auth";
+
+// 2. FORÇAR RENDERIZAÇÃO DINÂMICA
+export const dynamic = "force-dynamic";
 
 export default async function MyPurchasesPage({
   searchParams,
@@ -32,25 +35,38 @@ export default async function MyPurchasesPage({
 
   const userId = session.user.id;
 
+  // Busca pedidos ordenados
   const userOrders = await db.query.order.findMany({
     where: eq(order.userId, userId),
     orderBy: [desc(order.createdAt)],
   });
 
+  // --- LÓGICA DE FILTRO ATUALIZADA ---
   const filteredOrders = userOrders.filter((o) => {
     if (currentTab === "all") return true;
-    if (currentTab === "pending")
-      return o.status === "pending" || o.status === "processing";
-    if (currentTab === "paid")
-      return o.status === "paid" || o.status === "succeeded";
-    if (currentTab === "shipped") return o.status === "shipped";
-    if (currentTab === "delivered")
-      return o.status === "delivered" || o.status === "completed";
-    if (currentTab === "canceled")
-      return o.status === "canceled" || o.status === "failed";
+    if (currentTab === "pending") {
+      return o.status === "pending" && o.paymentMethod !== "cod";
+    }
+    if (currentTab === "processing") {
+      return o.fulfillmentStatus === "processing";
+    }
+    if (currentTab === "shipped") {
+      return o.fulfillmentStatus === "shipped";
+    }
+    if (currentTab === "delivered") {
+      return o.fulfillmentStatus === "delivered";
+    }
+    if (currentTab === "canceled") {
+      return (
+        o.status === "failed" ||
+        o.status === "canceled" ||
+        o.fulfillmentStatus === "returned"
+      );
+    }
     return true;
   });
 
+  // Enriquecer pedidos com itens e imagens
   const enrichedOrders = await Promise.all(
     filteredOrders.map(async (currentOrder) => {
       const items = await db
@@ -92,16 +108,28 @@ export default async function MyPurchasesPage({
         ...currentOrder,
         items: itemsWithDetails,
         shippingAddress,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        currency: (currentOrder as any).currency || "BRL",
       };
     }),
   );
 
   return (
     <div className="min-h-screen bg-[#f5f5f5] font-sans text-neutral-900">
-      <Header />
+      {/* 3. ENVOLVER HEADER COM SUSPENSE (Correção principal) */}
+      <Suspense fallback={<div className="h-[120px] w-full bg-white" />}>
+        <Header />
+      </Suspense>
 
-      <div className="pt-[110px]">
-        <OrderTabs />
+      <div className="pt-[120px]">
+        {/* 4. ENVOLVER ORDER TABS EM SUSPENSE */}
+        <Suspense
+          fallback={
+            <div className="h-[54px] w-full border-b border-neutral-200 bg-white" />
+          }
+        >
+          <OrderTabs />
+        </Suspense>
 
         <main className="mx-auto max-w-5xl px-4 py-8 md:px-0">
           <div className="flex flex-col gap-4">
@@ -111,11 +139,10 @@ export default async function MyPurchasesPage({
                   <Package className="h-10 w-10 text-neutral-300" />
                 </div>
                 <h3 className="text-lg font-bold text-neutral-900">
-                  Nenhum pedido encontrado
+                  Nenhum pedido encontrado nesta aba
                 </h3>
                 <p className="mx-auto mt-2 mb-6 max-w-xs text-neutral-500">
-                  Não encontramos pedidos nesta categoria. Que tal fazer umas
-                  compras?
+                  Não encontramos pedidos com este status no momento.
                 </p>
                 <Link href="/">
                   <Button className="bg-orange-600 px-8 font-bold text-white shadow-md hover:bg-orange-700">

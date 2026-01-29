@@ -119,7 +119,7 @@ export function BuyNowButton({
       );
 
       toast.success("Produto resgatado com sucesso! Verifique seu e-mail.");
-      router.push("/checkout/success");
+      router.push("/checkout/sucesso");
     } catch (error) {
       console.error(error);
       if (error instanceof Error) {

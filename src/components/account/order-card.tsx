@@ -32,7 +32,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Tipos simplificados para o componente cliente
 interface OrderItem {
   productId: string;
   productName: string;
@@ -52,10 +51,14 @@ interface OrderItem {
 interface OrderProps {
   id: string;
   status: string;
+  fulfillmentStatus: string;
   amount: number;
   shippingCost: number | null;
   createdAt: Date;
   trackingCode?: string | null;
+  paymentMethod?: string | null;
+  // ADICIONADO: Campo currency para saber a moeda do pedido
+  currency?: string | null;
   shippingAddress?: {
     street: string;
     number: string;
@@ -67,26 +70,44 @@ interface OrderProps {
   items: OrderItem[];
 }
 
-const formatCurrency = (value: number) => {
+// ATUALIZADO: Agora aceita a moeda como parâmetro (default BRL se nulo)
+const formatCurrency = (value: number, currency: string | null | undefined) => {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
-    currency: "BRL",
+    currency: currency || "BRL", // Usa a moeda do pedido ou BRL como fallback
   }).format(value / 100);
 };
 
-const getStatusLabel = (status: string) => {
-  const map: Record<string, string> = {
-    pending: "Pagamento Pendente",
-    processing: "Processando",
-    paid: "Preparando",
-    succeeded: "Preparando",
+// --- LÓGICA DE STATUS COMPOSTO (PAGAMENTO + ENTREGA) ---
+const getStatusLabel = (
+  status: string,
+  fulfillmentStatus: string,
+  paymentMethod?: string | null,
+) => {
+  const logisticsMap: Record<string, string> = {
+    idle: "Aguardando",
+    processing: "Preparando",
     shipped: "A Caminho",
     delivered: "Entregue",
-    completed: "Finalizado",
-    canceled: "Cancelado",
-    failed: "Falhou",
+    returned: "Devolvido",
   };
-  return map[status] || status;
+
+  if (status === "canceled" || status === "failed") return "CANCELADO";
+
+  if (paymentMethod === "cod") {
+    if (fulfillmentStatus === "idle")
+      return "PAGAMENTO NA ENTREGA - Processando Pedido";
+    return `PAGAMENTO NA ENTREGA - ${logisticsMap[fulfillmentStatus] || fulfillmentStatus}`;
+  }
+
+  if (status === "pending") return "AGUARDANDO PAGAMENTO";
+
+  if (status === "paid" || status === "succeeded") {
+    if (fulfillmentStatus === "idle") return "PAGO - PREPARANDO";
+    return logisticsMap[fulfillmentStatus] || fulfillmentStatus;
+  }
+
+  return status;
 };
 
 export function OrderCard({ order }: { order: OrderProps }) {
@@ -100,7 +121,6 @@ export function OrderCard({ order }: { order: OrderProps }) {
     if (!order.shippingAddress) return "Endereço não informado";
 
     if (showAddress) {
-      // Desestruturação segura com valores padrão
       const {
         street = "",
         number = "S/N",
@@ -111,12 +131,9 @@ export function OrderCard({ order }: { order: OrderProps }) {
       } = order.shippingAddress;
 
       const addressString = `${street}, ${number}${complement ? ` - ${complement}` : ""} - ${city}/${state} - CEP: ${zipCode}`;
-
       if (addressString.length < 10) return "Endereço inválido no cadastro";
-
       return addressString;
     }
-
     return "********* *********, *** - *****/** - CEP: *****-***";
   };
 
@@ -151,7 +168,11 @@ export function OrderCard({ order }: { order: OrderProps }) {
             </div>
           )}
           <span className="text-sm font-bold tracking-tight text-orange-600 uppercase">
-            {getStatusLabel(order.status)}
+            {getStatusLabel(
+              order.status,
+              order.fulfillmentStatus,
+              order.paymentMethod,
+            )}
           </span>
         </div>
       </div>
@@ -183,11 +204,9 @@ export function OrderCard({ order }: { order: OrderProps }) {
                     {item.productName}
                   </h4>
                 </Link>
-
                 <p className="line-clamp-1 max-w-md text-xs text-neutral-500">
                   {item.description || "Descrição indisponível."}
                 </p>
-
                 <div className="mt-2 flex w-fit items-center gap-3 rounded bg-neutral-50 p-2 text-xs text-neutral-500">
                   <span>Variação: Padrão</span>
                   <span className="h-3 w-px bg-neutral-300"></span>
@@ -203,10 +222,10 @@ export function OrderCard({ order }: { order: OrderProps }) {
                   )}
                 </div>
               </div>
-
               <div className="mt-4 text-right sm:mt-0">
                 <span className="block text-sm font-bold text-neutral-900">
-                  {formatCurrency(item.price)}
+                  {/* ATUALIZADO: Passando a moeda do pedido */}
+                  {formatCurrency(item.price, order.currency)}
                 </span>
               </div>
             </div>
@@ -214,7 +233,7 @@ export function OrderCard({ order }: { order: OrderProps }) {
         ))}
       </div>
 
-      {/* Endereço de Entrega (COM LÓGICA DE OLHO) */}
+      {/* Endereço */}
       {order.shippingAddress && (
         <div className="flex items-center justify-between gap-2 border-t border-neutral-100 bg-neutral-50 px-6 py-3 text-xs text-neutral-600">
           <div className="flex items-center gap-2 overflow-hidden">
@@ -259,38 +278,43 @@ export function OrderCard({ order }: { order: OrderProps }) {
               <span className="text-neutral-500">Frete:</span>
               <span className="font-medium text-neutral-900">
                 {order.shippingCost
-                  ? formatCurrency(order.shippingCost)
+                  ? formatCurrency(order.shippingCost, order.currency) // ATUALIZADO
                   : "Grátis"}
               </span>
             </div>
-
             <div className="flex items-center gap-2">
               <span className="text-sm text-neutral-600">Total do pedido:</span>
               <span className="text-xl font-bold text-orange-600">
-                {formatCurrency(order.amount)}
+                {/* ATUALIZADO: Passando a moeda do pedido */}
+                {formatCurrency(
+                  order.amount + (order.shippingCost || 0),
+                  order.currency,
+                )}
               </span>
             </div>
           </div>
         </div>
 
+        {/* Botões de Ação (Mantidos) */}
         <div className="flex flex-wrap justify-end gap-3 border-t border-dotted border-orange-100/50 pt-2">
-          {order.status === "pending" && (
-            <>
-              <Button
-                variant="outline"
-                className="border-neutral-300 font-medium text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900"
-              >
-                Cancelar Pedido
-              </Button>
-              <Link href="/checkout">
-                <Button className="bg-orange-600 px-6 font-bold text-white shadow-sm hover:bg-orange-700">
-                  Pagar Agora
-                </Button>
-              </Link>
-            </>
+          {order.status === "pending" && order.fulfillmentStatus === "idle" && (
+            <Button
+              variant="outline"
+              className="border-neutral-300 font-medium text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900"
+            >
+              Cancelar Pedido
+            </Button>
           )}
 
-          {order.status === "shipped" && (
+          {order.status === "pending" && order.paymentMethod !== "cod" && (
+            <Link href="/checkout">
+              <Button className="bg-orange-600 px-6 font-bold text-white shadow-sm hover:bg-orange-700">
+                Pagar Agora
+              </Button>
+            </Link>
+          )}
+
+          {order.fulfillmentStatus === "shipped" && (
             <Button
               onClick={handleConfirmDelivery}
               className="h-9 bg-orange-600 px-6 font-medium text-white shadow-sm hover:bg-orange-700"
@@ -299,7 +323,8 @@ export function OrderCard({ order }: { order: OrderProps }) {
             </Button>
           )}
 
-          {(order.status === "delivered" || order.status === "completed") && (
+          {(order.fulfillmentStatus === "delivered" ||
+            order.status === "completed") && (
             <>
               <Button
                 variant="outline"
@@ -313,7 +338,6 @@ export function OrderCard({ order }: { order: OrderProps }) {
             </>
           )}
 
-          {/* Botões Pequenos (Dropdown + Detalhes) */}
           <div className="flex gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -328,8 +352,6 @@ export function OrderCard({ order }: { order: OrderProps }) {
               >
                 <DropdownMenuLabel>Mais Opções</DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-neutral-100" />
-
-                {/* Link para o primeiro produto do pedido (exemplo) */}
                 <DropdownMenuItem className="cursor-pointer" asChild>
                   <Link
                     href={`/produto/${order.items[0]?.productId || ""}`}
@@ -338,15 +360,11 @@ export function OrderCard({ order }: { order: OrderProps }) {
                     Página do Produto
                   </Link>
                 </DropdownMenuItem>
-
-                {/* Link para suporte genérico */}
                 <DropdownMenuItem className="cursor-pointer" asChild>
                   <Link href="/suporte" className="flex w-full items-center">
                     Relatar Problema
                   </Link>
                 </DropdownMenuItem>
-
-                {/* Link para FAQ */}
                 <DropdownMenuItem className="cursor-pointer" asChild>
                   <Link href="/faq" className="flex w-full items-center">
                     Dúvidas Frequentes

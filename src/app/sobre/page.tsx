@@ -1,17 +1,24 @@
 import { Calendar, Gamepad2, ShieldCheck, Zap } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react"; // 1. IMPORTAR SUSPENSE
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { SpotlightCard } from "@/components/spotlight-card";
 import { Button } from "@/components/ui/button";
 
+// 2. FORÇAR MODO DINÂMICO
+export const dynamic = "force-dynamic";
+
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-[#010000] selection:bg-[#D00000] selection:text-white">
       <div className="z-[100] w-full bg-[#010000]">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-center">
-          <Header />
+          {/* 3. ENVOLVER HEADER COM SUSPENSE */}
+          <Suspense fallback={<div className="h-20 w-full bg-[#010000]" />}>
+            <Header />
+          </Suspense>
         </div>
       </div>
 
@@ -143,7 +150,10 @@ export default function AboutPage() {
         </div>
       </main>
 
-      <Footer />
+      {/* 4. ENVOLVER FOOTER COM SUSPENSE */}
+      <Suspense fallback={<div className="h-20 w-full bg-[#010000]" />}>
+        <Footer />
+      </Suspense>
     </div>
   );
 }

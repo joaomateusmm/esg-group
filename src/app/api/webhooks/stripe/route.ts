@@ -1,19 +1,10 @@
-import { and, eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
 import { db } from "@/db";
-import { order, orderItem, product } from "@/db/schema";
-
-// Interface para os itens
-interface WebhookItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image?: string;
-}
+import { order } from "@/db/schema";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-02-24.acacia" as unknown as Stripe.LatestApiVersion,
@@ -37,117 +28,64 @@ export async function POST(req: Request) {
     });
   }
 
-  if (event.type === "payment_intent.succeeded") {
-    const paymentIntent = event.data.object as Stripe.PaymentIntent;
-    const { userId, itemsJson, shippingAddressJson, shippingCost } =
-      paymentIntent.metadata;
+  // EVENTO DE CHECKOUT SESSION COMPLETED (Mais seguro para nosso fluxo atual)
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
 
-    if (!userId || !itemsJson) {
-      console.error("❌ Metadados incompletos");
-      return new NextResponse("Metadados inválidos", { status: 400 });
-    }
+    // Recupera o ID do pedido que enviamos no metadata ao criar a sessão
+    const orderId = session.metadata?.orderId;
 
-    const items = JSON.parse(itemsJson) as WebhookItem[];
-    const shippingCostValue = shippingCost ? parseInt(shippingCost) : 0;
+    if (orderId) {
+      console.log(
+        `💰 Pagamento confirmado via Checkout Session para o pedido: ${orderId}`,
+      );
 
-    // --- CAPTURA DE DADOS DO CLIENTE (Nome, Email, Telefone) DO STRIPE ---
-    // Usamos 'as any' para garantir acesso a propriedades que o TS do Stripe pode esconder
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const customerDetails = (paymentIntent as any).customer_details;
-    const shipping = paymentIntent.shipping;
+      try {
+        // ATUALIZAÇÃO DOS STATUS (Financeiro e Logístico)
+        // Não criamos pedido novo, apenas atualizamos o que já existe
+        await db
+          .update(order)
+          .set({
+            status: "paid", // Financeiro: Pago
+            fulfillmentStatus: "processing", // Logístico: Em preparação (sai de 'idle')
+            stripePaymentIntentId: session.payment_intent as string,
+            // Opcional: Se quiser salvar o endereço que o usuário preencheu no Stripe (caso seja diferente)
+            // shippingAddress: session.shipping_details?.address ...
+          })
+          .where(eq(order.id, orderId));
 
-    // Prioridade: Shipping -> Customer Details -> Valor Default
-    const stripeName =
-      shipping?.name || customerDetails?.name || "Cliente sem nome";
-    const stripeEmail = customerDetails?.email || null; // O email geralmente vem em customer_details
-
-    // Telefone
-    const stripePhone = shipping?.phone || customerDetails?.phone || null;
-
-    // --- LÓGICA DE RECUPERAÇÃO DE ENDEREÇO ---
-    // 1. Tenta pegar dos metadados (se o seu front enviou)
-    let finalAddress = shippingAddressJson
-      ? JSON.parse(shippingAddressJson)
-      : null;
-
-    // 2. Se não tiver nos metadados, pega do objeto nativo do Stripe
-    if (
-      !finalAddress ||
-      !finalAddress.street ||
-      finalAddress.street === "Não informado"
-    ) {
-      if (shipping?.address) {
-        const stripeAddr = shipping.address;
-        finalAddress = {
-          street: stripeAddr.line1 || "Endereço Stripe",
-          number: "", // O Stripe muitas vezes junta numero e rua no line1
-          complement: stripeAddr.line2 || "",
-          city: stripeAddr.city || "",
-          state: stripeAddr.state || "",
-          zipCode: stripeAddr.postal_code || "",
-          country: stripeAddr.country || "BR",
-          phone: stripePhone, // Adiciona o telefone ao objeto de endereço
-        };
-        console.log("📦 Endereço recuperado do objeto Shipping do Stripe.");
+        return NextResponse.json({ received: true });
+      } catch (error) {
+        console.error("❌ Erro ao atualizar pedido:", error);
+        return new NextResponse("Erro ao atualizar pedido", { status: 500 });
       }
     } else {
-      // Se já tinha endereço dos metadados, garante que o telefone do Stripe seja adicionado se faltar
-      if (!finalAddress.phone && stripePhone) {
-        finalAddress.phone = stripePhone;
-      }
+      console.warn("⚠️ Webhook recebido sem OrderID no metadata.");
     }
+  }
 
-    try {
-      // 1. Criar o Pedido
-      const [newOrder] = await db
-        .insert(order)
-        .values({
-          userId: userId,
-          amount: paymentIntent.amount,
+  // FALLBACK: PAYMENT INTENT SUCCEEDED (Caso usemos Elements puro sem Checkout Session no futuro)
+  // Mas no fluxo atual (createCheckoutSession), o evento acima é o principal.
+  // Se você usa Elements com confirmParams, o payment_intent.succeeded também dispara.
+  else if (event.type === "payment_intent.succeeded") {
+    const paymentIntent = event.data.object as Stripe.PaymentIntent;
+
+    // Tentamos achar o pedido pelo metadata OU pelo paymentIntentId se já foi salvo
+    const orderId = paymentIntent.metadata?.orderId;
+
+    if (orderId) {
+      console.log(
+        `💰 Pagamento confirmado via Payment Intent para: ${orderId}`,
+      );
+
+      await db
+        .update(order)
+        .set({
           status: "paid",
+          fulfillmentStatus: "processing",
           stripePaymentIntentId: paymentIntent.id,
-          stripeClientSecret: paymentIntent.client_secret,
-          shippingAddress: finalAddress, // Salva o endereço COM telefone
-          shippingCost: shippingCostValue,
-
-          // --- SALVANDO DADOS DO CHECKOUT ---
-          customerName: stripeName, // Salva o nome digitado no Stripe
-          customerEmail: stripeEmail, // Salva o email digitado no Stripe
-          userPhone: stripePhone, // Salva o telefone digitado no Stripe
         })
-        .returning();
-
-      // 2. Criar Itens
-      const orderItemsData = items.map((item) => ({
-        orderId: newOrder.id,
-        productId: item.id,
-        productName: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        image: item.image,
-      }));
-
-      await db.insert(orderItem).values(orderItemsData);
-
-      // 3. Atualizar Estoque
-      for (const item of items) {
-        await db
-          .update(product)
-          .set({ sales: sql`${product.sales} + ${item.quantity}` })
-          .where(eq(product.id, item.id));
-
-        await db
-          .update(product)
-          .set({ stock: sql`${product.stock} - ${item.quantity}` })
-          .where(
-            and(eq(product.id, item.id), eq(product.isStockUnlimited, false)),
-          );
-      }
-
-      return NextResponse.json({ received: true });
-    } catch (error) {
-      console.error("❌ Erro ao salvar pedido:", error);
-      return new NextResponse("Erro interno", { status: 500 });
+        .where(eq(order.id, orderId));
     }
   }
 

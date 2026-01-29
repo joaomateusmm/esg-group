@@ -3,6 +3,7 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header"; // Suponho que você queira o Header aqui também
 import { HeroBanners } from "@/components/hero-banners"; // <--- Importe o HeroBanners
 import ProductCatalog from "@/components/ProductCatalog";
+import Silk from "@/components/Silk";
 
 export default function Home() {
   return (
@@ -10,7 +11,8 @@ export default function Home() {
       <Header />
 
       <HeroBanners />
-      <div className="mt-28" id="catalogo">
+      <Silk />
+      <div className="mt-5" id="catalogo">
         <ProductCatalog />
       </div>
 

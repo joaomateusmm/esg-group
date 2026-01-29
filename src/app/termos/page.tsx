@@ -1,6 +1,11 @@
+import { Suspense } from "react"; // 1. IMPORTAR SUSPENSE
+
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { SpotlightCard } from "@/components/spotlight-card";
+
+// 2. FORÇAR MODO DINÂMICO
+export const dynamic = "force-dynamic";
 
 export default function TermsPage() {
   const terms = [
@@ -35,7 +40,10 @@ export default function TermsPage() {
     <div className="min-h-screen bg-[#010000] selection:bg-[#D00000] selection:text-white">
       <div className="z-[100] w-full bg-[#010000]">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-center">
-          <Header />
+          {/* 3. ENVOLVER HEADER COM SUSPENSE */}
+          <Suspense fallback={<div className="h-20 w-full bg-[#010000]" />}>
+            <Header />
+          </Suspense>
         </div>
       </div>
 
@@ -78,7 +86,10 @@ export default function TermsPage() {
         </div>
       </main>
 
-      <Footer />
+      {/* 4. ENVOLVER FOOTER COM SUSPENSE */}
+      <Suspense fallback={<div className="h-20 w-full bg-[#010000]" />}>
+        <Footer />
+      </Suspense>
     </div>
   );
 }

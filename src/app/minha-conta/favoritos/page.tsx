@@ -3,7 +3,7 @@
 import { Heart, ShoppingBag, ShoppingCart, Trash2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react"; // 1. IMPORTAR SUSPENSE
 import { toast } from "sonner";
 
 import { Footer } from "@/components/Footer";
@@ -11,6 +11,11 @@ import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart-store";
 import { useWishlistStore, WishlistItem } from "@/store/wishlist-store";
+
+// 2. FORÇAR RENDERIZAÇÃO DINÂMICA
+// Embora seja uma página "use client", o Next.js tenta pré-renderizar o esqueleto dela.
+// O force-dynamic garante que ela não tente ser estática.
+export const dynamic = "force-dynamic";
 
 export default function WishlistPage() {
   const [mounted, setMounted] = useState(false);
@@ -31,7 +36,6 @@ export default function WishlistPage() {
     }).format(value / 100);
   };
 
-  // CORREÇÃO: Substituído 'any' pelo tipo correto 'WishlistItem'
   const handleAddToCart = (item: WishlistItem) => {
     addItemToCart({
       id: item.id,
@@ -47,8 +51,10 @@ export default function WishlistPage() {
 
   return (
     <div className="min-h-screen bg-[#010000]">
-      {/* --- HEADER --- */}
-      <Header />
+      {/* 3. ENVOLVER HEADER COM SUSPENSE */}
+      <Suspense fallback={<div className="h-20 w-full bg-[#010000]" />}>
+        <Header />
+      </Suspense>
 
       <div className="mx-auto max-w-6xl px-4 pt-41 pb-20 md:px-8">
         <div className="mb-8 flex items-center justify-between">
@@ -155,9 +161,13 @@ export default function WishlistPage() {
           </div>
         )}
       </div>
-      <div className="mt-25">
-        <Footer />
-      </div>
+
+      {/* 4. Envolver Footer também por precaução */}
+      <Suspense fallback={<div className="h-20 w-full bg-[#010000]" />}>
+        <div className="mt-25">
+          <Footer />
+        </div>
+      </Suspense>
     </div>
   );
 }

@@ -2,9 +2,9 @@ import { relations } from "drizzle-orm";
 import {
   boolean,
   integer,
-  json, // Necessário para salvar o endereço completo no pedido
+  json,
   pgTable,
-  real, // Necessário para números decimais (peso)
+  real,
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
@@ -72,7 +72,6 @@ export const category = pgTable("category", {
     .$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
   description: text("description"),
-  // Adicionado slug para URLs amigáveis (ex: /categoria/moveis-quarto)
   slug: text("slug").unique(),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
@@ -81,7 +80,7 @@ export const category = pgTable("category", {
     .$onUpdate(() => new Date()),
 });
 
-// --- TABELA DE PRODUTOS (ATUALIZADA PARA FÍSICO) ---
+// --- TABELA DE PRODUTOS (MANTIDA) ---
 
 export const product = pgTable("product", {
   id: text("id")
@@ -89,20 +88,29 @@ export const product = pgTable("product", {
     .$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
   description: text("description"),
+
   price: integer("price").notNull(), // Em centavos
   discountPrice: integer("discountPrice"), // Em centavos
+
+  currency: text("currency").notNull().default("GBP"),
+
   images: text("images").array(),
-  categories: text("categories").array(), // Array de IDs de categorias
-  weight: real("weight").default(0), // Peso em KG (ex: 0.500 para 500g)
-  width: integer("width").default(0), // Largura em cm
-  height: integer("height").default(0), // Altura em cm
-  length: integer("length").default(0), // Comprimento em cm
-  sku: text("sku"), // Código de estoque (opcional, mas bom para logística)
+  categories: text("categories").array(),
+  weight: real("weight").default(0),
+  width: integer("width").default(0),
+  height: integer("height").default(0),
+  length: integer("length").default(0),
+  sku: text("sku"),
+  shippingType: text("shippingType").notNull().default("calculated"),
+  fixedShippingPrice: integer("fixedShippingPrice").default(0),
+
   stock: integer("stock").default(0),
   isStockUnlimited: boolean("isStockUnlimited").notNull().default(false),
-  status: text("status").notNull().default("draft"), // draft, active, archived
+
+  status: text("status").notNull().default("draft"),
   sales: integer("sales").notNull().default(0),
-  affiliateRate: integer("affiliateRate").default(10), // Porcentagem de comissão
+  affiliateRate: integer("affiliateRate").default(10),
+
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
     .notNull()
@@ -127,7 +135,7 @@ export const review = pgTable("review", {
   createdAt: timestamp("createdAt").notNull().defaultNow(),
 });
 
-// --- TABELA DE PEDIDOS (ATUALIZADA PARA STRIPE & LOGÍSTICA) ---
+// --- TABELA DE PEDIDOS (ATUALIZADA) ---
 
 export const order = pgTable("order", {
   id: text("id")
@@ -137,15 +145,20 @@ export const order = pgTable("order", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   amount: integer("amount").notNull(), // Valor TOTAL (Produtos + Frete)
-  status: text("status").notNull().default("pending"), // pending, paid, shipped, delivered, canceled
-  stripePaymentIntentId: text("stripePaymentIntentId"), // ID para rastrear no Stripe
+
+  // STATUS FINANCEIRO: pending, paid, failed, refunded
+  status: text("status").notNull().default("pending"),
+  currency: text("currency").notNull().default("GBP"),
+  fulfillmentStatus: text("fulfillmentStatus").notNull().default("idle"),
+
+  stripePaymentIntentId: text("stripePaymentIntentId"),
   stripeClientSecret: text("stripeClientSecret"),
   shippingAddress: json("shippingAddress"),
-  shippingCost: integer("shippingCost").default(0), // Custo do frete em centavos
-  trackingCode: text("trackingCode"), // Código de rastreio (Correios/Transportadora)
-
-  customerName: text("customerName"), // <--- NOVO: Nome digitado no checkout
-  customerEmail: text("customerEmail"), // <--- NOVO: Email usado no checkout (se diferente da conta)
+  shippingCost: integer("shippingCost").default(0),
+  trackingCode: text("trackingCode"),
+  paymentMethod: text("paymentMethod").default("card"),
+  customerName: text("customerName"),
+  customerEmail: text("customerEmail"),
   userPhone: text("userPhone"),
   couponId: text("couponId").references(() => coupon.id, {
     onDelete: "set null",
@@ -168,8 +181,8 @@ export const orderItem = pgTable("orderItem", {
   productId: text("productId")
     .notNull()
     .references(() => product.id),
-  productName: text("productName").notNull(), // Salvamos o nome para histórico
-  price: integer("price").notNull(), // Preço no momento da compra
+  productName: text("productName").notNull(),
+  price: integer("price").notNull(),
   quantity: integer("quantity").notNull(),
   image: text("image"),
 });

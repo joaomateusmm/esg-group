@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  Heart,
-  Loader2,
-  ShoppingCart,
-  TrendingDown,
-} from "lucide-react";
+import { Heart, Loader2, ShoppingCart, TrendingDown } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
@@ -26,6 +21,7 @@ interface ProductCardProps {
     images: string[] | null;
     stock: number | null;
     isStockUnlimited: boolean;
+    currency?: string; // 1. Campo de moeda opcional
   };
   categoryName: string;
 }
@@ -43,10 +39,14 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
 
   const isFavorite = isInWishlist(data.id);
 
+  // Define a moeda (Padrão GBP se não existir)
+  const productCurrency = data.currency || "GBP";
+
+  // 2. Formatação dinâmica baseada na moeda do produto
   const formatPrice = (priceInCents: number) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
-      currency: "BRL",
+      currency: productCurrency,
     }).format(priceInCents / 100);
   };
 
@@ -63,7 +63,7 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
   const stockCount = data.stock ?? 0;
   const isOutOfStock = !data.isStockUnlimited && stockCount <= 0;
 
-  // Lógica de "Poucas Unidades" (ex: menos de 10) para gerar urgência
+  // Lógica de "Poucas Unidades"
   const isLowStock =
     !data.isStockUnlimited && stockCount > 0 && stockCount <= 10;
 
@@ -129,7 +129,7 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
           alt={data.name}
           fill
           className={cn(
-            "object-contain transition-transform duration-500 group-hover:scale-110",
+            "object-contain transition-transform duration-500 group-hover:scale-105",
             isPending && "scale-100 blur-[2px]",
           )}
           sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
@@ -148,10 +148,10 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
             size="icon"
             onClick={handleFavorite}
             className={cn(
-              "h-9 w-9 rounded-full shadow-sm backdrop-blur-md transition-all hover:scale-105",
+              "h-9 w-9 rounded-full shadow-sm backdrop-blur-md duration-300 hover:scale-105",
               isFavorite
-                ? "bg-red-500 text-white hover:bg-red-600"
-                : "border border-neutral-200 bg-white text-neutral-600 hover:bg-red-50 hover:text-red-500",
+                ? "bg-orange-500 text-white hover:bg-orange-600"
+                : "bg-white text-neutral-600 hover:bg-white hover:text-orange-500",
             )}
           >
             <Heart className={cn("h-4 w-4", isFavorite && "fill-current")} />
@@ -161,7 +161,7 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
             <Button
               size="icon"
               onClick={handleAddToCart}
-              className="h-9 w-9 rounded-full bg-orange-600 text-white shadow-sm backdrop-blur-md transition-all hover:scale-105 hover:bg-orange-700"
+              className="h-9 w-9 rounded-full bg-orange-500 text-white shadow-sm backdrop-blur-md duration-300 hover:scale-105 hover:bg-orange-600"
             >
               <ShoppingCart className="h-4 w-4" />
             </Button>
@@ -214,7 +214,7 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
                 ? "Indisponível"
                 : isFree
                   ? "Download Imediato"
-                  : "À vista no PIX"}
+                  : ""}
             </span>
 
             {!isOutOfStock && !data.isStockUnlimited && (

@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 
 import { useCartStore } from "@/store/cart-store";
 
-import { CheckoutForm } from "./checkout-form-global"; // Vamos criar abaixo
+import { CheckoutForm } from "./checkout-form-global";
 
 // Sua chave pública do Stripe
 const stripePromise = loadStripe(
@@ -17,35 +17,85 @@ const stripePromise = loadStripe(
 export function StripeCheckout() {
   const { items } = useCartStore();
   const [clientSecret, setClientSecret] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (items.length > 0) {
+      // Pega a moeda do primeiro item ou define GBP como padrão
+      // Isso é enviado para o backend criar o PaymentIntent correto
+      const cartCurrency = items[0].currency || "GBP";
+
       // Chama sua API para criar a intenção de pagamento
       fetch("/api/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items,
-          currency: "brl", // Ou lógica para detectar moeda do usuário
+          currency: cartCurrency,
         }),
       })
-        .then((res) => res.json())
-        .then((data) => setClientSecret(data.clientSecret));
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error(
+              "Falha na comunicação com o servidor de pagamento.",
+            );
+          }
+          return res.json();
+        })
+        .then((data) => {
+          if (data.error) {
+            setError(data.error);
+          } else {
+            setClientSecret(data.clientSecret);
+          }
+        })
+        .catch((err) => {
+          console.error("Erro ao criar Intent:", err);
+          setError("Não foi possível carregar o sistema de pagamento.");
+        });
     }
   }, [items]);
 
-  if (!clientSecret) {
+  // Se houver erro no carregamento inicial
+  if (error) {
     return (
-      <div className="flex h-40 w-full items-center justify-center">
+      <div className="flex h-40 w-full flex-col items-center justify-center gap-2 rounded-lg border border-red-100 bg-red-50 p-6 text-red-600">
+        <p className="font-medium">Erro ao carregar checkout</p>
+        <p className="text-sm">{error}</p>
+      </div>
+    );
+  }
+
+  // Loading enquanto busca o clientSecret
+  if (!clientSecret || items.length === 0) {
+    return (
+      <div className="flex h-60 w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
       </div>
     );
   }
 
+  // Configuração visual do Stripe
+  const appearance = {
+    theme: "stripe" as const,
+    variables: {
+      colorPrimary: "#ea580c", // orange-600
+      colorText: "#171717",
+      colorBackground: "#ffffff",
+      fontFamily: '"Montserrat", sans-serif',
+      borderRadius: "8px",
+    },
+  };
+
   return (
     <Elements
       stripe={stripePromise}
-      options={{ clientSecret, appearance: { theme: "stripe" } }}
+      options={{
+        clientSecret,
+        appearance,
+        // REMOVIDO: currency: ...
+        // O Stripe detecta a moeda automaticamente através do clientSecret
+      }}
     >
       <CheckoutForm />
     </Elements>

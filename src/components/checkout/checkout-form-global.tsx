@@ -6,120 +6,162 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
-import { Loader2, Lock } from "lucide-react";
-import { useState } from "react";
+import { CreditCard, Loader2, Lock, Truck } from "lucide-react"; // Importei ícones extras
+import { useRouter } from "next/navigation"; // Importar useRouter
+import { useEffect, useState } from "react";
 
-// Importe a Server Action que criamos
-import { calculateShippingAction } from "@/actions/calculate-shipping";
+import { createOrderCOD, getCartShippingCost } from "@/actions/checkout"; // Importar a nova action
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils"; // Importar cn para classes condicionais
 import { useCartStore } from "@/store/cart-store";
 
 export function CheckoutForm() {
   const stripe = useStripe();
   const elements = useElements();
-  const { items, getTotalPrice } = useCartStore();
+  const { items, getTotalPrice, clearCart } = useCartStore(); // Importar clearCart
+  const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
   const [shippingCost, setShippingCost] = useState(0);
-  const [deliveryDays, setDeliveryDays] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  // ESTADO PARA GUARDAR OS DADOS DO ENDEREÇO
+  // ESTADO DO MÉTODO DE PAGAMENTO: 'card' ou 'cod' (Cash on Delivery)
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "cod">("card");
+
+  const cartCurrency = items.length > 0 ? items[0].currency || "GBP" : "GBP";
+
+  const formatPrice = (val: number) =>
+    new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: cartCurrency,
+    }).format(val / 100);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [addressDetails, setAddressDetails] = useState<any>(null);
 
-  // Função chamada quando o endereço muda no Stripe
+  useEffect(() => {
+    const fetchShipping = async () => {
+      setIsCalculatingShipping(true);
+      try {
+        const result = await getCartShippingCost(items);
+        setShippingCost(result.price);
+      } catch (error) {
+        console.error("Erro ao buscar frete:", error);
+      } finally {
+        setIsCalculatingShipping(false);
+      }
+    };
+
+    if (items.length > 0) {
+      fetchShipping();
+    }
+  }, [items]);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleAddressChange = async (event: any) => {
-    // Guarda os dados do endereço sempre que mudar
     setAddressDetails(event.value);
-
     if (!event.complete) return;
-
-    const address = event.value.address;
-
-    setIsCalculatingShipping(true);
-
-    try {
-      const result = await calculateShippingAction({
-        destinationPostalCode: address.postal_code,
-        destinationCountry: address.country,
-        items: items.map((item) => ({
-          id: item.id,
-          quantity: item.quantity,
-        })),
-      });
-
-      setShippingCost(result.price);
-      setDeliveryDays(result.estimatedDays);
-    } catch (error) {
-      console.error("Erro ao calcular frete:", error);
-      setShippingCost(3000); // Fallback
-    } finally {
-      setIsCalculatingShipping(false);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!stripe || !elements) {
+    if (paymentMethod === "card" && (!stripe || !elements)) {
       return;
     }
 
     setIsLoading(true);
+    setMessage(null);
 
-    // Trigger form validation
-    const { error: submitError } = await elements.submit();
-    if (submitError) {
-      setMessage(submitError.message || "Erro na validação do formulário.");
+    // Validação básica do endereço (Stripe Address Element já valida visualmente, mas precisamos dos dados)
+    if (!addressDetails || !addressDetails.address || !addressDetails.name) {
+      setMessage("Por favor, preencha o endereço de entrega completo.");
       setIsLoading(false);
       return;
     }
 
-    // PREPARA OS DADOS DE ENDEREÇO E TELEFONE
-    // Se o AddressElement capturou o telefone, ele estará em addressDetails.phone
-    const shippingDetails = addressDetails
-      ? {
-          name: addressDetails.name,
-          phone: addressDetails.phone,
-          address: {
-            line1: addressDetails.address.line1,
-            line2: addressDetails.address.line2,
-            city: addressDetails.address.city,
-            state: addressDetails.address.state,
-            postal_code: addressDetails.address.postal_code,
-            country: addressDetails.address.country,
-          },
-        }
-      : undefined;
+    // --- FLUXO 1: PAGAMENTO COM CARTÃO (STRIPE) ---
+    if (paymentMethod === "card") {
+      if (!stripe || !elements) return;
 
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/checkout/success`,
-        // FORÇA O ENVIO DOS DADOS DE ENTREGA
-        shipping: shippingDetails,
-      },
-    });
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        setMessage(submitError.message || "Erro na validação do formulário.");
+        setIsLoading(false);
+        return;
+      }
 
-    if (error.type === "card_error" || error.type === "validation_error") {
-      setMessage(error.message || "Ocorreu um erro.");
-    } else {
-      setMessage("Erro inesperado.");
+      const shippingDetails = {
+        name: addressDetails.name,
+        phone: addressDetails.phone,
+        address: {
+          line1: addressDetails.address.line1,
+          line2: addressDetails.address.line2,
+          city: addressDetails.address.city,
+          state: addressDetails.address.state,
+          postal_code: addressDetails.address.postal_code,
+          country: addressDetails.address.country,
+        },
+      };
+
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/checkout/sucesso`,
+          shipping: shippingDetails,
+        },
+      });
+
+      if (error.type === "card_error" || error.type === "validation_error") {
+        setMessage(error.message || "Ocorreu um erro.");
+      } else {
+        setMessage("Erro inesperado.");
+      }
+      setIsLoading(false);
     }
 
-    setIsLoading(false);
+    // --- FLUXO 2: PAGAMENTO NA ENTREGA (COD) ---
+    else {
+      try {
+        const shippingData = {
+          street: addressDetails.address.line1,
+          number: "N/A", // O Element do Stripe junta rua e número em line1 as vezes, ou line2. Simplificação.
+          complement: addressDetails.address.line2,
+          city: addressDetails.address.city,
+          state: addressDetails.address.state,
+          zipCode: addressDetails.address.postal_code,
+          phone: addressDetails.phone,
+        };
+
+        // Chama a Server Action para criar o pedido sem pagamento imediato
+        const result = await createOrderCOD(
+          items,
+          {
+            email: "guest@example.com", // TODO: Pegar email real do usuário logado ou input se for guest
+            name: addressDetails.name,
+          },
+          undefined, // Coupon code (se tiver, passar aqui)
+          shippingData,
+        );
+
+        if (result.success) {
+          clearCart(); // Limpa o carrinho
+          router.push(`/checkout/sucesso?orderId=${result.orderId}`); // Redireciona
+        }
+      } catch (error) {
+        console.error(error);
+        if (error instanceof Error) {
+          setMessage(error.message);
+        } else {
+          setMessage("Erro ao criar pedido.");
+        }
+        setIsLoading(false);
+      }
+    }
   };
 
   const total = getTotalPrice() + shippingCost;
-
-  const formatPrice = (val: number) =>
-    new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(val / 100);
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-2">
@@ -151,7 +193,55 @@ export function CheckoutForm() {
 
         <div className="rounded-xl border border-neutral-200 bg-white p-6">
           <h2 className="mb-4 text-lg font-bold text-neutral-900">Pagamento</h2>
-          <PaymentElement />
+
+          {/* SELETOR DE MÉTODO DE PAGAMENTO */}
+          <div className="mb-6 flex w-full flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => setPaymentMethod("card")}
+              className={cn(
+                "flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-5 py-3 font-medium transition-all duration-200",
+                paymentMethod === "card"
+                  ? "bg-orange-50 text-orange-700 shadow-sm ring-1 ring-orange-600"
+                  : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900",
+              )}
+            >
+              <CreditCard className="h-4 w-4" />
+              Pagar Agora
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaymentMethod("cod")}
+              className={cn(
+                "flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-5 py-3 font-medium transition-all duration-200",
+                paymentMethod === "cod"
+                  ? "bg-orange-50 text-orange-700 shadow-sm ring-1 ring-orange-600"
+                  : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900",
+              )}
+            >
+              <Truck className="h-4 w-4" />
+              Pagar na Entrega
+            </button>
+          </div>
+
+          {/* MOSTRA O FORM DO STRIPE APENAS SE FOR 'CARD' */}
+          {paymentMethod === "card" ? (
+            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+              <PaymentElement />
+            </div>
+          ) : (
+            <div className="animate-in fade-in slide-in-from-top-2 rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600 duration-300">
+              <p className="mb-1 flex items-center gap-2 font-medium text-neutral-900">
+                <Truck className="h-4 w-4 text-orange-600" /> Pagamento na
+                Entrega
+              </p>
+              <p>
+                Você pagará o valor total de{" "}
+                <strong>{formatPrice(total)}</strong> diretamente ao entregador
+                quando receber seu pedido. Aceitamos dinheiro, cartão ou PIX.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -182,21 +272,14 @@ export function CheckoutForm() {
             </div>
 
             <div className="flex items-center justify-between text-neutral-600">
-              <span className="flex items-center gap-2">
-                Frete
-                {deliveryDays && (
-                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
-                    {deliveryDays} dias úteis
-                  </span>
-                )}
-              </span>
+              <span className="flex items-center gap-2">Frete</span>
               <span className="font-medium text-orange-600">
                 {isCalculatingShipping ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : shippingCost > 0 ? (
                   formatPrice(shippingCost)
                 ) : (
-                  "A calcular..."
+                  "Grátis"
                 )}
               </span>
             </div>
@@ -211,20 +294,20 @@ export function CheckoutForm() {
             disabled={
               isLoading ||
               isCalculatingShipping ||
-              !stripe ||
-              !elements ||
-              shippingCost === 0
+              (paymentMethod === "card" && (!stripe || !elements))
             }
             type="submit"
             className="mt-6 h-12 w-full bg-orange-600 text-base font-bold text-white hover:bg-orange-700 disabled:bg-neutral-300"
           >
             {isLoading ? (
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            ) : (
+            ) : paymentMethod === "card" ? (
               <>
                 <Lock className="mr-2 h-4 w-4" />
                 Pagar {formatPrice(total)}
               </>
+            ) : (
+              <>Concluir Pedido</>
             )}
           </Button>
 

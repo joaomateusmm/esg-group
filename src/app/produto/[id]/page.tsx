@@ -105,7 +105,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   return (
     <div className="min-h-screen bg-[#f9f9f9]">
       <Header />
-      <div className="mx-auto max-w-7xl px-4 pt-32 pb-12 md:px-8">
+      <div className="mx-auto max-w-7xl px-4 pt-38 pb-12 md:px-8">
         <div className="grid gap-8 lg:grid-cols-12">
           {/* --- COLUNA ESQUERDA (Galeria + Descrição) --- */}
           <div className="space-y-8 lg:col-span-7">

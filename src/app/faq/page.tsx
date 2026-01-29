@@ -1,8 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion"; // Use framer-motion se motion/react der erro
+import { motion } from "framer-motion";
 import { ChevronsRight } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react"; // 1. IMPORTAR SUSPENSE
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
@@ -12,6 +13,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+
+// 2. FORÇAR MODO DINÂMICO
+// Isso impede o Next.js de tentar gerar essa página estaticamente no build.
+export const dynamic = "force-dynamic";
 
 const faqData = [
   {
@@ -43,14 +48,17 @@ const faqData = [
 export default function FaqPage() {
   return (
     <main className="min-h-screen bg-[#010000] text-white">
-      <Header />
+      {/* 3. ENVOLVER HEADER COM SUSPENSE */}
+      <Suspense fallback={<div className="h-20 w-full bg-[#010000]" />}>
+        <Header />
+      </Suspense>
 
       <div className="container mx-auto px-4 pt-42 pb-20">
         {/* Cabeçalho da Secção com Delay Aumentado */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.2 }} // Adicionado delay de 0.2s aqui
+          transition={{ duration: 0.7, delay: 0.2 }}
           className="mx-auto mb-16 flex max-w-[600px] flex-col items-center text-center"
         >
           <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
@@ -91,7 +99,7 @@ export default function FaqPage() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.7, delay: 0.6 }} // Aparece por último
+        transition={{ duration: 0.7, delay: 0.6 }}
         className="mx-auto flex w-full flex-col items-center justify-center gap-4 pb-12"
       >
         <h1 className="text-3xl font-bold">Tem uma dúvida mais especídifca?</h1>
@@ -106,7 +114,10 @@ export default function FaqPage() {
         </Link>
       </motion.div>
 
-      <Footer />
+      {/* 4. ENVOLVER FOOTER COM SUSPENSE */}
+      <Suspense fallback={<div className="h-20 w-full bg-[#010000]" />}>
+        <Footer />
+      </Suspense>
     </main>
   );
 }

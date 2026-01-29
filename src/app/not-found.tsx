@@ -2,29 +2,21 @@
 
 import { ChevronLeft, Home } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react"; // 1. IMPORTAR SUSPENSE
 
 import { Header } from "@/components/Header";
-import Silk from "@/components/Silk";
 import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
-    <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-[#010000]">
-      {/* --- BACKGROUND SILK --- */}
-      <div className="absolute inset-0 z-0">
-        <Silk
-          speed={12}
-          scale={1}
-          color="#190000"
-          noiseIntensity={0.8}
-          rotation={0}
-        />
-      </div>
-
+    <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-[#f4f4f4]">
       {/* --- HEADER --- */}
       <div className="z-[100] w-full border-b border-white/5 bg-transparent">
         <div className="mx-auto flex w-full items-center justify-center">
-          <Header />
+          {/* 2. ENVOLVER HEADER COM SUSPENSE */}
+          <Suspense fallback={<div className="h-20 w-full" />}>
+            <Header />
+          </Suspense>
         </div>
       </div>
 
@@ -40,10 +32,10 @@ export default function NotFound() {
             </div>
 
             <div className="space-y-2 py-6">
-              <h2 className="font-clash-display text-3xl font-medium text-white md:text-4xl">
+              <h2 className="font-clash-display text-3xl font-medium text-neutral-800 md:text-4xl">
                 Página não encontrada
               </h2>
-              <p className="mx-auto max-w-[600px] text-neutral-400 md:text-lg">
+              <p className="mx-auto max-w-[600px] text-neutral-600 md:text-lg">
                 Parece que você se perdeu no mapa. A página que você procurava
                 não existe ou foi movida.
               </p>
@@ -55,7 +47,7 @@ export default function NotFound() {
             <Link href="/">
               <Button
                 size="lg"
-                className="h-12 bg-[#D00000] px-8 text-white shadow-[0_0_20px_rgba(208,0,0,0.3)] hover:bg-[#a00000]"
+                className="h-12 cursor-pointer bg-orange-500 px-8 text-white shadow-sm duration-300 hover:-translate-y-1 hover:bg-orange-500"
               >
                 <Home className="mr-2 h-4 w-4" />
                 Voltar ao Início
@@ -66,7 +58,7 @@ export default function NotFound() {
               <Button
                 variant="outline"
                 size="lg"
-                className="h-12 border-white/10 bg-transparent text-white hover:bg-white/5"
+                className="h-12 cursor-pointer bg-neutral-800 text-white shadow-sm duration-300 hover:-translate-y-1 hover:bg-neutral-700 hover:text-white"
               >
                 <ChevronLeft className="mr-2 h-4 w-4" />
                 Ver Produtos

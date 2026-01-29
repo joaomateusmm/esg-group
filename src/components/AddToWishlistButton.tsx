@@ -55,12 +55,13 @@ export function AddToWishlistButton({
       size="lg"
       onClick={handleFavorite}
       className={cn(
-        "text-md h-14 flex-1 font-bold transition-all duration-300 hover:scale-105 active:scale-95",
+        "text-md h-14 flex-1 cursor-pointer font-bold transition-all duration-300 hover:-translate-y-1 active:scale-95",
         // Estilo quando NÃO é favorito (igual ao teu original)
         !isFavorite &&
-          "border-white/10 bg-transparent text-white hover:bg-white/5",
+          "border border-black/15 bg-transparent text-neutral-800 shadow-sm hover:bg-white/5",
         // Estilo quando É favorito (feedback visual)
-        isFavorite && "border-white/20 bg-white/5 text-white hover:bg-white/15",
+        isFavorite &&
+          "border border-black/10 bg-transparent text-neutral-800 shadow-sm hover:bg-white/5",
         className,
       )}
     >

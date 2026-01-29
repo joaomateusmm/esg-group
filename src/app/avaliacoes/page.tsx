@@ -2,6 +2,7 @@ import { desc, eq } from "drizzle-orm";
 import { Star, User } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { Suspense } from "react"; // 1. IMPORTAR SUSPENSE
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
@@ -11,6 +12,9 @@ import {
   review,
   user as userTable,
 } from "@/db/schema";
+
+// 2. FORÇAR MODO DINÂMICO
+export const dynamic = "force-dynamic";
 
 const formatDate = (date: Date) =>
   new Intl.DateTimeFormat("pt-BR", {
@@ -39,7 +43,11 @@ export default async function AvaliacoesPage() {
 
   return (
     <main className="min-h-screen bg-[#f9f9f9] font-sans text-neutral-900">
-      <Header />
+      {/* 3. ENVOLVER HEADER COM SUSPENSE */}
+      <Suspense fallback={<div className="h-20 w-full bg-white" />}>
+        <Header />
+      </Suspense>
+
       <div className="container mx-auto max-w-6xl px-6 py-32">
         {/* Cabeçalho */}
         <div className="animate-in fade-in slide-in-from-bottom-4 mb-16 flex w-full flex-col items-start justify-between gap-6 duration-700 md:flex-row md:items-end">
@@ -165,7 +173,11 @@ export default async function AvaliacoesPage() {
           )}
         </div>
       </div>
-      <Footer />
+
+      {/* 4. ENVOLVER FOOTER COM SUSPENSE */}
+      <Suspense fallback={<div className="h-20 w-full bg-white" />}>
+        <Footer />
+      </Suspense>
     </main>
   );
 }

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { id: "all", label: "Tudo" },
   { id: "pending", label: "A Pagar" },
-  { id: "paid", label: "Preparando" },
+  { id: "processing", label: "Preparando" }, // Mudado de 'paid' para 'processing'
   { id: "shipped", label: "A Caminho" },
   { id: "delivered", label: "Finalizado" },
   { id: "canceled", label: "Cancelado" },

@@ -1,17 +1,26 @@
 import { Mail, MessageCircle, Phone } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react"; // 1. Importar Suspense
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { SpotlightCard } from "@/components/spotlight-card";
 import { Button } from "@/components/ui/button";
 
+// 2. FORÇAR MODO DINÂMICO
+// Isso impede o Next.js de tentar gerar essa página estaticamente no build,
+// eliminando o erro de "missing suspense boundary" durante a pré-renderização.
+export const dynamic = "force-dynamic";
+
 export default function ContactPage() {
   return (
     <div className="min-h-screen bg-[#010000] selection:bg-[#D00000] selection:text-white">
       <div className="z-[100] w-full bg-[#010000]">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-center">
-          <Header />
+          {/* 3. Envolver Header em Suspense por precaução */}
+          <Suspense fallback={<div className="h-20 w-full bg-[#010000]" />}>
+            <Header />
+          </Suspense>
         </div>
       </div>
 
@@ -143,7 +152,10 @@ export default function ContactPage() {
         </div>
       </main>
 
-      <Footer />
+      {/* 4. Envolver Footer em Suspense também */}
+      <Suspense fallback={<div className="h-20 w-full bg-[#010000]" />}>
+        <Footer />
+      </Suspense>
     </div>
   );
 }

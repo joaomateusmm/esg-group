@@ -5,9 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-// IMPORTAMOS A ACTION PARA BUSCAR CATEGORIAS
 import { getAllCategories } from "@/actions/get-all-categories";
-import Silk from "@/components/Silk";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
@@ -28,7 +26,8 @@ function FooterSection({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      <h3 className="font-clash-display text-lg font-medium text-white">
+      {/* Título agora é escuro e bold */}
+      <h3 className="font-clash-display text-lg font-bold text-neutral-800">
         {title}
       </h3>
       <div className="flex flex-col gap-2">{children}</div>
@@ -46,7 +45,8 @@ function FooterLink({
   return (
     <Link
       href={href}
-      className="text-sm text-neutral-400 transition-colors hover:text-[#D00000] hover:underline"
+      // Hover agora é laranja
+      className="text-sm text-neutral-500 transition-colors hover:text-orange-600 hover:underline"
     >
       {children}
     </Link>
@@ -57,33 +57,18 @@ function FooterLink({
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
-  // Estado para armazenar as categorias dinâmicas
   const [categories, setCategories] = useState<CategoryItem[]>([]);
 
   useEffect(() => {
-    // Busca as categorias ao montar o componente
     getAllCategories().then((data) => {
       setCategories(data);
     });
   }, []);
 
   return (
-    <footer className="relative w-full overflow-hidden bg-[#050505] pt-16 pb-8">
-      {/* --- BACKGROUND SILK --- */}
-      <div className="pointer-events-none absolute inset-0 z-0 opacity-50">
-        <Silk
-          speed={12}
-          scale={1}
-          color="#2d0000"
-          noiseIntensity={0.8}
-          rotation={0}
-        />
-      </div>
-
-      {/* --- GRADIENTE DE TRANSIÇÃO SUAVE (TOP) --- */}
-      <div className="pointer-events-none absolute top-0 left-0 z-10 h-52 w-full bg-gradient-to-b from-[#000000] to-transparent" />
-
-      {/* --- CONTEÚDO (Z-INDEX MAIOR) --- */}
+    // Fundo branco com borda no topo
+    <footer className="sombra-footer relative w-full overflow-hidden border-t border-neutral-200 bg-white pt-16 pb-8">
+      {/* --- CONTEÚDO --- */}
       <div className="relative z-20 mx-auto max-w-7xl px-4 md:px-8">
         {/* --- GRADE PRINCIPAL --- */}
         <div className="grid gap-12 lg:grid-cols-12 lg:gap-8">
@@ -92,60 +77,41 @@ export function Footer() {
             <Link href="/" className="flex items-center gap-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg">
                 <Image
-                  src="/images/icons/logo.png"
-                  alt="Logo Sub Mind"
+                  src="/images/logo.png"
+                  alt="Logo ESG Group"
                   width={40}
                   height={40}
                   className="h-full w-full object-cover"
                 />
               </div>
-              <span className="font-clash-display text-2xl font-semibold text-white">
-                ESG-Group
+              {/* Nome da loja escuro */}
+              <span className="font-montserrat text-2xl font-bold text-neutral-800">
+                ESG Group
               </span>
             </Link>
 
-            <p className="max-w-sm text-sm leading-relaxed text-neutral-400">
-              A melhor loja de produtos digitais para gamers. Configurações
-              otimizadas, contas premium e suporte especializado para elevar sua
-              experiência.
+            <p className="max-w-sm text-sm leading-relaxed text-neutral-500">
+              Compre móveis e Contrate serviços, no melhor preço da Inglaterra.
             </p>
 
+            {/* BOTÕES SOCIAIS ATUALIZADOS */}
             <div className="flex gap-4">
-              <Button
-                size="icon"
-                variant="outline"
-                className="h-9 w-9 rounded-full border-white/10 bg-white/5 text-neutral-400 transition-all hover:border-[#D00000] hover:bg-[#D00000] hover:text-white"
-              >
-                <Instagram className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="outline"
-                className="h-9 w-9 rounded-full border-white/10 bg-white/5 text-neutral-400 transition-all hover:border-[#D00000] hover:bg-[#D00000] hover:text-white"
-              >
-                <Twitter className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="outline"
-                className="h-9 w-9 rounded-full border-white/10 bg-white/5 text-neutral-400 transition-all hover:border-[#D00000] hover:bg-[#D00000] hover:text-white"
-              >
-                <Youtube className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="outline"
-                className="h-9 w-9 rounded-full border-white/10 bg-white/5 text-neutral-400 transition-all hover:border-[#D00000] hover:bg-[#D00000] hover:text-white"
-              >
-                <Facebook className="h-4 w-4" />
-              </Button>
+              {[Instagram, Twitter, Youtube, Facebook].map((Icon, idx) => (
+                <Button
+                  key={idx}
+                  size="icon"
+                  variant="outline"
+                  className="h-9 w-9 rounded-full border-neutral-200 bg-white text-neutral-500 transition-all hover:border-orange-600 hover:bg-orange-600 hover:text-white"
+                >
+                  <Icon className="h-4 w-4" />
+                </Button>
+              ))}
             </div>
           </div>
 
           {/* COLUNA 2, 3, 4: LINKS */}
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:col-span-8 lg:pl-12">
             <FooterSection title="Categorias">
-              {/* RENDERIZAÇÃO DINÂMICA DAS CATEGORIAS */}
               {categories.length > 0 ? (
                 categories.map((cat) => (
                   <FooterLink key={cat.href} href={cat.href}>
@@ -153,10 +119,7 @@ export function Footer() {
                   </FooterLink>
                 ))
               ) : (
-                // Fallback enquanto carrega
-                <>
-                  <FooterLink href="#">Carregando...</FooterLink>
-                </>
+                <span className="text-sm text-neutral-400">Carregando...</span>
               )}
             </FooterSection>
 
@@ -182,7 +145,8 @@ export function Footer() {
           </div>
         </div>
 
-        <Separator className="my-12 bg-white/10" />
+        {/* Separador claro */}
+        <Separator className="my-12 bg-neutral-200" />
 
         {/* --- RODAPÉ INFERIOR --- */}
         <div className="flex flex-col items-center justify-between gap-6 md:flex-row">

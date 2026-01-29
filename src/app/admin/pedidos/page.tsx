@@ -19,7 +19,12 @@ export default async function AdminOrdersPage() {
   const orders = await db
     .selectDistinctOn([order.id], {
       id: order.id,
+
+      // STATUS FINANCEIRO E LOGÍSTICO (ADICIONADOS)
       status: order.status,
+      fulfillmentStatus: order.fulfillmentStatus, // Novo campo
+      paymentMethod: order.paymentMethod, // Novo campo
+
       amount: order.amount,
       createdAt: order.createdAt,
       trackingCode: order.trackingCode,
@@ -44,7 +49,6 @@ export default async function AdminOrdersPage() {
     .leftJoin(user, eq(order.userId, user.id))
     .leftJoin(orderItem, eq(order.id, orderItem.orderId))
     .leftJoin(product, eq(orderItem.productId, product.id))
-    // NOTA: O 'distinctOn' foi removido daqui de baixo e movido para o topo.
     // O PostgreSQL EXIGE que a primeira ordenação seja a mesma do distinctOn (order.id)
     .orderBy(order.id, desc(order.createdAt));
 
@@ -52,7 +56,12 @@ export default async function AdminOrdersPage() {
 
   const formattedOrders = orders.map((o) => ({
     id: o.id,
+
+    // Passando os novos campos para a tabela
     status: o.status,
+    fulfillmentStatus: o.fulfillmentStatus,
+    paymentMethod: o.paymentMethod,
+
     amount: o.amount,
     createdAt: o.createdAt,
     trackingCode: o.trackingCode,

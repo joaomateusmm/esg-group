@@ -1,8 +1,7 @@
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 
-// Ajuste este import para onde você salvou o ProductForm (passo 2)
-import { ProductForm } from "@/components/admin/product-form";
+import EditProductForm from "@/components/admin/edit-product-form";
 import { db } from "@/db";
 import { product } from "@/db/schema";
 
@@ -28,7 +27,7 @@ export default async function EditProductPage({
   // 3. Renderiza o formulário passando os dados iniciais
   return (
     <div className="min-h-screen flex-1 space-y-4 p-8 pt-6">
-      <ProductForm initialData={productData} />
+      <EditProductForm initialData={productData} />
     </div>
   );
 }

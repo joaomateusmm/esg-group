@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
@@ -13,6 +14,8 @@ import { user } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 import { AffiliateRegisterButton } from "./components/affiliate-register-button";
+
+export const dynamic = "force-dynamic";
 
 export default async function AffiliatePage() {
   const session = await auth.api.getSession({
@@ -44,7 +47,9 @@ export default async function AffiliatePage() {
     <div className="min-h-screen bg-[#010000] selection:bg-[#D00000] selection:text-white">
       <div className="z-[100] w-full bg-[#010000]">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-center">
-          <Header />
+          <Suspense>
+            <Header />
+          </Suspense>
         </div>
       </div>
       {/* ... */}
@@ -407,7 +412,9 @@ export default async function AffiliatePage() {
         </section>
       </main>
 
-      <Footer />
+      <Suspense>
+        <Footer />
+      </Suspense>
     </div>
   );
 }

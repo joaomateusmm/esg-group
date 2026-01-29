@@ -59,6 +59,14 @@ interface ProductsTableProps {
   allCategories: CategoryData[];
 }
 
+// Função auxiliar para formatar preço com moeda dinâmica
+const formatPrice = (amount: number, currency: string = "GBP") => {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: currency,
+  }).format(amount / 100);
+};
+
 export function ProductsTable({
   data,
   totalProducts,
@@ -313,11 +321,9 @@ export function ProductsTable({
                       </div>
                     </TableCell>
 
+                    {/* PREÇO ATUALIZADO */}
                     <TableCell className="text-right font-mono font-medium text-neutral-900">
-                      {new Intl.NumberFormat("pt-BR", {
-                        style: "currency",
-                        currency: "BRL",
-                      }).format(item.price / 100)}
+                      {formatPrice(item.price, item.currency)}
                     </TableCell>
 
                     <TableCell className="hidden text-right text-neutral-600 md:table-cell">

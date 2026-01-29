@@ -18,19 +18,18 @@ const defaultTranslations = {
     categories: "Categorias",
     searchPlaceholder: "Buscar...",
     bestDeals: "Ofertas",
-    sale: "Serviços",
-    wishlist: { title: "Lista", empty: "Vazia" },
+    sale: "",
+    wishlist: { title: "Sua Lista", empty: "Sem Favoritos" },
     account: { myAccount: "Conta", orders: "Pedidos", logout: "Sair" },
     cart: {
       title: "Carrinho",
-      empty: "Vazio",
+      empty: "Carrinho Cazio",
       total: "Total",
       checkout: "Checkout",
     },
     // AS CHAVES PRECISAM ESTAR AQUI DENTRO DE 'header':
     panel: "Painel de Afiliado",
     affiliate: "Seja um Afiliado",
-    faq: "Ajuda & FAQ",
   },
   product: {
     description: "Descrição",

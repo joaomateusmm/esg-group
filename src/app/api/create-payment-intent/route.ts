@@ -12,38 +12,39 @@ interface Item {
   image?: string;
 }
 
-// Inicializa o Stripe
+// Initialize Stripe
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
 
-// Valor fixo de frete (R$ 15,00)
+// Fixed shipping cost (This might need currency adjustment in a real multi-currency scenario)
 const FIXED_SHIPPING_COST = 1500;
 
 export async function POST(req: Request) {
   try {
-    // 1. Validação da Chave do Stripe
+    // 1. Stripe Key Validation
     if (!stripeSecret) {
       console.error(
-        "❌ STRIPE_SECRET_KEY não definida nas variáveis de ambiente.",
+        "❌ STRIPE_SECRET_KEY not defined in environment variables.",
       );
       return NextResponse.json(
-        { error: "Erro de configuração do servidor (Stripe Key Missing)" },
+        { error: "Server configuration error (Stripe Key Missing)" },
         { status: 500 },
       );
     }
 
     const stripe = new Stripe(stripeSecret, {
-      // CORREÇÃO: Isso resolve o erro de lint "Unexpected any"
       apiVersion: "2025-02-24.acacia" as unknown as Stripe.LatestApiVersion,
       typescript: true,
     });
 
-    // 2. Leitura do Body
+    // 2. Read Body
     const body = await req.json();
-    const { items, currency, shippingAddress } = body;
+    const { items, currency, shippingAddress } = body; // Retrieve currency from body
 
-    // Log para ver o que chegou (ajuda no debug)
+    // Log for debugging
     console.log(
-      "📦 Payment Intent Iniciado. Endereço recebido:",
+      "📦 Payment Intent Started. Currency:",
+      currency,
+      "Address received:",
       !!shippingAddress,
     );
 
@@ -53,21 +54,21 @@ export async function POST(req: Request) {
 
     if (!session?.user) {
       return NextResponse.json(
-        { error: "Usuário não autenticado" },
+        { error: "User not authenticated" },
         { status: 401 },
       );
     }
 
-    // Calcula o subtotal dos itens
+    // Calculate item subtotal
     const itemsTotal = items.reduce(
       (acc: number, item: Item) => acc + item.price * item.quantity,
       0,
     );
 
-    // Soma o frete ao total
+    // Add shipping to total
     const totalAmount = itemsTotal + FIXED_SHIPPING_COST;
 
-    // Minifica os itens para caber nos metadados
+    // Minify items for metadata
     const itemsMinified = items.map((i: Item) => ({
       id: i.id,
       name: i.name,
@@ -76,13 +77,12 @@ export async function POST(req: Request) {
       image: i.image,
     }));
 
-    // 3. Sanitização Segura do Endereço
-    // Se shippingAddress for undefined, usamos {} para não quebrar o código
+    // 3. Safe Address Sanitization
     const rawAddress = shippingAddress || {};
 
     const sanitizedAddress = {
-      street: rawAddress.street || "Não informado",
-      number: rawAddress.number || "S/N",
+      street: rawAddress.street || "Not provided",
+      number: rawAddress.number || "N/A",
       complement: rawAddress.complement || "",
       city: rawAddress.city || "",
       state: rawAddress.state || "",
@@ -90,10 +90,10 @@ export async function POST(req: Request) {
       country: rawAddress.country || "BR",
     };
 
-    // Cria a intenção de pagamento
+    // Create payment intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: totalAmount,
-      currency: currency || "brl",
+      currency: currency || "brl", // Use passed currency or default to BRL
       automatic_payment_methods: { enabled: true },
       metadata: {
         userId: session.user.id,
@@ -105,14 +105,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ clientSecret: paymentIntent.client_secret });
   } catch (error) {
-    // Log detalhado do erro para o Vercel Logs
-    console.error("❌ Erro CRÍTICO ao criar Payment Intent:", error);
+    console.error("❌ CRITICAL Error creating Payment Intent:", error);
 
     const errorMessage =
-      error instanceof Error ? error.message : "Erro desconhecido";
+      error instanceof Error ? error.message : "Unknown error";
 
     return NextResponse.json(
-      { error: `Erro ao processar pagamento: ${errorMessage}` },
+      { error: `Error processing payment: ${errorMessage}` },
       { status: 500 },
     );
   }

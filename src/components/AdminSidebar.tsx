@@ -2,14 +2,12 @@
 
 import {
   Blocks,
-  Gamepad2,
   Home,
   LayoutDashboard,
   Package,
   Star,
   TicketPercent,
   Truck,
-  TvMinimalPlay,
   Users,
 } from "lucide-react";
 import Image from "next/image";
@@ -66,7 +64,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
             <SidebarMenuButton
               asChild
               isActive={pathname === "/admin"}
-              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600"
+              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-sm"
             >
               <Link href="/admin">
                 <LayoutDashboard className="mr-2 h-5 w-5" />
@@ -118,7 +116,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
           </SidebarMenuItem>
 
           {/* Afiliados */}
-          {/* <SidebarMenuItem>
+          <SidebarMenuItem>
             <SidebarMenuButton
               asChild
               isActive={pathname.startsWith("/admin/afiliados")}
@@ -129,7 +127,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
                 <span>Afiliados</span>
               </Link>
             </SidebarMenuButton>
-          </SidebarMenuItem> */}
+          </SidebarMenuItem>
 
           {/* Avaliações */}
           <SidebarMenuItem>
