@@ -1,11 +1,16 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react"; // Opcional: para o fallback
+import React, { Suspense, useEffect, useState } from "react"; // 1. IMPORTAR SUSPENSE
 
 import { Tabs } from "@/components/ui/tabs";
 
 import SignInForm from "./components/sign-in-form";
 import SignUpForm from "./components/sign-up-form";
+
+// 2. FORÇAR MODO DINÂMICO
+// Páginas de autenticação lidam com callbacks de URL e não devem ser estáticas.
+export const dynamic = "force-dynamic";
 
 // Tipagem dos Slides
 type Slide = { image: string; title: string; caption: string };
@@ -117,24 +122,38 @@ const Authentication = () => {
         {/* --- DIREITA: FORMULÁRIOS --- */}
         <main className="flex h-screen w-full flex-1 flex-col items-center justify-center bg-white p-8 lg:w-[40vw]">
           <div className="w-full max-w-md">
-            <Tabs value={currentForm} className="w-full">
-              {/* Container com altura mínima para evitar pulos de layout */}
-              <div className="relative min-h-[600px] w-full">
-                <div
-                  className={`transition-all duration-300 ease-in-out ${
-                    isFadingOut
-                      ? "translate-x-4 opacity-0" // Estado Saindo
-                      : "translate-x-0 opacity-100" // Estado Entrando/Visível
-                  }`}
-                >
-                  {currentForm === "sign-in" ? (
-                    <SignInForm switchToSignUp={() => switchForm("sign-up")} />
-                  ) : (
-                    <SignUpForm switchToSignIn={() => switchForm("sign-in")} />
-                  )}
+            {/* 3. ENVOLVER A ÁREA DO FORMULÁRIO COM SUSPENSE */}
+            {/* Isso isola os componentes SignIn/SignUp que leem a URL */}
+            <Suspense
+              fallback={
+                <div className="flex h-96 items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
                 </div>
-              </div>
-            </Tabs>
+              }
+            >
+              <Tabs value={currentForm} className="w-full">
+                {/* Container com altura mínima para evitar pulos de layout */}
+                <div className="relative min-h-[600px] w-full">
+                  <div
+                    className={`transition-all duration-300 ease-in-out ${
+                      isFadingOut
+                        ? "translate-x-4 opacity-0" // Estado Saindo
+                        : "translate-x-0 opacity-100" // Estado Entrando/Visível
+                    }`}
+                  >
+                    {currentForm === "sign-in" ? (
+                      <SignInForm
+                        switchToSignUp={() => switchForm("sign-up")}
+                      />
+                    ) : (
+                      <SignUpForm
+                        switchToSignIn={() => switchForm("sign-in")}
+                      />
+                    )}
+                  </div>
+                </div>
+              </Tabs>
+            </Suspense>
           </div>
         </main>
       </div>

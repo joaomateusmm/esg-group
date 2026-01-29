@@ -7,13 +7,16 @@ import { Suspense } from "react"; // 1. IMPORTAR SUSPENSE
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 
+// 2. TENTAR FORÇAR DINÂMICO NA PÁGINA DE ERRO
+export const dynamic = "force-dynamic";
+
 export default function NotFound() {
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-[#f4f4f4]">
       {/* --- HEADER --- */}
       <div className="z-[100] w-full border-b border-white/5 bg-transparent">
         <div className="mx-auto flex w-full items-center justify-center">
-          {/* 2. ENVOLVER HEADER COM SUSPENSE */}
+          {/* 3. ENVOLVER HEADER COM SUSPENSE */}
           <Suspense fallback={<div className="h-20 w-full" />}>
             <Header />
           </Suspense>
