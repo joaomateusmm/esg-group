@@ -4,6 +4,7 @@ import {
   ChevronDown,
   Flame,
   Heart,
+  LayoutGrid,
   Loader2,
   LogOut,
   MapPin,
@@ -15,7 +16,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react"; // 1. IMPORTAR SUSPENSE
+import { Suspense, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { checkAffiliateStatus } from "@/actions/check-affiliate-status";
@@ -45,7 +46,7 @@ import { useCartStore } from "@/store/cart-store";
 import { useWishlistStore } from "@/store/wishlist-store";
 
 // --- INTERFACES ---
-interface CategoryLink {
+export interface CategoryLink {
   label: string;
   href: string;
 }
@@ -92,13 +93,17 @@ function HeaderIconButton({
   );
 }
 
-// --- 2. TRANSFORMAR O ANTIGO 'Header' EM 'HeaderContent' ---
+// --- CONTEÚDO DO HEADER ---
 function HeaderContent() {
   const [mounted, setMounted] = useState(false);
 
-  // ESTADOS
+  // ESTADOS UNIFICADOS
   const [categories, setCategories] = useState<CategoryLink[]>([]);
   const [isAffiliate, setIsAffiliate] = useState(false);
+
+  // ESTADOS DE UI (DROPDOWNS)
+  const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
+  const categoryRef = useRef<HTMLDivElement>(null);
 
   // PESQUISA
   const [searchQuery, setSearchQuery] = useState("");
@@ -109,30 +114,26 @@ function HeaderContent() {
 
   const router = useRouter();
   const { data: session } = authClient.useSession();
-
   const { t, language, setLanguage } = useLanguage();
-
   const { items: cartItems, removeItem: removeCartItem } = useCartStore();
-
   const { items: wishlistItems, removeItem: removeWishlistItem } =
     useWishlistStore();
 
+  // 1. CARREGAMENTO DE DADOS INICIAIS (CATEGORIAS E AFILIADO)
   useEffect(() => {
     setMounted(true);
     const fetchData = async () => {
       try {
+        // Buscamos as categorias e o status de afiliado
         const [cats, affStatus] = await Promise.all([
           getAllCategories(),
           checkAffiliateStatus().catch(() => false),
         ]);
 
-        if (Array.isArray(cats)) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const formattedCategories = cats.map((cat: any) => ({
-            label: cat.name,
-            href: cat.slug ? `/categoria/${cat.slug}` : `/categoria/${cat.id}`,
-          }));
-          setCategories(formattedCategories);
+        // IGUAL AO MOBILE-MENU: Se houver dados, define no estado
+        // Note que não fazemos o .map manual aqui para evitar o erro de 'undefined'
+        if (cats && cats.length > 0) {
+          setCategories(cats);
         }
 
         setIsAffiliate(affStatus);
@@ -143,6 +144,7 @@ function HeaderContent() {
     fetchData();
   }, []);
 
+  // 2. VERIFICAÇÃO DE ESTOQUE
   useEffect(() => {
     const verifyStock = async () => {
       if (cartItems.length === 0) return;
@@ -152,15 +154,18 @@ function HeaderContent() {
         );
         if (outOfStockItems.length > 0) {
           outOfStockItems.forEach((item) => removeCartItem(item.id));
-          toast.error(`Item removido: ${outOfStockItems[0].name}`);
+          toast.error(
+            `Item removido por falta de estoque: ${outOfStockItems[0].name}`,
+          );
         }
       } catch (e) {
         console.error(e);
       }
     };
     verifyStock();
-  });
+  }, [cartItems, removeCartItem]);
 
+  // 3. PESQUISA (DEBOUNCE)
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (searchQuery.length >= 2) {
@@ -177,13 +182,22 @@ function HeaderContent() {
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
 
+  // 4. FECHAR DROPDOWNS AO CLICAR FORA
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
+      // Fechar Resultados da Pesquisa
       if (
         searchRef.current &&
         !searchRef.current.contains(event.target as Node)
       ) {
         setShowResults(false);
+      }
+      // Fechar Dropdown de Categorias
+      if (
+        categoryRef.current &&
+        !categoryRef.current.contains(event.target as Node)
+      ) {
+        setIsCategoriesOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -192,7 +206,6 @@ function HeaderContent() {
 
   const formatPrice = (value: number) => {
     const lang = language as string;
-
     let currency = "BRL";
     let locale = "pt-BR";
 
@@ -218,8 +231,8 @@ function HeaderContent() {
 
   if (!mounted) return null;
 
+  // Bandeiras e Idioma
   const lang = language as string;
-
   let currentFlag = "https://flagcdn.com/w40/br.png";
   let currentLabel = "BR / BRL";
 
@@ -344,27 +357,75 @@ function HeaderContent() {
                   className="h-full w-full object-cover"
                 />
               </div>
-              {/* Nome da loja escuro */}
               <span className="font-montserrat text-2xl font-bold text-neutral-800">
                 ESG Group
               </span>
             </Link>
           </div>
 
-          {/* BARRA DE PESQUISA */}
+          {/* BARRA DE PESQUISA E CATEGORIAS */}
           <div className="relative max-w-2xl flex-1" ref={searchRef}>
             <div className="flex h-11 w-full items-center rounded-full border border-neutral-300 bg-neutral-50 transition-all focus-within:border-orange-600 focus-within:bg-white focus-within:ring-2 focus-within:ring-orange-100/50">
-              <button className="hidden h-full items-center gap-2 border-r border-neutral-200 px-4 text-sm font-medium whitespace-nowrap text-neutral-600 transition-colors hover:text-neutral-900 sm:flex">
-                {t.header.allCategories}{" "}
-                <ChevronDown className="h-3 w-3 opacity-50" />
-              </button>
+              {/* --- BOTÃO DE CATEGORIAS (COM DROPDOWN FUNCIONAL) --- */}
+              <div
+                className="relative hidden h-full sm:block"
+                ref={categoryRef}
+              >
+                <button
+                  onClick={() => setIsCategoriesOpen(!isCategoriesOpen)}
+                  className="flex h-full items-center gap-2 rounded-l-full border-r border-neutral-200 px-4 text-sm font-medium whitespace-nowrap text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+                >
+                  <LayoutGrid className="h-4 w-4 text-neutral-400" />
+                  Todas as Categorias
+                  <ChevronDown
+                    className={`h-3 w-3 opacity-50 transition-transform duration-200 ${
+                      isCategoriesOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {/* --- DROPDOWN LIST --- */}
+                {isCategoriesOpen && (
+                  <div className="animate-in fade-in zoom-in-95 absolute top-14 left-0 z-50 min-w-[220px] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xl">
+                    <div className="flex flex-col p-2">
+                      <h1 className="mb-2 border-b border-neutral-100 p-3 text-xs font-bold text-neutral-700 uppercase">
+                        Categorias:
+                      </h1>
+                      {categories.length > 0 ? (
+                        categories.map(
+                          (
+                            cat,
+                            index, // Usando index como key se não houver ID
+                          ) => (
+                            <Link
+                              key={index}
+                              href={cat.href || "#"}
+                              onClick={() => setIsCategoriesOpen(false)}
+                              className="flex items-center justify-between rounded-md px-4 py-2.5 text-sm font-medium text-neutral-600 transition-colors hover:bg-orange-50 hover:text-orange-600"
+                            >
+                              {cat.label}
+                            </Link>
+                          ),
+                        )
+                      ) : (
+                        <div className="px-4 py-3 text-center text-xs text-neutral-400">
+                          Nenhuma categoria encontrada.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* --- INPUT DE PESQUISA --- */}
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t.header.searchPlaceholder}
+                placeholder="O que você procura hoje?"
                 className="h-full w-full bg-transparent px-4 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
               />
+
               <button className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-transparent text-neutral-500 transition-colors hover:bg-neutral-200 hover:text-orange-600">
                 {isSearching ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -374,6 +435,7 @@ function HeaderContent() {
               </button>
             </div>
 
+            {/* --- RESULTADOS DA PESQUISA --- */}
             {showResults && searchQuery.length >= 2 && (
               <div className="animate-in fade-in zoom-in-95 absolute top-14 right-0 left-0 z-50 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xl duration-200">
                 {searchResults.length > 0 ? (
@@ -428,7 +490,7 @@ function HeaderContent() {
               <span className="text-sm font-bold">{t.header.bestDeals}</span>
             </Link>
 
-            {/* 1. FAVORITOS (PRIMEIRO) */}
+            {/* FAVORITOS */}
             <Sheet>
               <SheetTrigger asChild>
                 <div className="hidden sm:block">
@@ -484,10 +546,10 @@ function HeaderContent() {
               </SheetContent>
             </Sheet>
 
-            {/* 2. CARRINHO (SEGUNDO) */}
+            {/* CARRINHO */}
             <CartSheet />
 
-            {/* 3. USER/MINHA CONTA (TERCEIRO) */}
+            {/* USER/MINHA CONTA */}
             {session ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -545,10 +607,9 @@ function HeaderContent() {
   );
 }
 
-// --- 3. EXPORTAR O COMPONENTE PRINCIPAL ENVOLVIDO EM SUSPENSE ---
+// --- EXPORTAR O COMPONENTE PRINCIPAL ENVOLVIDO EM SUSPENSE ---
 export function Header() {
   return (
-    // Fallback vazio ou simples para o header não "piscar" muito
     <Suspense
       fallback={
         <div className="fixed top-0 z-50 h-[120px] w-full bg-white shadow-sm" />

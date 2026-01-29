@@ -69,12 +69,8 @@ export function MobileMenu({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-neutral-800 hover:bg-neutral-100 hover:text-orange-600"
-        >
-          <Menu className="h-6 w-6" />
+        <Button className="h-10 w-10 cursor-pointer bg-neutral-50 p-2 text-neutral-800 shadow-sm duration-300 hover:bg-neutral-100">
+          <Menu className="h-8 w-8" />
         </Button>
       </SheetTrigger>
 
