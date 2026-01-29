@@ -1,22 +1,44 @@
 "use client";
 
-import { Loader2 } from "lucide-react"; // Opcional: para o fallback
-import React, { Suspense, useEffect, useState } from "react"; // 1. IMPORTAR SUSPENSE
+import { Loader2 } from "lucide-react";
+import React, { Suspense, useEffect, useState } from "react";
 
 import { Tabs } from "@/components/ui/tabs";
 
 import SignInForm from "./components/sign-in-form";
 import SignUpForm from "./components/sign-up-form";
 
-// 2. FORÇAR MODO DINÂMICO
-// Páginas de autenticação lidam com callbacks de URL e não devem ser estáticas.
+// Força o Next.js a tratar esta rota como dinâmica
 export const dynamic = "force-dynamic";
 
-// Tipagem dos Slides
 type Slide = { image: string; title: string; caption: string };
 
+// 1. Criamos um componente interno para a lógica dos formulários
+const AuthContent = ({
+  currentForm,
+  isFadingOut,
+  switchForm,
+}: {
+  currentForm: "sign-in" | "sign-up";
+  isFadingOut: boolean;
+  switchForm: (target: "sign-in" | "sign-up") => void;
+}) => {
+  return (
+    <div
+      className={`transition-all duration-300 ease-in-out ${
+        isFadingOut ? "translate-x-4 opacity-0" : "translate-x-0 opacity-100"
+      }`}
+    >
+      {currentForm === "sign-in" ? (
+        <SignInForm switchToSignUp={() => switchForm("sign-up")} />
+      ) : (
+        <SignUpForm switchToSignIn={() => switchForm("sign-in")} />
+      )}
+    </div>
+  );
+};
+
 const Authentication = () => {
-  // --- CONTEÚDO DOS SLIDES ---
   const slidesData: Slide[] = [
     {
       image: "/images/banners/imoveis-usados.jpg",
@@ -41,8 +63,6 @@ const Authentication = () => {
   ];
 
   const [activeSlide, setActiveSlide] = useState(0);
-
-  // --- NOVA LÓGICA DE TRANSIÇÃO ---
   const [currentForm, setCurrentForm] = useState<"sign-in" | "sign-up">(
     "sign-in",
   );
@@ -50,19 +70,15 @@ const Authentication = () => {
 
   const switchForm = (target: "sign-in" | "sign-up") => {
     if (target === currentForm) return;
-
     setIsFadingOut(true);
-
     setTimeout(() => {
       setCurrentForm(target);
-
       requestAnimationFrame(() => {
         setIsFadingOut(false);
       });
     }, 300);
   };
 
-  // Autoplay do Carrossel
   useEffect(() => {
     const id = setInterval(
       () => setActiveSlide((s) => (s + 1) % slidesData.length),
@@ -74,7 +90,7 @@ const Authentication = () => {
   return (
     <div className="font-montserrat min-h-screen bg-white text-neutral-900">
       <div className="flex h-screen w-full">
-        {/* --- ESQUERDA: CARROSSEL DE IMAGENS --- */}
+        {/* LADO ESQUERDO: CARROSSEL */}
         <aside className="relative hidden h-screen w-[60vw] overflow-hidden bg-neutral-100 lg:flex">
           <div className="absolute inset-0 h-full w-full">
             {slidesData.map((slide, index) => (
@@ -88,7 +104,6 @@ const Authentication = () => {
                   className="h-full w-full bg-cover bg-center"
                   style={{ backgroundImage: `url(${slide.image})` }}
                 />
-                {/* Gradiente escuro sobre a imagem para garantir legibilidade do texto branco sobre ela */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               </div>
             ))}
@@ -101,59 +116,43 @@ const Authentication = () => {
             <p className="mt-4 max-w-lg text-lg text-neutral-200 drop-shadow-md">
               {slidesData[activeSlide].caption}
             </p>
-
             <div className="mt-8 flex gap-2">
               {slidesData.map((_, idx) => (
                 <button
                   key={idx}
                   onClick={() => setActiveSlide(idx)}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                  className={`h-3 rounded-full transition-all duration-300 ${
                     activeSlide === idx
-                      ? "h-3 w-8 bg-orange-600"
-                      : "h-3 w-3 bg-white/50 hover:bg-white/80"
+                      ? "w-8 bg-orange-600"
+                      : "w-3 bg-white/50"
                   }`}
-                  aria-label={`Ir para slide ${idx + 1}`}
                 />
               ))}
             </div>
           </div>
         </aside>
 
-        {/* --- DIREITA: FORMULÁRIOS --- */}
+        {/* LADO DIREITO: FORMULÁRIOS */}
         <main className="flex h-screen w-full flex-1 flex-col items-center justify-center bg-white p-8 lg:w-[40vw]">
           <div className="w-full max-w-md">
-            {/* 3. ENVOLVER A ÁREA DO FORMULÁRIO COM SUSPENSE */}
-            {/* Isso isola os componentes SignIn/SignUp que leem a URL */}
-            <Suspense
-              fallback={
-                <div className="flex h-96 items-center justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
-                </div>
-              }
-            >
-              <Tabs value={currentForm} className="w-full">
-                {/* Container com altura mínima para evitar pulos de layout */}
-                <div className="relative min-h-[600px] w-full">
-                  <div
-                    className={`transition-all duration-300 ease-in-out ${
-                      isFadingOut
-                        ? "translate-x-4 opacity-0" // Estado Saindo
-                        : "translate-x-0 opacity-100" // Estado Entrando/Visível
-                    }`}
-                  >
-                    {currentForm === "sign-in" ? (
-                      <SignInForm
-                        switchToSignUp={() => switchForm("sign-up")}
-                      />
-                    ) : (
-                      <SignUpForm
-                        switchToSignIn={() => switchForm("sign-in")}
-                      />
-                    )}
-                  </div>
-                </div>
-              </Tabs>
-            </Suspense>
+            <Tabs value={currentForm} className="w-full">
+              <div className="relative min-h-[600px] w-full">
+                {/* O SUSPENSE deve envolver diretamente quem usa useSearchParams */}
+                <Suspense
+                  fallback={
+                    <div className="flex h-96 items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+                    </div>
+                  }
+                >
+                  <AuthContent
+                    currentForm={currentForm}
+                    isFadingOut={isFadingOut}
+                    switchForm={switchForm}
+                  />
+                </Suspense>
+              </div>
+            </Tabs>
           </div>
         </main>
       </div>
