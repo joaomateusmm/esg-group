@@ -187,14 +187,14 @@ body {
   box-shadow: 5px 4px 10px rgba(0, 0, 0, 0.45);
 }
 
-/* Recomendado pelo Lenis para garantir performance */
+/* --- CORREÇÃO DO LENIS SCROLL --- */
 html.lenis,
 html.lenis body {
-  height: auto;
+  height: auto; /* IMPORTANTE: Deixe a altura automática para o Lenis calcular */
 }
 
 .lenis.lenis-smooth {
-  scroll-behavior: auto !important;
+  scroll-behavior: auto !important; /* Evita conflito com scroll nativo */
 }
 
 .lenis.lenis-smooth [data-lenis-prevent] {

@@ -340,7 +340,7 @@ export function ProductPurchaseCard({
                     <span className="font-bold text-neutral-700">
                       {product.stock}
                     </span>{" "}
-                    unidades.
+                    unidade(s).
                   </span>
                 </>
               ) : (

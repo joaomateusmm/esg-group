@@ -271,7 +271,7 @@ export function CartSheet() {
             </Button>
 
             <p className="mt-3 text-center text-[10px] text-neutral-400">
-              Taxas de frete calculadas no checkout.
+              Taxas de Frete calculadas no checkout.
             </p>
           </div>
         )}

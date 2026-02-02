@@ -247,7 +247,7 @@ export function CheckoutForm() {
 
       {/* LADO DIREITO: RESUMO */}
       <div>
-        <div className="sticky top-24 rounded-xl border border-neutral-200 bg-white p-6 shadow-lg">
+        <div className="sticky top-36 rounded-xl border border-neutral-200 bg-white p-6 shadow-lg">
           <h2 className="mb-6 text-xl font-bold text-neutral-900">
             Resumo do Pedido
           </h2>

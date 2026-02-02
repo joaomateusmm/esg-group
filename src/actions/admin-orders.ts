@@ -1,10 +1,10 @@
 "use server";
 
-import { eq, inArray } from "drizzle-orm";
+import { eq, ilike, inArray, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@/db";
-import { order } from "@/db/schema";
+import { order, user } from "@/db/schema"; // CORREÇÃO: 'user' adicionado
 
 /**
  * Atualiza o status do pedido.
@@ -18,7 +18,6 @@ export async function updateOrderStatus(
   type: "financial" | "fulfillment" = "financial",
 ) {
   try {
-    // Definimos explicitamente o tipo do objeto para evitar 'any'
     const updateData: {
       updatedAt: Date;
       status?: string;
@@ -27,7 +26,6 @@ export async function updateOrderStatus(
       updatedAt: new Date(),
     };
 
-    // Decide qual coluna atualizar baseado no tipo
     if (type === "fulfillment") {
       updateData.fulfillmentStatus = newStatus;
     } else {
@@ -56,8 +54,6 @@ export async function updateTrackingCode(orderId: string, code: string) {
       .set({
         trackingCode: code,
         updatedAt: new Date(),
-        // Opcional: Se quiser forçar o status logístico para 'shipped' automaticamente ao inserir rastreio, descomente abaixo:
-        // fulfillmentStatus: "shipped"
       })
       .where(eq(order.id, orderId));
 
@@ -69,7 +65,7 @@ export async function updateTrackingCode(orderId: string, code: string) {
   }
 }
 
-// Exclusão em massa (para limpeza, use com cuidado)
+// Exclusão em massa
 export async function deleteOrders(ids: string[]) {
   try {
     await db.delete(order).where(inArray(order.id, ids));
@@ -79,4 +75,27 @@ export async function deleteOrders(ids: string[]) {
     console.error("Erro ao excluir pedidos:", error);
     return { success: false, message: "Erro ao excluir pedidos." };
   }
+}
+
+// Busca IDs para seleção global
+export async function getAllOrderIds(search?: string) {
+  const baseQuery = db
+    .select({ id: order.id })
+    .from(order)
+    .leftJoin(user, eq(order.userId, user.id));
+
+  if (search) {
+    baseQuery.where(
+      or(
+        ilike(order.id, `%${search}%`),
+        ilike(order.customerName, `%${search}%`),
+        ilike(user.name, `%${search}%`),
+        ilike(order.customerEmail, `%${search}%`),
+        ilike(user.email, `%${search}%`),
+      ),
+    );
+  }
+
+  const result = await baseQuery;
+  return result.map((o) => o.id);
 }

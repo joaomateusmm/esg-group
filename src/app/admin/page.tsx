@@ -118,7 +118,7 @@ export default async function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen space-y-8 rounded-2xl bg-[#f9f9f9] p-8 shadow-sm">
+    <div className="space-y-8 rounded-2xl bg-[#f9f9f9] p-8 shadow-sm">
       <div>
         <h1 className="font-clash-display text-3xl font-medium text-neutral-900">
           Dashboard

@@ -14,7 +14,7 @@ type Slide = { image: string; title: string; caption: string };
 const AuthenticationLayout = () => {
   const slidesData: Slide[] = [
     {
-      image: "/images/banners/imoveis-usados.jpg",
+      image: "/images/banners/moveis-usados.jpg",
       title: "Móveis Usados",
       caption: "Compre móveis usados no melhor preço na Inglaterra.",
     },

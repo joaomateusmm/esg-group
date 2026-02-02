@@ -67,7 +67,7 @@ export function Footer() {
 
   return (
     // Fundo branco com borda no topo
-    <footer className="sombra-footer relative w-full overflow-hidden border-t border-neutral-200 bg-white pt-16 pb-8">
+    <footer className="sombra-footer relative w-full overflow-hidden border-t border-neutral-200 bg-white pt-10 pb-10">
       {/* --- CONTEÚDO --- */}
       <div className="relative z-20 mx-auto max-w-7xl px-4 md:px-8">
         {/* --- GRADE PRINCIPAL --- */}
@@ -110,7 +110,7 @@ export function Footer() {
           </div>
 
           {/* COLUNA 2, 3, 4: LINKS */}
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:col-span-8 lg:pl-12">
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 pb-6 lg:col-span-8 lg:pl-12">
             <FooterSection title="Categorias">
               {categories.length > 0 ? (
                 categories.map((cat) => (
@@ -146,10 +146,10 @@ export function Footer() {
         </div>
 
         {/* Separador claro */}
-        <Separator className="my-12 bg-neutral-200" />
+        <Separator className="bg-neutral-200" />
 
         {/* --- RODAPÉ INFERIOR --- */}
-        <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
+        <div className="flex flex-col items-center justify-between gap-6 pt-10 md:flex-row">
           <div className="text-center text-xs text-neutral-500 md:text-left">
             <p>
               © {currentYear} ESG-Group Store. Todos os direitos reservados.

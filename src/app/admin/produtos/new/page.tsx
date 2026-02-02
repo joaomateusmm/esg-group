@@ -6,7 +6,7 @@ import {
   Check,
   ChevronLeft,
   ChevronsUpDown,
-  Loader2, // Importei Loader2 para o fallback
+  Loader2,
   Package,
   Ruler,
   Truck,
@@ -15,7 +15,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Suspense, useEffect, useState } from "react"; // 1. IMPORTAR SUSPENSE
+import { Suspense, useEffect, useState } from "react";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -70,8 +70,15 @@ import {
 } from "../../../../actions/create-product";
 import { getCategories } from "./get-categories";
 
-// --- SCHEMA ATUALIZADO COM FRETE ---
+// --- SCHEMA ATUALIZADO ---
 const formSchema = z.object({
+  // 1. CAMPO NOVO: ID PERSONALIZADO (OPCIONAL)
+  customId: z
+    .string()
+    .max(50, "O código não pode ser muito longo")
+    .optional()
+    .or(z.literal("")), // Aceita string vazia
+
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   description: z.string().optional(),
 
@@ -84,15 +91,12 @@ const formSchema = z.object({
 
   status: z.enum(["active", "inactive", "draft"]),
 
-  // --- CAMPOS DE ESTOQUE ---
   stock: z.number().min(0, "O estoque não pode ser negativo"),
   isStockUnlimited: z.boolean(),
 
-  // --- NOVOS CAMPOS DE FRETE ---
   shippingType: z.enum(["calculated", "fixed", "free"]),
   fixedShippingPrice: z.number().min(0).optional(),
 
-  // --- CAMPOS DE LOGÍSTICA ---
   sku: z.string().optional(),
   weight: z.number().min(0, "Peso obrigatório"),
   width: z.number().int().min(0, "Largura obrigatória"),
@@ -107,7 +111,6 @@ interface OptionData {
   name: string;
 }
 
-// Mapa de símbolos para a UI
 const CURRENCY_SYMBOLS: Record<string, string> = {
   GBP: "£",
   USD: "$",
@@ -115,7 +118,6 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   BRL: "R$",
 };
 
-// Formatação dinâmica baseada na moeda selecionada
 const formatCurrency = (
   value: number,
   currencyCode: "GBP" | "USD" | "EUR" | "BRL",
@@ -151,6 +153,7 @@ export default function NewProductPage() {
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      customId: "", // Valor inicial vazio
       name: "",
       description: "",
       status: "active",
@@ -207,6 +210,13 @@ export default function NewProductPage() {
 
     try {
       const formattedData = {
+        // 2. LÓGICA DO ID PERSONALIZADO
+        // Se o usuário digitou algo, enviamos como 'id'. Se não, enviamos undefined (o banco gera).
+        id:
+          data.customId && data.customId.trim() !== ""
+            ? data.customId
+            : undefined,
+
         name: data.name,
         description: data.description,
 
@@ -243,8 +253,19 @@ export default function NewProductPage() {
       toast.success("Produto criado com sucesso!");
       router.push("/admin/produtos");
     } catch (error) {
+      // Tratamento para ID Duplicado
+      if (
+        error instanceof Error &&
+        error.message.includes("Unique constraint")
+      ) {
+        toast.error("Erro: Já existe um produto com este ID/Código.");
+        form.setError("customId", { message: "ID já está em uso" });
+        return;
+      }
+
       if (error instanceof Error && error.message.includes("NEXT_REDIRECT"))
         return;
+
       console.error(error);
       toast.error("Erro ao criar produto.");
     }
@@ -257,7 +278,6 @@ export default function NewProductPage() {
   };
 
   return (
-    // 3. ENVOLVER TUDO COM SUSPENSE
     <Suspense
       fallback={
         <div className="flex h-screen w-full items-center justify-center">
@@ -298,6 +318,31 @@ export default function NewProductPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* CAMPO DE ID PERSONALIZADO */}
+                  <FormField
+                    control={form.control}
+                    name="customId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-neutral-900">
+                          Código do Produto (ID Personalizado)
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Ex: 001, PROD-A, CADEIRA-01..."
+                            className="border-neutral-200 bg-white text-neutral-900 placeholder:text-neutral-400 focus:border-orange-500 focus:ring-orange-500"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs text-neutral-500">
+                          Opcional. Se vazio, um ID aleatório será gerado. Deve
+                          ser único.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <FormField
                     control={form.control}
                     name="name"
@@ -317,6 +362,7 @@ export default function NewProductPage() {
                       </FormItem>
                     )}
                   />
+                  {/* ... Resto dos campos (description, etc.) ... */}
                   <FormField
                     control={form.control}
                     name="description"
@@ -339,6 +385,10 @@ export default function NewProductPage() {
                   />
                 </CardContent>
               </Card>
+
+              {/* ... Resto do formulário (Frete, Imagens, Organização, Preços) MANTIDO IGUAL ... */}
+              {/* Vou incluir apenas os blocos principais para não estourar o limite de caracteres, 
+                  mas o código abaixo contém todo o resto da estrutura original */}
 
               {/* --- CONFIGURAÇÃO DE FRETE --- */}
               <Card className="border-neutral-200 bg-white shadow-sm">
@@ -481,7 +531,7 @@ export default function NewProductPage() {
                 </CardContent>
               </Card>
 
-              {/* --- INFORMAÇÕES LOGÍSTICAS (SÓ MOSTRA SE FOR 'CALCULATED') --- */}
+              {/* --- INFORMAÇÕES LOGÍSTICAS --- */}
               {watchShippingType === "calculated" && (
                 <Card className="animate-in fade-in slide-in-from-top-4 border-neutral-200 bg-white shadow-sm">
                   <CardHeader>
@@ -500,7 +550,7 @@ export default function NewProductPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-neutral-900">
-                            SKU (Código)
+                            SKU (Código Interno/Opcional)
                           </FormLabel>
                           <FormControl>
                             <Input
@@ -509,9 +559,6 @@ export default function NewProductPage() {
                               {...field}
                             />
                           </FormControl>
-                          <FormDescription className="text-xs text-neutral-500">
-                            Código único para controle de estoque.
-                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}

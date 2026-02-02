@@ -385,7 +385,7 @@ export default function EditProductForm({ initialData }: EditProductFormProps) {
                   Frete
                 </CardTitle>
                 <CardDescription className="text-neutral-500">
-                  Defina como o frete será cobrado.
+                  Defina como o Frete será cobrado.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">

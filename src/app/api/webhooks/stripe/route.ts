@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
+import { decreaseProductStock } from "@/actions/stock";
 import { db } from "@/db";
 import { order } from "@/db/schema";
 
@@ -28,11 +29,9 @@ export async function POST(req: Request) {
     });
   }
 
-  // EVENTO DE CHECKOUT SESSION COMPLETED (Mais seguro para nosso fluxo atual)
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
 
-    // Recupera o ID do pedido que enviamos no metadata ao criar a sessão
     const orderId = session.metadata?.orderId;
 
     if (orderId) {
@@ -41,18 +40,24 @@ export async function POST(req: Request) {
       );
 
       try {
-        // ATUALIZAÇÃO DOS STATUS (Financeiro e Logístico)
-        // Não criamos pedido novo, apenas atualizamos o que já existe
         await db
           .update(order)
           .set({
             status: "paid", // Financeiro: Pago
-            fulfillmentStatus: "processing", // Logístico: Em preparação (sai de 'idle')
+            fulfillmentStatus: "processing", // Logístico: Em preparação
             stripePaymentIntentId: session.payment_intent as string,
-            // Opcional: Se quiser salvar o endereço que o usuário preencheu no Stripe (caso seja diferente)
-            // shippingAddress: session.shipping_details?.address ...
           })
           .where(eq(order.id, orderId));
+
+        try {
+          await decreaseProductStock(orderId);
+          console.log(`📦 Estoque atualizado para o pedido ${orderId}`);
+        } catch (stockError) {
+          console.error(
+            "❌ Erro ao atualizar estoque (não crítico):",
+            stockError,
+          );
+        }
 
         return NextResponse.json({ received: true });
       } catch (error) {
@@ -62,15 +67,9 @@ export async function POST(req: Request) {
     } else {
       console.warn("⚠️ Webhook recebido sem OrderID no metadata.");
     }
-  }
-
-  // FALLBACK: PAYMENT INTENT SUCCEEDED (Caso usemos Elements puro sem Checkout Session no futuro)
-  // Mas no fluxo atual (createCheckoutSession), o evento acima é o principal.
-  // Se você usa Elements com confirmParams, o payment_intent.succeeded também dispara.
-  else if (event.type === "payment_intent.succeeded") {
+  } else if (event.type === "payment_intent.succeeded") {
     const paymentIntent = event.data.object as Stripe.PaymentIntent;
 
-    // Tentamos achar o pedido pelo metadata OU pelo paymentIntentId se já foi salvo
     const orderId = paymentIntent.metadata?.orderId;
 
     if (orderId) {
@@ -78,14 +77,28 @@ export async function POST(req: Request) {
         `💰 Pagamento confirmado via Payment Intent para: ${orderId}`,
       );
 
-      await db
-        .update(order)
-        .set({
-          status: "paid",
-          fulfillmentStatus: "processing",
-          stripePaymentIntentId: paymentIntent.id,
-        })
-        .where(eq(order.id, orderId));
+      try {
+        await db
+          .update(order)
+          .set({
+            status: "paid",
+            fulfillmentStatus: "processing",
+            stripePaymentIntentId: paymentIntent.id,
+          })
+          .where(eq(order.id, orderId));
+
+        try {
+          await decreaseProductStock(orderId);
+          console.log(`📦 Estoque atualizado para o pedido ${orderId}`);
+        } catch (stockError) {
+          console.error(
+            "❌ Erro ao atualizar estoque (não crítico):",
+            stockError,
+          );
+        }
+      } catch (dbError) {
+        console.error("❌ Erro ao salvar status no banco:", dbError);
+      }
     }
   }
 

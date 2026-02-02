@@ -4,6 +4,7 @@ import {
   AlertCircle,
   Banknote,
   CheckCircle2,
+  ChevronDown,
   Clock,
   Copy,
   CopyCheck,
@@ -19,13 +20,15 @@ import {
   XCircle,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import {
   deleteOrders,
-  updateOrderStatus, // Essa função precisará ser adaptada no backend para aceitar qual tipo de status atualizar
+  getAllOrderIds, // IMPORTANTE: Importe a nova action aqui
+  updateOrderStatus,
   updateTrackingCode,
 } from "@/actions/admin-orders";
 import {
@@ -79,22 +82,15 @@ import {
 
 interface OrderData {
   id: string;
-
-  // Status Financeiro
   status: string;
-  // Status Logístico
   fulfillmentStatus: string;
-  // Método de Pagamento
   paymentMethod: string | null;
-
   amount: number;
   userName: string;
   userEmail: string;
   userPhone?: string | null;
-
   productImage?: string | null;
   productId?: string | null;
-
   createdAt: Date;
   trackingCode?: string | null;
   itemsCount: number;
@@ -115,7 +111,6 @@ interface OrdersTableProps {
   limitParam: string;
 }
 
-// MAPA DE STATUS FINANCEIRO
 const FINANCIAL_STATUS_MAP: Record<
   string,
   { label: string; color: string; icon: LucideIcon }
@@ -142,7 +137,6 @@ const FINANCIAL_STATUS_MAP: Record<
   },
 };
 
-// MAPA DE STATUS LOGÍSTICO
 const FULFILLMENT_STATUS_MAP: Record<
   string,
   { label: string; color: string; icon: LucideIcon }
@@ -181,17 +175,18 @@ const formatPhoneNumber = (phone: string | null | undefined) => {
     cleaned.length > 11 && cleaned.startsWith("55")
       ? cleaned.slice(2)
       : cleaned;
-
-  if (numbersOnly.length === 11) {
+  if (numbersOnly.length === 11)
     return numbersOnly.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
-  }
-  if (numbersOnly.length === 10) {
+  if (numbersOnly.length === 10)
     return numbersOnly.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
-  }
   return phone;
 };
 
-export function OrdersTable({ data }: OrdersTableProps) {
+export function OrdersTable({
+  data,
+  totalOrders,
+  limitParam,
+}: OrdersTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -208,13 +203,46 @@ export function OrdersTable({ data }: OrdersTableProps) {
   );
   const [trackingCodeInput, setTrackingCodeInput] = useState("");
 
-  // --- FUNÇÕES DE SELEÇÃO E PESQUISA (MANTIDAS) ---
-  const handleSelectAll = (checked: boolean) => {
+  const currentPage = Number(searchParams.get("page")) || 1;
+  const limit = limitParam === "all" ? totalOrders : Number(limitParam) || 10;
+  const totalPages = Math.ceil(totalOrders / limit);
+
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [currentPage, limitParam, searchParams]);
+
+  const createPageURL = (pageNumber: number | string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", pageNumber.toString());
+    return `${pathname}?${params.toString()}`;
+  };
+
+  // --- SELEÇÃO CORRIGIDA ---
+
+  // Seleciona a PÁGINA ATUAL (apenas visíveis) - Função Síncrona
+  const handleSelectPage = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(data.map((o) => o.id));
+      const pageIds = data.map((order) => order.id);
+      setSelectedIds(pageIds);
+      toast.success(`${pageIds.length} pedidos desta página selecionados.`);
     } else {
       setSelectedIds([]);
     }
+  };
+
+  // Seleciona TUDO GLOBALMENTE (Busca IDs no servidor) - Função Assíncrona
+  const handleSelectAllGlobal = () => {
+    startTransition(async () => {
+      try {
+        const searchTerm = searchParams.get("search")?.toString();
+        const allIds = await getAllOrderIds(searchTerm);
+        setSelectedIds(allIds);
+        toast.success(`${allIds.length} pedidos selecionados.`);
+      } catch (error) {
+        console.error(error); // Log do erro para debug (Correção ESLint unused var)
+        toast.error("Erro ao selecionar todos os pedidos.");
+      }
+    });
   };
 
   const handleSelectOne = (checked: boolean, id: string) => {
@@ -225,11 +253,7 @@ export function OrdersTable({ data }: OrdersTableProps) {
     }
   };
 
-  const handleSelectPage = () => {
-    const pageIds = data.map((order) => order.id);
-    setSelectedIds(pageIds);
-    toast.success(`${pageIds.length} pedidos desta página selecionados.`);
-  };
+  // --- AÇÕES ---
 
   const handleSearch = (term: string) => {
     const params = new URLSearchParams(searchParams);
@@ -238,16 +262,12 @@ export function OrdersTable({ data }: OrdersTableProps) {
     } else {
       params.delete("search");
     }
+    params.set("page", "1");
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  // --- AÇÕES DO PEDIDO ATUALIZADAS ---
-
-  // Atualiza Status Financeiro (Ex: Confirmar pagamento COD)
   const handleFinancialStatusChange = (id: string, newStatus: string) => {
     startTransition(async () => {
-      // NOTA: Você precisará adaptar a server action 'updateOrderStatus' para aceitar o tipo de status
-      // Ex: updateOrderStatus(id, newStatus, "financial")
       const res = await updateOrderStatus(id, newStatus, "financial");
       if (res.success) {
         toast.success("Status financeiro atualizado!");
@@ -258,7 +278,6 @@ export function OrdersTable({ data }: OrdersTableProps) {
     });
   };
 
-  // Atualiza Status Logístico (Ex: Marcar como entregue)
   const handleFulfillmentStatusChange = (id: string, newStatus: string) => {
     startTransition(async () => {
       const res = await updateOrderStatus(id, newStatus, "fulfillment");
@@ -290,7 +309,6 @@ export function OrdersTable({ data }: OrdersTableProps) {
     setTrackingCodeInput(order.trackingCode || "");
     setTrackingModalOpen(true);
   };
-
   const openAddressModal = (order: OrderData) => {
     setCurrentOrderData(order);
     setAddressModalOpen(true);
@@ -303,9 +321,8 @@ export function OrdersTable({ data }: OrdersTableProps) {
       trackingCodeInput,
     );
     if (res.success) {
-      // Ao salvar rastreio, move logística para 'shipped'
       await updateOrderStatus(currentOrderData.id, "shipped", "fulfillment");
-      toast.success("Rastreio salvo e marcado como Enviado!");
+      toast.success("Rastreio salvo!");
       setTrackingModalOpen(false);
       router.refresh();
     } else {
@@ -337,7 +354,6 @@ export function OrdersTable({ data }: OrdersTableProps) {
 
   return (
     <>
-      {/* HEADER E FILTROS (MANTIDOS) */}
       <div className="mb-4 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-sm text-neutral-600 shadow-sm duration-300">
           <Search className="mr-1 h-4 w-4 text-neutral-500" />
@@ -360,15 +376,19 @@ export function OrdersTable({ data }: OrdersTableProps) {
               Excluir ({selectedIds.length})
             </button>
           )}
+
+          {/* Botão Selecionar Página Atual */}
           <button
-            onClick={handleSelectPage}
+            onClick={() => handleSelectPage(true)} // Agora passa 'true' explicitamente
             className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-sm text-neutral-600 shadow-sm duration-300 hover:bg-neutral-50 active:scale-95"
           >
             <SquareCheck className="h-4 w-4" />
             Marcar Página
           </button>
+
+          {/* Botão Selecionar TUDO (Global) */}
           <button
-            onClick={() => handleSelectAll(true)}
+            onClick={handleSelectAllGlobal}
             className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-sm text-neutral-600 shadow-sm duration-300 hover:bg-neutral-50 active:scale-95"
           >
             <CopyCheck className="h-4 w-4" />
@@ -382,16 +402,18 @@ export function OrdersTable({ data }: OrdersTableProps) {
           <TableHeader className="bg-neutral-50">
             <TableRow className="border-neutral-200 hover:bg-neutral-100">
               <TableHead className="w-[40px]">
+                {/* Checkbox do Cabeçalho: Controla apenas a Página Atual */}
                 <Checkbox
                   className="border-neutral-400 data-[state=checked]:border-orange-600 data-[state=checked]:bg-orange-600"
                   checked={
                     data.length > 0 &&
-                    selectedIds.length === data.length &&
+                    selectedIds.length >= data.length &&
                     data.every((item) => selectedIds.includes(item.id))
                   }
-                  onCheckedChange={(c) => handleSelectAll(!!c)}
+                  onCheckedChange={(c) => handleSelectPage(!!c)} // Correção TS 2554: Passa boolean
                 />
               </TableHead>
+              {/* ... Cabeçalhos ... */}
               <TableHead className="font-semibold text-neutral-600">
                 Pedido
               </TableHead>
@@ -401,14 +423,12 @@ export function OrdersTable({ data }: OrdersTableProps) {
               <TableHead className="font-semibold text-neutral-600">
                 Cliente
               </TableHead>
-              {/* DUAS COLUNAS DE STATUS */}
               <TableHead className="font-semibold text-neutral-600">
                 Financeiro
               </TableHead>
               <TableHead className="font-semibold text-neutral-600">
                 Logística
               </TableHead>
-
               <TableHead className="font-semibold text-neutral-600">
                 Ação Rápida
               </TableHead>
@@ -422,6 +442,7 @@ export function OrdersTable({ data }: OrdersTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
+            {/* ... Conteúdo da tabela (linhas mantidas) ... */}
             {data.length === 0 ? (
               <TableRow className="border-neutral-100 hover:bg-neutral-50">
                 <TableCell
@@ -440,12 +461,10 @@ export function OrdersTable({ data }: OrdersTableProps) {
                   FINANCIAL_STATUS_MAP[order.status] ||
                   FINANCIAL_STATUS_MAP["pending"];
                 const FinancialIcon = financialInfo.icon;
-
                 const fulfillmentInfo =
                   FULFILLMENT_STATUS_MAP[order.fulfillmentStatus] ||
                   FULFILLMENT_STATUS_MAP["idle"];
                 const FulfillmentIcon = fulfillmentInfo.icon;
-
                 const displayPhone =
                   order.userPhone || order.shippingAddress?.phone;
 
@@ -464,12 +483,12 @@ export function OrdersTable({ data }: OrdersTableProps) {
                         onCheckedChange={(c) => handleSelectOne(!!c, order.id)}
                       />
                     </TableCell>
+                    {/* ... Resto das células (Copiado do seu original) ... */}
                     <TableCell className="font-mono text-xs font-medium text-neutral-900">
                       {order.id.slice(0, 8).toUpperCase()}
                       <div className="mt-0.5 text-[10px] text-neutral-500">
                         {new Date(order.createdAt).toLocaleDateString()}
                       </div>
-                      {/* Badge do Método de Pagamento */}
                       <Badge
                         variant="secondary"
                         className="mt-1 h-5 px-1.5 text-[10px] font-normal"
@@ -490,7 +509,7 @@ export function OrdersTable({ data }: OrdersTableProps) {
                               alt="Produto"
                               fill
                               className="object-cover"
-                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                              sizes="33vw"
                             />
                           ) : (
                             <ImageIcon className="h-4 w-4 text-neutral-300" />
@@ -532,7 +551,6 @@ export function OrdersTable({ data }: OrdersTableProps) {
                         )}
                       </div>
                     </TableCell>
-                    {/* STATUS FINANCEIRO */}
                     <TableCell>
                       <Badge
                         variant="outline"
@@ -542,7 +560,6 @@ export function OrdersTable({ data }: OrdersTableProps) {
                         {financialInfo.label}
                       </Badge>
                     </TableCell>
-                    {/* STATUS LOGÍSTICO */}
                     <TableCell>
                       <Badge
                         variant="outline"
@@ -552,18 +569,15 @@ export function OrdersTable({ data }: OrdersTableProps) {
                         {fulfillmentInfo.label}
                       </Badge>
                     </TableCell>
-
-                    {/* AÇÃO RÁPIDA INTELIGENTE */}
                     <TableCell>
                       <div className="flex flex-col items-start gap-1.5">
-                        {/* Se COD e Pendente: Botão Confirmar Pagamento */}
                         {order.paymentMethod === "cod" &&
                           order.status === "pending" && (
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
-                                    size="sm" // Mantive size="sm" mas forcei a altura com h-6 e fonte text-[10px]
+                                    size="sm"
                                     onClick={() =>
                                       handleFinancialStatusChange(
                                         order.id,
@@ -572,7 +586,7 @@ export function OrdersTable({ data }: OrdersTableProps) {
                                     }
                                     className="h-6 w-full max-w-[110px] cursor-pointer border border-green-200 bg-green-50 px-2 text-[10px] font-medium text-green-700 hover:bg-green-100"
                                   >
-                                    <Banknote className="mr-1.5 h-3 w-3" />
+                                    <Banknote className="mr-1.5 h-3 w-3" />{" "}
                                     Confirmar $
                                   </Button>
                                 </TooltipTrigger>
@@ -582,8 +596,6 @@ export function OrdersTable({ data }: OrdersTableProps) {
                               </Tooltip>
                             </TooltipProvider>
                           )}
-
-                        {/* Botões de Logística (Baseado em fulfillmentStatus) */}
                         {order.fulfillmentStatus === "processing" && (
                           <Button
                             size="sm"
@@ -645,19 +657,16 @@ export function OrdersTable({ data }: OrdersTableProps) {
                         >
                           <DropdownMenuLabel>Ações</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-
                           <DropdownMenuItem
                             onClick={() => openAddressModal(order)}
                           >
                             <MapPin className="mr-2 h-4 w-4" /> Ver Endereço
                           </DropdownMenuItem>
-
                           <DropdownMenuItem
                             onClick={() => openTrackingModal(order)}
                           >
                             <Truck className="mr-2 h-4 w-4" /> Rastreio
                           </DropdownMenuItem>
-
                           <DropdownMenuSub>
                             <DropdownMenuSubTrigger>
                               <Package className="mr-2 h-4 w-4" /> Forçar
@@ -685,7 +694,6 @@ export function OrdersTable({ data }: OrdersTableProps) {
                               </DropdownMenuRadioGroup>
                             </DropdownMenuSubContent>
                           </DropdownMenuSub>
-
                           <DropdownMenuSub>
                             <DropdownMenuSubTrigger>
                               <Banknote className="mr-2 h-4 w-4" /> Forçar
@@ -724,12 +732,78 @@ export function OrdersTable({ data }: OrdersTableProps) {
         </Table>
       </div>
 
-      {/* FOOTER (PAGINAÇÃO) - MANTIDO */}
-      {/* ... (código de paginação igual ao anterior) ... */}
+      <div className="mt-4 flex flex-col items-center justify-between gap-4 md:flex-row">
+        {/* ... Paginação e Visualização ... */}
+        <p className="text-sm text-neutral-500">
+          Exibindo {data.length} de {totalOrders} pedidos.
+        </p>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-neutral-500">Visualizar</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
+                >
+                  {limitParam === "all" ? "Todos" : limitParam}{" "}
+                  <ChevronDown className="ml-2 h-3 w-3 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="border-neutral-200 bg-white text-neutral-700 shadow-md"
+              >
+                {[10, 20, 30].map((val) => (
+                  <Link
+                    key={val}
+                    href={`?limit=${val}&page=1&search=${searchParams.get("search") || ""}`}
+                    scroll={false}
+                  >
+                    <DropdownMenuItem className="cursor-pointer hover:bg-neutral-50 focus:bg-neutral-50">
+                      {val}
+                    </DropdownMenuItem>
+                  </Link>
+                ))}
+                <DropdownMenuSeparator className="bg-neutral-100" />
+                <Link
+                  href={`?limit=all&page=1&search=${searchParams.get("search") || ""}`}
+                  scroll={false}
+                >
+                  <DropdownMenuItem className="cursor-pointer hover:bg-neutral-50 focus:bg-neutral-50">
+                    Todos
+                  </DropdownMenuItem>
+                </Link>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Link href={createPageURL(currentPage - 1)} passHref scroll={false}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+                disabled={currentPage <= 1}
+              >
+                Anterior
+              </Button>
+            </Link>
+            <Link href={createPageURL(currentPage + 1)} passHref scroll={false}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
+                disabled={currentPage >= totalPages || limitParam === "all"}
+              >
+                Próxima
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
 
-      {/* DIALOGS (MANTIDOS - Deletar, Tracking, Endereço) */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        {/* ... igual ao anterior ... */}
         <AlertDialogContent className="border-neutral-200 bg-white text-neutral-900 shadow-lg sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>Tem certeza absoluta?</AlertDialogTitle>
@@ -753,8 +827,8 @@ export function OrdersTable({ data }: OrdersTableProps) {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Modais de Tracking e Endereço */}
       <Dialog open={trackingModalOpen} onOpenChange={setTrackingModalOpen}>
-        {/* ... igual ao anterior ... */}
         <DialogContent className="border-neutral-200 bg-white text-neutral-900 sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Código de Rastreio</DialogTitle>
@@ -769,7 +843,8 @@ export function OrdersTable({ data }: OrdersTableProps) {
             <p className="mt-2 text-xs text-neutral-500">
               Ao salvar, o status mudará automaticamente para
               &quot;Enviado&quot;.
-            </p>
+            </p>{" "}
+            {/* CORREÇÃO ESLINT: &quot; */}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setTrackingModalOpen(false)}>
@@ -786,21 +861,17 @@ export function OrdersTable({ data }: OrdersTableProps) {
       </Dialog>
 
       <Dialog open={addressModalOpen} onOpenChange={setAddressModalOpen}>
-        {/* ... igual ao anterior (Modal de Endereço) ... */}
         <DialogContent className="border-neutral-200 bg-white text-neutral-900 sm:max-w-md">
-          {/* Conteúdo do modal de endereço mantido igual */}
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-neutral-900">
               <MapPin className="h-5 w-5 text-orange-600" /> Endereço de Entrega
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            {/* ... */}
             <div className="space-y-1 rounded-md border border-neutral-200 bg-neutral-50 p-4 text-sm">
               <p className="text-lg font-semibold text-neutral-900">
                 {currentOrderData?.userName}
               </p>
-              {/* ... Resto do modal de endereço ... */}
               {currentOrderData?.shippingAddress && (
                 <>
                   <p className="text-neutral-600">

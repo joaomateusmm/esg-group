@@ -10,21 +10,28 @@ export async function decreaseProductStock(orderId: string) {
     .from(orderItem)
     .where(eq(orderItem.orderId, orderId));
 
-  // 2. Iterar sobre os itens e atualizar o produto correspondente
+  // 2. Iterar sobre os itens
   for (const item of items) {
+    // Busca dados ATUAIS do produto
     const productData = await db.query.product.findFirst({
       where: eq(product.id, item.productId),
+      columns: {
+        id: true,
+        stock: true,
+        isStockUnlimited: true, // Importante buscar isso
+      },
     });
 
-    // Se o produto não existir ou tiver estoque "infinito" (ex: null), ignoramos
-    // Ajuste a lógica de "infinito" conforme seu banco (alguns usam -1 ou null)
-    if (!productData || productData.stock === null) continue;
+    // Se não existe, ignora
+    if (!productData) continue;
 
-    // 3. Atualizar o estoque
+    // Se for ilimitado, NÃO mexe no estoque
+    if (productData.isStockUnlimited) continue;
+
+    // 3. Atualizar o estoque (apenas se for limitado)
     await db
       .update(product)
       .set({
-        // SQL raw para garantir atomicidade: stock = stock - quantity
         stock: sql`${product.stock} - ${item.quantity}`,
       })
       .where(eq(product.id, item.productId));

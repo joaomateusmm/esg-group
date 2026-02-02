@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { AdminSidebar } from "@/components/AdminSidebar"; // Importamos o componente criado acima
+import { AdminSidebar } from "@/components/AdminSidebar";
 import {
   SidebarInset,
   SidebarProvider,
@@ -14,36 +14,27 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // 1. Verificação de Segurança no Servidor
   const session = await auth.api.getSession({
     headers: await headers(),
   });
 
-  // Se não tiver sessão ou o role não for admin, redireciona
   if (!session || session.user.role !== "admin") {
     redirect("/");
   }
 
   return (
-    // SidebarProvider gerencia o estado da sidebar (aberta/fechada)
     <SidebarProvider>
       <div className="font-montserrat flex min-h-screen w-full bg-[#e4e4e4] text-black">
-        {/* Passamos os dados do usuário para a Sidebar */}
         <AdminSidebar user={session.user} />
-
-        {/* SidebarInset é onde o conteúdo da página será renderizado */}
-        <SidebarInset className="flex-1 overflow-hidden bg-[#FFFFFF]">
-          {/* Header Mobile / Trigger da Sidebar */}
-          <header className="flex h-16 shrink-0 items-center gap-2 border-b border-white/5 px-4">
-            <SidebarTrigger className="text-neutral-700 hover:bg-white/10" />
-            <div className="mx-2 h-4 w-[1px] bg-white/10" />
+        <SidebarInset className="flex flex-1 flex-col bg-[#FFFFFF]">
+          <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b border-neutral-100 bg-white/80 px-4 backdrop-blur-md">
+            <SidebarTrigger className="text-neutral-700 hover:bg-neutral-100" />
+            <div className="mx-2 h-4 w-[1px] bg-neutral-200" />
             <span className="text-sm font-medium text-neutral-700">
               Área Administrativa
             </span>
           </header>
-
-          {/* Conteúdo das Páginas (Dashboard, Produtos, etc) */}
-          <main className="flex-1 overflow-auto p-6 md:p-8">{children}</main>
+          <main className="flex-1 p-6 pb-20 md:p-8">{children}</main>
         </SidebarInset>
       </div>
     </SidebarProvider>

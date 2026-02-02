@@ -17,7 +17,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 
 import { checkAffiliateStatus } from "@/actions/check-affiliate-status";
 import { checkStockAvailability } from "@/actions/check-stock";
@@ -124,14 +123,11 @@ function HeaderContent() {
     setMounted(true);
     const fetchData = async () => {
       try {
-        // Buscamos as categorias e o status de afiliado
         const [cats, affStatus] = await Promise.all([
           getAllCategories(),
           checkAffiliateStatus().catch(() => false),
         ]);
 
-        // IGUAL AO MOBILE-MENU: Se houver dados, define no estado
-        // Note que não fazemos o .map manual aqui para evitar o erro de 'undefined'
         if (cats && cats.length > 0) {
           setCategories(cats);
         }
@@ -154,9 +150,6 @@ function HeaderContent() {
         );
         if (outOfStockItems.length > 0) {
           outOfStockItems.forEach((item) => removeCartItem(item.id));
-          toast.error(
-            `Item removido por falta de estoque: ${outOfStockItems[0].name}`,
-          );
         }
       } catch (e) {
         console.error(e);
@@ -185,14 +178,12 @@ function HeaderContent() {
   // 4. FECHAR DROPDOWNS AO CLICAR FORA
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      // Fechar Resultados da Pesquisa
       if (
         searchRef.current &&
         !searchRef.current.contains(event.target as Node)
       ) {
         setShowResults(false);
       }
-      // Fechar Dropdown de Categorias
       if (
         categoryRef.current &&
         !categoryRef.current.contains(event.target as Node)
@@ -231,7 +222,6 @@ function HeaderContent() {
 
   if (!mounted) return null;
 
-  // Bandeiras e Idioma
   const lang = language as string;
   let currentFlag = "https://flagcdn.com/w40/br.png";
   let currentLabel = "BR / BRL";
@@ -343,24 +333,35 @@ function HeaderContent() {
       {/* --- BARRA PRINCIPAL (BRANCA) --- */}
       <div className="w-full border-b border-neutral-200 bg-white px-4 py-4 shadow-sm md:px-8">
         <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4 lg:gap-8">
-          <div className="flex items-center gap-4">
-            {/* MOBILE MENU */}
+          <div className="flex items-center justify-center gap-4">
             <MobileMenu categories={categories} isAffiliate={isAffiliate} />
 
-            <Link href="/" className="flex items-center gap-2">
+            <Link
+              href="/"
+              className="group flex items-center justify-center gap-1"
+            >
               <div className="flex h-10 w-10 items-center justify-center rounded-lg">
                 <Image
                   src="/images/logo.png"
                   alt="Logo ESG Group"
                   width={40}
                   height={40}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover duration-300 group-hover:scale-105 group-active:scale-95"
                 />
               </div>
-              <span className="font-montserrat text-2xl font-bold text-neutral-800">
+              <span className="font-montserrat text-2xl font-bold text-neutral-700 duration-200 group-hover:text-black group-active:scale-95">
                 ESG Group
               </span>
             </Link>
+
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {session && (session.user as any).role === "admin" && (
+              <Link href="/admin">
+                <h1 className="hidden translate-y-0.5 font-semibold text-orange-500 duration-200 hover:underline md:block">
+                  Admin
+                </h1>
+              </Link>
+            )}
           </div>
 
           {/* BARRA DE PESQUISA E CATEGORIAS */}

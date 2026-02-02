@@ -67,8 +67,6 @@ export default async function AdminProductsPage({
         <AddProductButton />
       </div>
 
-      {/* 3. ENVOLVER A TABELA EM SUSPENSE */}
-      {/* Como a tabela usa recursos de cliente para filtrar/paginar via URL, ela precisa do Suspense */}
       <Suspense
         fallback={
           <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-neutral-200 bg-neutral-50 text-neutral-400">

@@ -3,7 +3,7 @@
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react"; // 1. Adicionei useRef
 
 import { useCartStore } from "@/store/cart-store";
 
@@ -19,41 +19,51 @@ export function StripeCheckout() {
   const [clientSecret, setClientSecret] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (items.length > 0) {
-      // Pega a moeda do primeiro item ou define GBP como padrão
-      // Isso é enviado para o backend criar o PaymentIntent correto
-      const cartCurrency = items[0].currency || "GBP";
+  // 2. REF PARA EVITAR DUPLICIDADE
+  // Isso garante que a requisição só seja feita uma vez, mesmo se o componente renderizar 2x
+  const hasCreatedIntent = useRef(false);
 
-      // Chama sua API para criar a intenção de pagamento
-      fetch("/api/create-payment-intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items,
-          currency: cartCurrency,
-        }),
+  useEffect(() => {
+    // Se não tem itens ou JÁ criou a intenção, para por aqui.
+    if (items.length === 0 || hasCreatedIntent.current) return;
+
+    // Marca como criado IMEDIATAMENTE para bloquear a segunda chamada
+    hasCreatedIntent.current = true;
+
+    const cartCurrency = items[0].currency || "GBP";
+
+    // Chama sua API para criar a intenção de pagamento
+    fetch("/api/create-payment-intent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items,
+        currency: cartCurrency,
+      }),
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Falha na comunicação com o servidor de pagamento.");
+        }
+        return res.json();
       })
-        .then((res) => {
-          if (!res.ok) {
-            throw new Error(
-              "Falha na comunicação com o servidor de pagamento.",
-            );
-          }
-          return res.json();
-        })
-        .then((data) => {
-          if (data.error) {
-            setError(data.error);
-          } else {
-            setClientSecret(data.clientSecret);
-          }
-        })
-        .catch((err) => {
-          console.error("Erro ao criar Intent:", err);
-          setError("Não foi possível carregar o sistema de pagamento.");
-        });
-    }
+      .then((data) => {
+        if (data.error) {
+          setError(data.error);
+          // Se deu erro de lógica (ex: estoque), talvez queiramos deixar tentar de novo?
+          // Por segurança, mantemos travado ou destravamos dependendo da sua regra.
+          // hasCreatedIntent.current = false;
+        } else {
+          setClientSecret(data.clientSecret);
+          // Opcional: Salvar o orderId num estado se precisar usar depois
+        }
+      })
+      .catch((err) => {
+        console.error("Erro ao criar Intent:", err);
+        setError("Não foi possível carregar o sistema de pagamento.");
+        // Se deu erro de rede, liberamos para tentar de novo
+        hasCreatedIntent.current = false;
+      });
   }, [items]);
 
   // Se houver erro no carregamento inicial
@@ -93,8 +103,6 @@ export function StripeCheckout() {
       options={{
         clientSecret,
         appearance,
-        // REMOVIDO: currency: ...
-        // O Stripe detecta a moeda automaticamente através do clientSecret
       }}
     >
       <CheckoutForm />

@@ -1,26 +1,18 @@
+import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
+import { db } from "@/db";
+import { order, orderItem, product } from "@/db/schema";
 import { auth } from "@/lib/auth";
-
-interface Item {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image?: string;
-}
 
 // Initialize Stripe
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
 
-// Fixed shipping cost (This might need currency adjustment in a real multi-currency scenario)
-const FIXED_SHIPPING_COST = 1500;
-
 export async function POST(req: Request) {
   try {
-    // 1. Stripe Key Validation
+    // 1. Validação da Chave Stripe
     if (!stripeSecret) {
       console.error(
         "❌ STRIPE_SECRET_KEY not defined in environment variables.",
@@ -36,17 +28,9 @@ export async function POST(req: Request) {
       typescript: true,
     });
 
-    // 2. Read Body
+    // 2. Ler Corpo da Requisição
     const body = await req.json();
-    const { items, currency, shippingAddress } = body; // Retrieve currency from body
-
-    // Log for debugging
-    console.log(
-      "📦 Payment Intent Started. Currency:",
-      currency,
-      "Address received:",
-      !!shippingAddress,
-    );
+    const { items, currency, shippingAddress } = body;
 
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -59,27 +43,63 @@ export async function POST(req: Request) {
       );
     }
 
-    // Calculate item subtotal
-    const itemsTotal = items.reduce(
-      (acc: number, item: Item) => acc + item.price * item.quantity,
-      0,
-    );
+    if (!items || items.length === 0) {
+      return NextResponse.json({ error: "No items in cart" }, { status: 400 });
+    }
 
-    // Add shipping to total
-    const totalAmount = itemsTotal + FIXED_SHIPPING_COST;
+    // 3. Calcular Totais (Produtos + Frete) e Preparar Itens
+    let itemsTotal = 0;
+    let shippingTotal = 0; // Acumulador de frete
+    const orderItemsToInsert = [];
 
-    // Minify items for metadata
-    const itemsMinified = items.map((i: Item) => ({
-      id: i.id,
-      name: i.name,
-      price: i.price,
-      quantity: i.quantity,
-      image: i.image,
-    }));
+    for (const item of items) {
+      // Busca dados frescos do banco
+      const productData = await db.query.product.findFirst({
+        where: eq(product.id, item.id),
+      });
 
-    // 3. Safe Address Sanitization
+      if (!productData) continue;
+
+      // 3.1 Calcular Preço do Produto
+      const finalPrice = productData.discountPrice || productData.price;
+      itemsTotal += finalPrice * item.quantity;
+
+      // 3.2 Calcular Frete deste Item
+      // Lógica simplificada: Se for fixo, soma. Se for grátis, é 0.
+      // Se for "calculated" (ex: Correios), aqui você chamaria uma API externa.
+      // Por enquanto, assumiremos que "calculated" ou sem tipo definido é 0 ou um valor base se necessário.
+
+      let itemShippingCost = 0;
+
+      if (productData.shippingType === "fixed") {
+        // Se o frete é fixo, multiplicamos pela quantidade?
+        // Geralmente sim, ou cobra uma vez só. Aqui vou assumir por unidade para simplificar,
+        // mas você pode mudar para cobrar uma vez se preferir.
+        itemShippingCost =
+          (productData.fixedShippingPrice || 0) * item.quantity;
+      } else if (productData.shippingType === "free") {
+        itemShippingCost = 0;
+      }
+      // Caso precise de lógica para "calculated", adicione aqui.
+      // Por padrão, deixamos 0 se não for 'fixed'.
+
+      shippingTotal += itemShippingCost;
+
+      // Prepara objeto para inserção
+      orderItemsToInsert.push({
+        productId: item.id,
+        productName: productData.name,
+        quantity: item.quantity,
+        price: finalPrice,
+        image: productData.images?.[0] || null,
+      });
+    }
+
+    // Soma final: Produtos + Frete Total
+    const totalAmount = itemsTotal + shippingTotal;
+
+    // 4. Sanitização do Endereço
     const rawAddress = shippingAddress || {};
-
     const sanitizedAddress = {
       street: rawAddress.street || "Not provided",
       number: rawAddress.number || "N/A",
@@ -90,28 +110,63 @@ export async function POST(req: Request) {
       country: rawAddress.country || "BR",
     };
 
-    // Create payment intent
+    // 5. CRIAR PEDIDO NO BANCO
+    const [newOrder] = await db
+      .insert(order)
+      .values({
+        userId: session.user.id,
+        amount: totalAmount, // Total cobrado do cliente
+        status: "pending",
+        fulfillmentStatus: "idle",
+        currency: currency || "GBP",
+        shippingCost: shippingTotal, // Salva quanto foi de frete
+        shippingAddress: sanitizedAddress,
+        customerName: session.user.name,
+        customerEmail: session.user.email,
+      })
+      .returning();
+
+    console.log(
+      `📝 Order created: ${newOrder.id} | Total: ${totalAmount} | Shipping: ${shippingTotal}`,
+    );
+
+    // 6. Inserir Itens
+    if (orderItemsToInsert.length > 0) {
+      await db.insert(orderItem).values(
+        orderItemsToInsert.map((item) => ({
+          orderId: newOrder.id,
+          productId: item.productId,
+          productName: item.productName,
+          quantity: item.quantity,
+          price: item.price,
+          image: item.image,
+        })),
+      );
+    }
+
+    // 7. Criar Payment Intent na Stripe
     const paymentIntent = await stripe.paymentIntents.create({
       amount: totalAmount,
-      currency: currency || "brl", // Use passed currency or default to BRL
-      automatic_payment_methods: { enabled: true },
+      currency: currency || "gbp",
+
+      payment_method_types: ["card"], // Forçar cartão para evitar erros
+
       metadata: {
+        orderId: newOrder.id,
         userId: session.user.id,
-        itemsJson: JSON.stringify(itemsMinified).substring(0, 499),
-        shippingAddressJson: JSON.stringify(sanitizedAddress),
-        shippingCost: FIXED_SHIPPING_COST.toString(),
       },
     });
 
-    return NextResponse.json({ clientSecret: paymentIntent.client_secret });
+    return NextResponse.json({
+      clientSecret: paymentIntent.client_secret,
+      orderId: newOrder.id,
+    });
   } catch (error) {
-    console.error("❌ CRITICAL Error creating Payment Intent:", error);
-
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-
+    console.error("❌ Error creating Payment Intent:", error);
     return NextResponse.json(
-      { error: `Error processing payment: ${errorMessage}` },
+      {
+        error: `Error processing payment: ${error instanceof Error ? error.message : "Unknown"}`,
+      },
       { status: 500 },
     );
   }

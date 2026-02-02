@@ -223,7 +223,7 @@ function CartContent() {
             ))}
           </div>
 
-          <div className="h-fit lg:sticky lg:top-32">
+          <div className="h-fit lg:sticky lg:top-36">
             <Card className="border border-neutral-200 bg-white shadow-lg">
               <CardContent className="p-6">
                 <h3 className="mb-4 text-xl font-bold text-neutral-900">

@@ -26,7 +26,10 @@ export default async function EditProductPage({
 
   // 3. Renderiza o formulário passando os dados iniciais
   return (
-    <div className="min-h-screen flex-1 space-y-4 p-8 pt-6">
+    // CORREÇÃO AQUI:
+    // 1. Removido 'min-h-screen' e 'flex-1' para não brigar com o layout.
+    // 2. Adicionado 'pb-40' para criar espaço extra no final da rolagem.
+    <div className="space-y-4 p-8 pt-6 pb-40">
       <EditProductForm initialData={productData} />
     </div>
   );

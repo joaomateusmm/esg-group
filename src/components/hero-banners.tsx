@@ -30,11 +30,11 @@ const BANNERS = [
 
   // COLUNA CENTRAL (2)
   {
-    id: "imoveis-usados",
-    src: "/images/banners/imoveis-usados.jpg",
+    id: "moveis-usados",
+    src: "/images/banners/moveis-usados.jpg",
     title: "Móveis Usados",
     description: "Compre móveis usados no melhor preço na Inglaterra.",
-    href: "/categorias/imoveis-usados",
+    href: "/categorias/moveis-usados",
     position: "center-main",
   },
   {

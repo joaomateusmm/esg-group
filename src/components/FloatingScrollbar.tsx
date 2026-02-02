@@ -10,34 +10,52 @@ export default function FloatingScrollbar() {
     let timeoutId: NodeJS.Timeout;
 
     const handleScroll = () => {
-      // 1. Calcula a porcentagem do scroll
+      // 1. Calcula a altura total rolável
       const totalHeight =
         document.documentElement.scrollHeight - window.innerHeight;
+
+      // Se a página for menor que a tela, não faz nada (ou define como 0)
+      if (totalHeight <= 0) {
+        setScrollPercentage(0);
+        return;
+      }
+
       const currentScroll = window.scrollY;
       const percentage = (currentScroll / totalHeight) * 100;
 
-      setScrollPercentage(percentage);
+      // Garante que o valor fique entre 0 e 100
+      const safePercentage = Math.min(100, Math.max(0, percentage));
 
-      // 2. Mostra a barra quando scrola
+      setScrollPercentage(safePercentage);
+
+      // 2. Mostra a barra quando scrola ou redimensiona
       setIsVisible(true);
 
-      // 3. Esconde após 1 segundo parado (Efeito minimalista)
+      // 3. Esconde após 1 segundo parado
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         setIsVisible(false);
       }, 1000);
     };
 
+    // Adiciona listeners para SCROLL e RESIZE (mudança de tamanho da tela)
     window.addEventListener("scroll", handleScroll);
+    window.addEventListener("resize", handleScroll);
+
+    // Chama uma vez no início para garantir que a barra esteja na posição certa ao carregar
+    handleScroll();
+
     return () => {
+      // Remove os listeners corretamente ao desmontar
       window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
       clearTimeout(timeoutId);
     };
   }, []);
 
   return (
     <div className="pointer-events-none fixed top-0 right-1 bottom-0 z-[9999] flex w-3 items-center justify-center mix-blend-difference">
-      {/* O TRILHO (Invisível, mas mantém a estrutura) */}
+      {/* O TRILHO */}
       <div className="relative h-[98vh] w-full">
         {/* A PÍLULA FLUTUANTE */}
         <div
@@ -45,9 +63,9 @@ export default function FloatingScrollbar() {
             isVisible ? "opacity-100" : "opacity-0 hover:opacity-100"
           }`}
           style={{
-            height: "100px", // Tamanho fixo da pílula (estilo Lando)
+            height: "100px",
             top: `${scrollPercentage}%`,
-            // Ajuste matemático para a pílula não sair da tela no final
+            // Ajuste para centralizar a pílula no ponto percentual
             transform: `translateY(-${scrollPercentage}%)`,
           }}
         />
