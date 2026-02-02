@@ -88,12 +88,9 @@ export const product = pgTable("product", {
     .$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
   description: text("description"),
-
   price: integer("price").notNull(), // Em centavos
   discountPrice: integer("discountPrice"), // Em centavos
-
   currency: text("currency").notNull().default("GBP"),
-
   images: text("images").array(),
   categories: text("categories").array(),
   weight: real("weight").default(0),
@@ -103,14 +100,11 @@ export const product = pgTable("product", {
   sku: text("sku"),
   shippingType: text("shippingType").notNull().default("calculated"),
   fixedShippingPrice: integer("fixedShippingPrice").default(0),
-
   stock: integer("stock").default(0),
   isStockUnlimited: boolean("isStockUnlimited").notNull().default(false),
-
   status: text("status").notNull().default("draft"),
   sales: integer("sales").notNull().default(0),
   affiliateRate: integer("affiliateRate").default(10),
-
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
     .notNull()
