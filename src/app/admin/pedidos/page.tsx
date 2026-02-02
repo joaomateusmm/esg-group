@@ -14,17 +14,20 @@ type ShippingAddress = {
   phone?: string;
 };
 
-// Receives searchParams from the page props
+// CORREÇÃO NEXT.JS 15: searchParams agora é uma Promise
 export default async function AdminOrdersPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const page = Number(searchParams.page) || 1;
-  const limitParam = searchParams.limit ?? "10";
+  // 1. AWAIT NOS PARÂMETROS
+  const params = await searchParams;
+
+  // 2. USAR A VARIÁVEL 'params' AO INVÉS DE 'searchParams'
+  const page = Number(params.page) || 1;
+  const limitParam = (params.limit as string) ?? "10";
   const limit = limitParam === "all" ? undefined : Number(limitParam);
-  const search =
-    typeof searchParams.search === "string" ? searchParams.search : undefined;
+  const search = typeof params.search === "string" ? params.search : undefined;
 
   // offset calculation for pagination
   const offset = limit && page > 1 ? (page - 1) * limit : 0;
@@ -56,7 +59,7 @@ export default async function AdminOrdersPage({
     .leftJoin(product, eq(orderItem.productId, product.id))
     .orderBy(order.id, desc(order.createdAt));
 
-  // 2. Apply search filter if present (CORREÇÃO ESLINT + FUNCIONALIDADE)
+  // 2. Apply search filter if present
   if (search) {
     baseQuery.where(
       or(
@@ -72,14 +75,12 @@ export default async function AdminOrdersPage({
     );
   }
 
-  // 3. Execute Query with Pagination (CORREÇÃO TYPESCRIPT)
-  // Ao invés de reatribuir 'baseQuery', aplicamos o limit/offset na execução.
+  // 3. Execute Query with Pagination
   const orders = limit
     ? await baseQuery.limit(limit).offset(offset)
     : await baseQuery;
 
-  // Get total count for pagination (Considerar filtro de busca se necessário,
-  // mas count simples é mais rápido para UI geral)
+  // Get total count for pagination
   const [totalResult] = await db.select({ count: count() }).from(order);
 
   const formattedOrders = orders.map((o) => ({
