@@ -3,7 +3,7 @@ import { Package } from "lucide-react";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Suspense } from "react"; // 1. Importar Suspense
+import { Suspense } from "react";
 
 import { OrderCard } from "@/components/account/order-card";
 import { OrderTabs } from "@/components/account/order-tabs";
@@ -32,7 +32,6 @@ export default async function MyPurchasesPage({
 
   const userId = session.user.id;
 
-  // Busca pedidos ordenados
   const userOrders = await db.query.order.findMany({
     where: eq(order.userId, userId),
     orderBy: [desc(order.createdAt)],
@@ -107,19 +106,20 @@ export default async function MyPurchasesPage({
         shippingAddress,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         currency: (currentOrder as any).currency || "BRL",
+        // GARANTIA: Repassar explicitamente as datas, caso o spread (...) falhe por alguma razão de tipagem
+        estimatedDeliveryStart: currentOrder.estimatedDeliveryStart,
+        estimatedDeliveryEnd: currentOrder.estimatedDeliveryEnd,
       };
     }),
   );
 
   return (
     <div className="min-h-screen bg-[#f5f5f5] font-sans text-neutral-900">
-      {/* 3. ENVOLVER HEADER COM SUSPENSE (Correção principal) */}
       <Suspense fallback={<div className="h-[120px] w-full bg-white" />}>
         <Header />
       </Suspense>
 
       <div className="pt-[120px]">
-        {/* 4. ENVOLVER ORDER TABS EM SUSPENSE */}
         <Suspense
           fallback={
             <div className="h-[54px] w-full border-b border-neutral-200 bg-white" />
@@ -128,8 +128,8 @@ export default async function MyPurchasesPage({
           <OrderTabs />
         </Suspense>
 
-        <main className="mx-auto max-w-5xl px-4 py-8 md:px-0">
-          <div className="flex flex-col gap-4">
+        <main className="mx-auto max-w-5xl px-4 py-10 md:px-0">
+          <div className="flex flex-col gap-8">
             {enrichedOrders.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-lg border border-neutral-100 bg-white py-24 text-center shadow-sm">
                 <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-neutral-100">

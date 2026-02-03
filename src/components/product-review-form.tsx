@@ -1,7 +1,7 @@
 "use client";
 
-import { MessageSquarePlus, Star } from "lucide-react";
-import { useActionState, useEffect, useState } from "react";
+import { Star } from "lucide-react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { createReviewAction } from "@/actions/review";
@@ -24,7 +24,8 @@ const initialState = {
 const MAX_CHARS = 155;
 
 export function ProductReviewForm({ productId }: ProductReviewFormProps) {
-  const [state, action, isPending] = useActionState(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [state, action, isPending] = useActionState<any, FormData>(
     createReviewAction,
     initialState,
   );
@@ -33,6 +34,9 @@ export function ProductReviewForm({ productId }: ProductReviewFormProps) {
   const [hoverRating, setHoverRating] = useState(0);
   const [localError, setLocalError] = useState("");
   const [commentText, setCommentText] = useState("");
+
+  // Referência para o formulário para podermos enviar automaticamente
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (state?.message) {
@@ -47,58 +51,65 @@ export function ProductReviewForm({ productId }: ProductReviewFormProps) {
   }, [state]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    // Validação básica antes de enviar
     setLocalError("");
 
-    // --- MUDANÇA AQUI: Comentário agora é opcional ---
-    // Se tiver texto, validamos o tamanho máximo.
-    // Se não tiver, deixamos passar.
-
     if (commentText.length > MAX_CHARS) {
-      e.preventDefault();
+      e.preventDefault(); // Impede o envio se estiver muito longo
       const msg = `O comentário excede o limite de ${MAX_CHARS} caracteres.`;
       toast.error(msg);
       setLocalError(msg);
       return;
     }
+    // Se passar, a action server-side (createReviewAction) será chamada normalmente
+  };
 
-    // Removida a validação de tamanho mínimo obrigatório.
+  // Função para preencher e enviar comentário rápido
+  const handleQuickComment = (text: string) => {
+    setCommentText(text);
+    setTimeout(() => {
+      if (formRef.current) {
+        formRef.current.requestSubmit();
+      }
+    }, 0);
   };
 
   return (
-    <div className="rounded-xl border border-white/10 bg-[#0A0A0A] p-5">
-      <h4 className="mb-4 flex items-center gap-2 text-sm font-medium text-white">
-        <MessageSquarePlus className="h-4 w-4 text-[#D00000]" />
-        Avaliar Produto
-      </h4>
-
+    // ESTILO: Fundo branco e borda suave
+    <div className="rounded-xl border border-neutral-200 bg-white p-3 shadow-sm duration-200 hover:shadow-md">
       {state?.success ? (
-        <div className="animate-in fade-in zoom-in flex flex-col items-center justify-center gap-2 rounded-lg border border-neutral-500/20 bg-neutral-500/10 p-6 text-center text-sm text-green-500 duration-300">
-          <div className="rounded-full bg-neutral-800/40 p-2 shadow-md duration-500 hover:scale-110">
+        <div className="animate-in fade-in zoom-in flex flex-col items-center justify-center gap-2 rounded-lg border border-green-100 bg-green-50 p-6 text-center text-sm text-green-700 duration-300">
+          <div className="rounded-full bg-white p-2 shadow-sm ring-1 ring-green-100">
             <div className="flex gap-1">
-              {/* Exibe a quantidade de estrelas que a pessoa deu */}
               {Array.from({ length: rating }).map((_, i) => (
-                <Star key={i} className="h-4 w-4 fill-current text-[#F0B100]" />
+                <Star
+                  key={i}
+                  className="h-4 w-4 fill-orange-400 text-orange-400"
+                />
               ))}
             </div>
           </div>
           <div>
-            <p className="font-semibold text-white">Obrigado por Avaliar</p>
-            <p className="text-white/50 opacity-90">{state.message}</p>
+            <p className="font-bold text-green-800">Obrigado por Avaliar!</p>
+            <p className="text-green-600 opacity-90">{state.message}</p>
           </div>
         </div>
       ) : (
         <form
+          ref={formRef}
           action={action}
           onSubmit={handleSubmit}
           noValidate
-          className="space-y-4"
+          className="space-y-5"
         >
           <input type="hidden" name="productId" value={productId} />
 
           {/* Seletor de Estrelas */}
-          <div className="space-y-2">
-            <Label className="text-xs text-neutral-400">Sua nota:</Label>
-            <div className="flex gap-1">
+          <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border border-dashed bg-orange-50 py-4">
+            <Label className="text-xs font-medium tracking-wide text-neutral-500 uppercase">
+              Sua nota
+            </Label>
+            <div className="flex gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
@@ -110,31 +121,43 @@ export function ProductReviewForm({ productId }: ProductReviewFormProps) {
                 >
                   <Star
                     className={cn(
-                      "h-6 w-6 transition-colors",
+                      "h-8 w-8 transition-all duration-200",
                       (hoverRating || rating) >= star
-                        ? "fill-[#D00000] text-[#D00000]"
-                        : "fill-transparent text-neutral-600",
+                        ? "fill-orange-500 text-orange-500 drop-shadow-sm"
+                        : "fill-neutral-100 text-neutral-300",
                     )}
                   />
                 </button>
               ))}
             </div>
             <input type="hidden" name="rating" value={rating} />
+            <p className="h-4 text-xs font-medium text-orange-600">
+              {(hoverRating || rating) === 5 && "Excelente!"}
+              {(hoverRating || rating) === 4 && "Muito Bom"}
+              {(hoverRating || rating) === 3 && "Bom"}
+              {(hoverRating || rating) === 2 && "Razoável"}
+              {(hoverRating || rating) === 1 && "Ruim"}
+            </p>
           </div>
 
-          {/* Comentário (Opcional) */}
+          {/* Comentário */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="comment" className="text-xs text-neutral-400">
-                Seu comentário:{" "}
-                <span className="text-neutral-600">(Opcional)</span>
+            <div className="flex items-center justify-between px-1">
+              <Label
+                htmlFor="comment"
+                className="text-sm font-medium text-neutral-700"
+              >
+                Seu comentário
+                <span className="ml-1 text-xs font-normal text-neutral-400">
+                  (Opcional)
+                </span>
               </Label>
               <span
                 className={cn(
                   "text-[10px] transition-colors",
                   commentText.length >= MAX_CHARS
                     ? "font-bold text-red-500"
-                    : "text-neutral-500",
+                    : "text-neutral-400",
                 )}
               >
                 {commentText.length} / {MAX_CHARS}
@@ -144,10 +167,11 @@ export function ProductReviewForm({ productId }: ProductReviewFormProps) {
             <Textarea
               id="comment"
               name="comment"
-              placeholder="Conte o que achou do produto..."
+              placeholder="O que você achou do produto? Conte detalhes..."
               className={cn(
-                "min-h-[80px] resize-none border-white/10 bg-white/5 text-sm text-white placeholder:text-neutral-600 focus:border-[#D00000]/50 focus:ring-0",
-                localError && "border-red-500/50 focus:border-red-500",
+                "min-h-[100px] resize-none border-neutral-200 bg-white text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-orange-500 focus:ring-1 focus:ring-orange-500",
+                localError &&
+                  "border-red-500 focus:border-red-500 focus:ring-red-500",
               )}
               maxLength={MAX_CHARS}
               value={commentText}
@@ -169,13 +193,61 @@ export function ProductReviewForm({ productId }: ProductReviewFormProps) {
           </div>
 
           {state?.message && !state.success && (
-            <p className="text-xs text-red-500">{state.message}</p>
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-600">
+              {state.message}
+            </div>
           )}
+
+          {/* Comentários Rápidos */}
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-medium text-neutral-400">
+              Comentários Rápidos:
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  handleQuickComment("Fácil e rápido, gostei da loja.")
+                }
+                className="cursor-pointer rounded-full bg-orange-100 px-3 py-1.5 text-xs font-medium text-orange-700 transition-colors hover:bg-orange-200 active:scale-95"
+              >
+                Fácil e rápido, gostei da loja.
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickComment("Muito fácil de comprar.")}
+                className="cursor-pointer rounded-full bg-orange-100 px-3 py-1.5 text-xs font-medium text-orange-700 transition-colors hover:bg-orange-200 active:scale-95"
+              >
+                Muito fácil de comprar.
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickComment("Gostei da loja.")}
+                className="cursor-pointer rounded-full bg-orange-100 px-3 py-1.5 text-xs font-medium text-orange-700 transition-colors hover:bg-orange-200 active:scale-95"
+              >
+                Gostei da loja.
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickComment("Gostei da loja.")}
+                className="cursor-pointer rounded-full bg-orange-100 px-3 py-1.5 text-xs font-medium text-orange-700 transition-colors hover:bg-orange-200 active:scale-95"
+              >
+                Muito bom.
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickComment("Gostei da loja.")}
+                className="cursor-pointer rounded-full bg-orange-100 px-3 py-1.5 text-xs font-medium text-orange-700 transition-colors hover:bg-orange-200 active:scale-95"
+              >
+                Produto chegou ótimo, obrigado.
+              </button>
+            </div>
+          </div>
 
           <Button
             type="submit"
             disabled={isPending}
-            className="h-12 w-full bg-[#D00000] font-medium tracking-wide text-white duration-300 hover:-translate-y-0.5 hover:bg-[#D00000]/90"
+            className="h-11 w-full bg-orange-600 font-bold text-white shadow-sm transition-all hover:bg-orange-700 hover:shadow active:scale-[0.98]"
           >
             {isPending ? "Enviando..." : "Enviar Avaliação"}
           </Button>

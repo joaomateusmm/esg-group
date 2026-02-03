@@ -5,18 +5,42 @@ import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 
 import { db } from "@/db";
-import { order, orderItem, user } from "@/db/schema"; // Adicionado orderItem
+import { order, orderItem, user } from "@/db/schema";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@esggroup.com";
 
-// Helper para formatar moeda (BRL como fallback, mas respeitando a moeda do pedido se possível)
+// Helper para formatar moeda
 const formatCurrency = (amount: number, currency = "BRL") => {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: currency,
   }).format(amount / 100);
 };
+
+// --- NOVA FUNÇÃO: Atualizar Datas de Entrega Manualmente ---
+export async function updateDeliveryDates(
+  orderId: string,
+  startDate: Date,
+  endDate: Date,
+) {
+  try {
+    await db
+      .update(order)
+      .set({
+        estimatedDeliveryStart: startDate,
+        estimatedDeliveryEnd: endDate,
+        updatedAt: new Date(),
+      })
+      .where(eq(order.id, orderId));
+
+    revalidatePath("/admin/pedidos");
+    return { success: true, message: "Prazo de entrega atualizado!" };
+  } catch (error) {
+    console.error("Erro ao atualizar datas:", error);
+    return { success: false, message: "Erro ao atualizar prazo." };
+  }
+}
 
 export async function updateOrderStatus(
   orderId: string,
@@ -28,9 +52,35 @@ export async function updateOrderStatus(
       updatedAt: Date;
       status?: string;
       fulfillmentStatus?: string;
+      estimatedDeliveryStart?: Date; // Adicionado para tipagem
+      estimatedDeliveryEnd?: Date; // Adicionado para tipagem
     } = {
       updatedAt: new Date(),
     };
+
+    // --- LÓGICA DE CRIAÇÃO DO PRAZO PADRÃO (10 a 17 dias) ---
+    // Se o status logístico for alterado para 'processing' (Preparando),
+    // e ainda não tivermos datas definidas, criamos o prazo padrão.
+    if (type === "fulfillment" && newStatus === "processing") {
+      // Verifica se já tem datas (opcional, para não sobrescrever se o admin já editou manual)
+      const currentOrder = await db.query.order.findFirst({
+        where: eq(order.id, orderId),
+        columns: { estimatedDeliveryStart: true },
+      });
+
+      if (!currentOrder?.estimatedDeliveryStart) {
+        const today = new Date();
+
+        const start = new Date(today);
+        start.setDate(today.getDate() + 10); // +10 dias
+
+        const end = new Date(today);
+        end.setDate(today.getDate() + 17); // +17 dias
+
+        updateData.estimatedDeliveryStart = start;
+        updateData.estimatedDeliveryEnd = end;
+      }
+    }
 
     if (type === "fulfillment") {
       updateData.fulfillmentStatus = newStatus;
@@ -43,8 +93,6 @@ export async function updateOrderStatus(
 
     // 2. Lógica de Envio de E-mail (Apenas para logística)
     if (type === "fulfillment") {
-      // Query corrigida e tipada explicitamente para evitar erros 'never'
-      // Trazemos dados do Pedido, Usuário e do Primeiro Item do pedido para o email
       const [orderData] = await db
         .select({
           id: order.id,
@@ -53,13 +101,16 @@ export async function updateOrderStatus(
           currency: order.currency,
           trackingCode: order.trackingCode,
           shippingAddress: order.shippingAddress,
+          // Novas colunas de data para usar no email se quiser no futuro
+          estimatedDeliveryStart: order.estimatedDeliveryStart,
+          estimatedDeliveryEnd: order.estimatedDeliveryEnd,
           // Dados do Pedido
           customerName: order.customerName,
           customerEmail: order.customerEmail,
           // Dados da Conta
           accountName: user.name,
           accountEmail: user.email,
-          // Dados do Item (pega o primeiro via Join)
+          // Dados do Item
           productName: orderItem.productName,
           productImage: orderItem.image,
           productPrice: orderItem.price,
@@ -69,21 +120,19 @@ export async function updateOrderStatus(
         .leftJoin(user, eq(order.userId, user.id))
         .leftJoin(orderItem, eq(order.id, orderItem.orderId))
         .where(eq(order.id, orderId))
-        .limit(1); // Pega apenas 1 linha para simplificar o template (item principal)
+        .limit(1);
 
       if (orderData) {
         const targetEmail = orderData.customerEmail || orderData.accountEmail;
         const targetName =
           orderData.customerName || orderData.accountName || "Cliente";
 
-        // Formatação de endereço
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const addr = orderData.shippingAddress as any;
         const addressString = addr
           ? `${addr.street}, ${addr.number} - ${addr.city}/${addr.state} - CEP: ${addr.zipCode}`
           : "Endereço não informado";
 
-        // Status e Cores
         const statusMap: Record<
           string,
           { label: string; description: string; color: string; bgColor: string }
@@ -91,38 +140,38 @@ export async function updateOrderStatus(
           processing: {
             label: "ESG Group - PREPARANDO",
             description: "Seu pedido está sendo preparado com cuidado.",
-            color: "#1d4ed8", // azul
+            color: "#1d4ed8",
             bgColor: "#eff6ff",
           },
           shipped: {
             label: "ESG Group - A CAMINHO",
             description: "Seu pedido foi enviado e está a caminho!",
-            color: "#ea580c", // laranja (cor da marca)
+            color: "#ea580c",
             bgColor: "#fff7ed",
           },
           delivered: {
             label: "ESG Group - ENTREGUE",
             description: "Seu pedido foi entregue. Esperamos que goste!",
-            color: "#15803d", // verde
+            color: "#15803d",
             bgColor: "#f0fdf4",
           },
           returned: {
             label: "ESG Group - DEVOLVIDO",
             description: "O pedido foi marcado como devolvido.",
-            color: "#b91c1c", // vermelho
+            color: "#b91c1c",
             bgColor: "#fef2f2",
           },
           idle: {
             label: "ESG Group - AGUARDANDO",
             description: "Aguardando atualização de status.",
-            color: "#6b7280", // cinza
+            color: "#6b7280",
             bgColor: "#f9fafb",
           },
         };
 
         const BASE_URL =
-          process.env.NEXT_PUBLIC_APP_URL || "https://esggroup.com"; // Use seu domínio real aqui
-        const LOGO_URL = `${BASE_URL}/images/logo.png`; // Certifique-se que logo.png existe na pasta /public
+          process.env.NEXT_PUBLIC_APP_URL || "https://esggroup.com";
+        const LOGO_URL = `${BASE_URL}/images/logo.png`;
 
         const currentStatus = statusMap[newStatus] || statusMap.idle;
 
@@ -130,7 +179,24 @@ export async function updateOrderStatus(
         const total = orderData.amount;
         const subtotal = total - shipping;
 
-        // HTML DO EMAIL (DESIGN FINAL AJUSTADO - ESPAÇAMENTO NO CARD)
+        // Formatação das datas de entrega para o e-mail (Opcional, mas legal ter)
+        let deliveryHtml = "";
+        if (
+          orderData.estimatedDeliveryStart &&
+          orderData.estimatedDeliveryEnd
+        ) {
+          const startStr =
+            orderData.estimatedDeliveryStart.toLocaleDateString("pt-BR");
+          const endStr =
+            orderData.estimatedDeliveryEnd.toLocaleDateString("pt-BR");
+          deliveryHtml = `
+              <div style="margin-bottom: 20px; text-align: center; background-color: #f0fdf4; border: 1px dashed #15803d; padding: 10px; border-radius: 6px;">
+                <p style="margin:0; font-size: 12px; color: #15803d; font-weight: bold; text-transform: uppercase;">Previsão de Entrega</p>
+                <p style="margin:0; font-size: 14px; color: #14532d;">${startStr} a ${endStr}</p>
+              </div>
+            `;
+        }
+
         const emailHtml = `
           <!DOCTYPE html>
           <html>
@@ -159,12 +225,11 @@ export async function updateOrderStatus(
               .tracking-code { display: inline-block; background: #f0f0f0; padding: 8px 16px; border-radius: 4px; font-family: monospace; font-weight: bold; letter-spacing: 1px; color: #333; margin-top: 5px; }
               .tracking-title { font-size: 12px; color: #888; text-transform: uppercase; font-weight: bold; }
 
-              /* Product Card (Improved Spacing) */
-              .product-section { border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; margin-bottom: 25px; }
+              /* Product Card (With Top/Bottom Borders) */
+              .product-section { border-top: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0; border-left: 1px solid #e0e0e0; border-right: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; margin-bottom: 25px; }
               .section-header { background-color: #fafafa; padding: 10px 15px; border-bottom: 1px solid #e0e0e0; font-size: 13px; font-weight: 600; color: #555; }
               
               .product-item { display: flex; padding: 15px; border-bottom: 1px solid #f0f0f0; align-items: flex-start; }
-              /* AJUSTE AQUI: Margem direita na imagem para separar do texto */
               .product-img { width: 70px; height: 70px; object-fit: cover; border-radius: 4px; border: 1px solid #eee; background-color: #f9f9f9; margin-right: 15px; }
               .product-details { flex: 1; }
               .product-title { font-size: 14px; font-weight: 500; color: #333; margin: 0 0 5px 0; line-height: 1.4; }
@@ -207,6 +272,8 @@ export async function updateOrderStatus(
               <div class="content">
                 <p class="greeting">Olá, <strong>${targetName}</strong>!</p>
                 <p style="font-size: 14px; color: #555; margin-bottom: 20px;">${currentStatus.description}</p>
+
+                ${deliveryHtml}
 
                 ${
                   orderData.trackingCode

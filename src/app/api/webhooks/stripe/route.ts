@@ -29,9 +29,15 @@ export async function POST(req: Request) {
     });
   }
 
+  // --- CÁLCULO DE DATAS (10 a 17 DIAS A PARTIR DO PAGAMENTO) ---
+  const today = new Date();
+  const start = new Date(today);
+  start.setDate(today.getDate() + 10);
+  const end = new Date(today);
+  end.setDate(today.getDate() + 17);
+
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-
     const orderId = session.metadata?.orderId;
 
     if (orderId) {
@@ -46,6 +52,9 @@ export async function POST(req: Request) {
             status: "paid", // Financeiro: Pago
             fulfillmentStatus: "processing", // Logístico: Em preparação
             stripePaymentIntentId: session.payment_intent as string,
+            // GARANTIA: Salva/Atualiza o prazo de entrega no momento do pagamento
+            estimatedDeliveryStart: start,
+            estimatedDeliveryEnd: end,
           })
           .where(eq(order.id, orderId));
 
@@ -69,7 +78,6 @@ export async function POST(req: Request) {
     }
   } else if (event.type === "payment_intent.succeeded") {
     const paymentIntent = event.data.object as Stripe.PaymentIntent;
-
     const orderId = paymentIntent.metadata?.orderId;
 
     if (orderId) {
@@ -84,6 +92,9 @@ export async function POST(req: Request) {
             status: "paid",
             fulfillmentStatus: "processing",
             stripePaymentIntentId: paymentIntent.id,
+            // GARANTIA: Salva/Atualiza o prazo de entrega no momento do pagamento
+            estimatedDeliveryStart: start,
+            estimatedDeliveryEnd: end,
           })
           .where(eq(order.id, orderId));
 

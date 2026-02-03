@@ -31,6 +31,18 @@ type ShippingAddressInput = {
   phone?: string;
 };
 
+// --- HELPER PARA CALCULAR DATAS DE ENTREGA (10 a 17 dias) ---
+function calculateDeliveryDates() {
+  const today = new Date();
+  const start = new Date(today);
+  start.setDate(today.getDate() + 10);
+
+  const end = new Date(today);
+  end.setDate(today.getDate() + 17);
+
+  return { start, end };
+}
+
 // --- FUNÇÃO AUXILIAR PARA CALCULAR TUDO (COM FRETE) ---
 async function calculateOrderTotals(
   items: CartItemInput[],
@@ -193,6 +205,9 @@ export async function createCheckoutSession(
   }
 
   try {
+    // CALCULA DATAS DE ENTREGA
+    const { start, end } = calculateDeliveryDates();
+
     const [newOrder] = await db
       .insert(order)
       .values({
@@ -203,15 +218,13 @@ export async function createCheckoutSession(
         status: "pending",
         paymentMethod: "card",
         shippingCost: shippingCost,
-
-        // ADICIONADO: Salvando a moeda no banco
         currency: firstCurrency,
-
         customerName: guestInfo?.name || session?.user.name,
         customerEmail: guestInfo?.email || session?.user.email,
-
-        // Inicializa logística como parada até pagamento confirmar
         fulfillmentStatus: "idle",
+        // SALVA AS DATAS NO BANCO
+        estimatedDeliveryStart: start,
+        estimatedDeliveryEnd: end,
       })
       .returning();
 
@@ -279,7 +292,6 @@ export async function createOrderCOD(
   couponCode?: string,
   shippingAddress?: ShippingAddressInput,
 ) {
-  // 1. Detecta a moeda
   const firstCurrency = items[0]?.currency || "GBP";
 
   for (const item of items) {
@@ -331,6 +343,9 @@ export async function createOrderCOD(
   const { finalTotal, discountAmount, activeCouponId, shippingCost } =
     await calculateOrderTotals(items, couponCode);
 
+  // CALCULA DATAS DE ENTREGA
+  const { start, end } = calculateDeliveryDates();
+
   // CRIA O PEDIDO COD
   const [newOrder] = await db
     .insert(order)
@@ -342,15 +357,13 @@ export async function createOrderCOD(
       status: "pending",
       paymentMethod: "cod",
       shippingCost: shippingCost,
-
-      // ADICIONADO: Salvando a moeda
       currency: firstCurrency,
-
       shippingAddress: shippingAddress ? shippingAddress : null,
       userPhone: shippingAddress?.phone,
-
-      // COD já nasce com logística ativa (preparação)
       fulfillmentStatus: "processing",
+      // SALVA AS DATAS NO BANCO
+      estimatedDeliveryStart: start,
+      estimatedDeliveryEnd: end,
     })
     .returning();
 
@@ -396,7 +409,6 @@ export async function createFreeOrder(
   couponCode?: string,
   shippingAddress?: ShippingAddressInput,
 ) {
-  // 1. Detecta a moeda
   const firstCurrency = items[0]?.currency || "GBP";
 
   for (const item of items) {
@@ -452,6 +464,9 @@ export async function createFreeOrder(
     throw new Error("O valor final não é gratuito. Use o checkout pago.");
   }
 
+  // CALCULA DATAS DE ENTREGA
+  const { start, end } = calculateDeliveryDates();
+
   const [newOrder] = await db
     .insert(order)
     .values({
@@ -462,15 +477,13 @@ export async function createFreeOrder(
       status: "completed",
       paymentMethod: "free",
       shippingCost: shippingCost,
-
-      // ADICIONADO: Salvando a moeda
       currency: firstCurrency,
-
       shippingAddress: shippingAddress ? shippingAddress : null,
       userPhone: shippingAddress?.phone,
-
-      // Grátis também já nasce com logística ativa
       fulfillmentStatus: "processing",
+      // SALVA AS DATAS NO BANCO
+      estimatedDeliveryStart: start,
+      estimatedDeliveryEnd: end,
     })
     .returning();
 

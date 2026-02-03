@@ -3,7 +3,7 @@
 import { MessageSquarePlus } from "lucide-react";
 import { useState } from "react";
 
-import { ProductReviewForm } from "@/components/product-review-form"; // Seu formulário existente
+import { ProductReviewForm } from "@/components/product-review-form";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,24 +28,25 @@ export function ReviewDialog({ productId, productName }: ReviewDialogProps) {
         <Button
           variant="outline"
           size="sm"
-          className="h-8 gap-2 border-white/10 bg-white/5 text-xs font-medium text-white hover:bg-white/10 hover:text-white"
+          className="h-8 gap-2 border-orange-200 bg-white text-xs font-medium text-orange-600 hover:bg-orange-50 hover:text-orange-700"
         >
-          <MessageSquarePlus className="h-3 w-3" />
+          <MessageSquarePlus className="h-3.5 w-3.5" />
           Avaliar
         </Button>
       </DialogTrigger>
-      <DialogContent className="border-white/10 bg-[#0A0A0A] sm:max-w-[425px]">
+      {/* Modal Branco Clean */}
+      <DialogContent className="border-neutral-200 bg-white text-neutral-900 sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-white">Avaliar Produto</DialogTitle>
-          <DialogDescription className="text-neutral-400">
-            Dê sua opinião sobre <strong>{productName}</strong>.
+          <DialogTitle className="text-lg font-bold text-neutral-900">
+            Avaliar Produto
+          </DialogTitle>
+          <DialogDescription className="text-neutral-500">
+            Dê sua opinião sobre{" "}
+            <strong className="text-neutral-800">{productName}</strong>.
           </DialogDescription>
         </DialogHeader>
 
-        {/* Passamos uma função para fechar o modal após sucesso, se necessário, 
-            mas o seu form atual mostra a mensagem de sucesso in-place. 
-            Podemos apenas renderizar o form. */}
-        <div className="pt-4">
+        <div className="pt-2">
           <ProductReviewForm productId={productId} />
         </div>
       </DialogContent>

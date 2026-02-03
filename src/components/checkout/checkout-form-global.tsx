@@ -6,19 +6,19 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
-import { CreditCard, Loader2, Lock, Truck } from "lucide-react"; // Importei ícones extras
-import { useRouter } from "next/navigation"; // Importar useRouter
+import { CircleAlert, CreditCard, Loader2, Lock, Truck } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { createOrderCOD, getCartShippingCost } from "@/actions/checkout"; // Importar a nova action
+import { createOrderCOD, getCartShippingCost } from "@/actions/checkout";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils"; // Importar cn para classes condicionais
+import { cn } from "@/lib/utils";
 import { useCartStore } from "@/store/cart-store";
 
 export function CheckoutForm() {
   const stripe = useStripe();
   const elements = useElements();
-  const { items, getTotalPrice, clearCart } = useCartStore(); // Importar clearCart
+  const { items, getTotalPrice, clearCart } = useCartStore();
   const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -26,7 +26,7 @@ export function CheckoutForm() {
   const [shippingCost, setShippingCost] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
 
-  // ESTADO DO MÉTODO DE PAGAMENTO: 'card' ou 'cod' (Cash on Delivery)
+  // ESTADO DO MÉTODO DE PAGAMENTO: 'card' ou 'cod'
   const [paymentMethod, setPaymentMethod] = useState<"card" | "cod">("card");
 
   const cartCurrency = items.length > 0 ? items[0].currency || "GBP" : "GBP";
@@ -36,6 +36,21 @@ export function CheckoutForm() {
       style: "currency",
       currency: cartCurrency,
     }).format(val / 100);
+
+  // CÁLCULO DAS DATAS DE ENTREGA (10 a 17 dias a partir de hoje)
+  const today = new Date();
+  const deliveryStart = new Date(today);
+  deliveryStart.setDate(today.getDate() + 10);
+  const deliveryEnd = new Date(today);
+  deliveryEnd.setDate(today.getDate() + 17);
+
+  const deliveryDateString = `${deliveryStart.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+  })} a ${deliveryEnd.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+  })}`;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [addressDetails, setAddressDetails] = useState<any>(null);
@@ -74,7 +89,6 @@ export function CheckoutForm() {
     setIsLoading(true);
     setMessage(null);
 
-    // Validação básica do endereço (Stripe Address Element já valida visualmente, mas precisamos dos dados)
     if (!addressDetails || !addressDetails.address || !addressDetails.name) {
       setMessage("Por favor, preencha o endereço de entrega completo.");
       setIsLoading(false);
@@ -126,7 +140,7 @@ export function CheckoutForm() {
       try {
         const shippingData = {
           street: addressDetails.address.line1,
-          number: "N/A", // O Element do Stripe junta rua e número em line1 as vezes, ou line2. Simplificação.
+          number: "N/A",
           complement: addressDetails.address.line2,
           city: addressDetails.address.city,
           state: addressDetails.address.state,
@@ -134,20 +148,19 @@ export function CheckoutForm() {
           phone: addressDetails.phone,
         };
 
-        // Chama a Server Action para criar o pedido sem pagamento imediato
         const result = await createOrderCOD(
           items,
           {
-            email: "guest@example.com", // TODO: Pegar email real do usuário logado ou input se for guest
+            email: "guest@example.com",
             name: addressDetails.name,
           },
-          undefined, // Coupon code (se tiver, passar aqui)
+          undefined,
           shippingData,
         );
 
         if (result.success) {
-          clearCart(); // Limpa o carrinho
-          router.push(`/checkout/sucesso?orderId=${result.orderId}`); // Redireciona
+          clearCart();
+          router.push(`/checkout/sucesso?orderId=${result.orderId}`);
         }
       } catch (error) {
         console.error(error);
@@ -281,6 +294,21 @@ export function CheckoutForm() {
                 ) : (
                   "Grátis"
                 )}
+              </span>
+            </div>
+
+            {/* PRAZO DE ENTREGA (NOVO) */}
+            <div className="flex items-center justify-between text-neutral-600">
+              <span className="flex items-center gap-2">
+                Previsão de Entrega
+              </span>
+              <span className="text-neutral-500">{deliveryDateString}</span>
+            </div>
+
+            <div className="flex items-center justify-center">
+              <span className="flex items-center gap-2 py-3 text-xs text-[#aaaaaa]">
+                <CircleAlert className="h-4 w-4" /> O prazo de entrega pode ser
+                alterado conforme as etapas do pedido.
               </span>
             </div>
           </div>

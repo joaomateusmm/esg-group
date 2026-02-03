@@ -129,7 +129,7 @@ export const review = pgTable("review", {
   createdAt: timestamp("createdAt").notNull().defaultNow(),
 });
 
-// --- TABELA DE PEDIDOS (ATUALIZADA) ---
+// --- TABELA DE PEDIDOS (ATUALIZADA COM PRAZO DE ENTREGA) ---
 
 export const order = pgTable("order", {
   id: text("id")
@@ -150,6 +150,11 @@ export const order = pgTable("order", {
   shippingAddress: json("shippingAddress"),
   shippingCost: integer("shippingCost").default(0),
   trackingCode: text("trackingCode"),
+
+  // NOVOS CAMPOS: Previsão de Entrega (Janela de datas)
+  estimatedDeliveryStart: timestamp("estimatedDeliveryStart"), // Data inicial (ex: 10 dias)
+  estimatedDeliveryEnd: timestamp("estimatedDeliveryEnd"), // Data final (ex: 17 dias)
+
   paymentMethod: text("paymentMethod").default("card"),
   customerName: text("customerName"),
   customerEmail: text("customerEmail"),
