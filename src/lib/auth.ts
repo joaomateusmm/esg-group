@@ -34,6 +34,13 @@ export const auth = betterAuth({
     enabled: true,
   },
 
+  trustedOrigins: [
+    "https://mateusdev.shop",
+    "https://www.mateusdev.shop",
+    "https://esg-group.vercel.app",
+    "http://localhost:3000",
+  ],
+
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,

@@ -27,7 +27,8 @@ import { toast } from "sonner";
 
 import {
   deleteOrders,
-  getAllOrderIds, // IMPORTANTE: Importe a nova action aqui
+  getAllOrderIds,
+  updateDeliveryDates, // IMPORTANTE: Importar a action de datas
   updateOrderStatus,
   updateTrackingCode,
 } from "@/actions/admin-orders";
@@ -93,6 +94,9 @@ interface OrderData {
   productId?: string | null;
   createdAt: Date;
   trackingCode?: string | null;
+  // Adicionar campos de data aqui se eles vierem do banco para a tabela
+  estimatedDeliveryStart?: Date | null;
+  estimatedDeliveryEnd?: Date | null;
   itemsCount: number;
   shippingAddress?: {
     street: string;
@@ -203,6 +207,10 @@ export function OrdersTable({
   );
   const [trackingCodeInput, setTrackingCodeInput] = useState("");
 
+  // ESTADOS PARA AS DATAS DE ENTREGA
+  const [startDateInput, setStartDateInput] = useState("");
+  const [endDateInput, setEndDateInput] = useState("");
+
   const currentPage = Number(searchParams.get("page")) || 1;
   const limit = limitParam === "all" ? totalOrders : Number(limitParam) || 10;
   const totalPages = Math.ceil(totalOrders / limit);
@@ -217,9 +225,7 @@ export function OrdersTable({
     return `${pathname}?${params.toString()}`;
   };
 
-  // --- SELEÇÃO CORRIGIDA ---
-
-  // Seleciona a PÁGINA ATUAL (apenas visíveis) - Função Síncrona
+  // --- SELEÇÃO ---
   const handleSelectPage = (checked: boolean) => {
     if (checked) {
       const pageIds = data.map((order) => order.id);
@@ -230,7 +236,6 @@ export function OrdersTable({
     }
   };
 
-  // Seleciona TUDO GLOBALMENTE (Busca IDs no servidor) - Função Assíncrona
   const handleSelectAllGlobal = () => {
     startTransition(async () => {
       try {
@@ -239,7 +244,7 @@ export function OrdersTable({
         setSelectedIds(allIds);
         toast.success(`${allIds.length} pedidos selecionados.`);
       } catch (error) {
-        console.error(error); // Log do erro para debug (Correção ESLint unused var)
+        console.error(error);
         toast.error("Erro ao selecionar todos os pedidos.");
       }
     });
@@ -254,7 +259,6 @@ export function OrdersTable({
   };
 
   // --- AÇÕES ---
-
   const handleSearch = (term: string) => {
     const params = new URLSearchParams(searchParams);
     if (term) {
@@ -307,8 +311,28 @@ export function OrdersTable({
   const openTrackingModal = (order: OrderData) => {
     setCurrentOrderData(order);
     setTrackingCodeInput(order.trackingCode || "");
+
+    // Preenche as datas se existirem, senão deixa vazio (mantendo o atual do banco se não mexer)
+    // Para o input date funcionar, o formato deve ser YYYY-MM-DD
+    if (order.estimatedDeliveryStart) {
+      setStartDateInput(
+        new Date(order.estimatedDeliveryStart).toISOString().split("T")[0],
+      );
+    } else {
+      setStartDateInput("");
+    }
+
+    if (order.estimatedDeliveryEnd) {
+      setEndDateInput(
+        new Date(order.estimatedDeliveryEnd).toISOString().split("T")[0],
+      );
+    } else {
+      setEndDateInput("");
+    }
+
     setTrackingModalOpen(true);
   };
+
   const openAddressModal = (order: OrderData) => {
     setCurrentOrderData(order);
     setAddressModalOpen(true);
@@ -316,17 +340,31 @@ export function OrdersTable({
 
   const saveTracking = async () => {
     if (!currentOrderData) return;
-    const res = await updateTrackingCode(
+
+    // 1. Atualiza o código de rastreio
+    const resTracking = await updateTrackingCode(
       currentOrderData.id,
       trackingCodeInput,
     );
-    if (res.success) {
+
+    // 2. Atualiza as datas de entrega (SE TIVEREM SIDO PREENCHIDAS)
+    if (startDateInput && endDateInput) {
+      await updateDeliveryDates(
+        currentOrderData.id,
+        new Date(startDateInput),
+        new Date(endDateInput),
+      );
+    }
+
+    if (resTracking.success) {
+      // 3. Atualiza status para enviado
       await updateOrderStatus(currentOrderData.id, "shipped", "fulfillment");
-      toast.success("Rastreio salvo!");
+
+      toast.success("Pedido atualizado e enviado!");
       setTrackingModalOpen(false);
       router.refresh();
     } else {
-      toast.error(res.message);
+      toast.error(resTracking.message);
     }
   };
 
@@ -377,16 +415,14 @@ export function OrdersTable({
             </button>
           )}
 
-          {/* Botão Selecionar Página Atual */}
           <button
-            onClick={() => handleSelectPage(true)} // Agora passa 'true' explicitamente
+            onClick={() => handleSelectPage(true)}
             className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-sm text-neutral-600 shadow-sm duration-300 hover:bg-neutral-50 active:scale-95"
           >
             <SquareCheck className="h-4 w-4" />
             Marcar Página
           </button>
 
-          {/* Botão Selecionar TUDO (Global) */}
           <button
             onClick={handleSelectAllGlobal}
             className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-sm text-neutral-600 shadow-sm duration-300 hover:bg-neutral-50 active:scale-95"
@@ -402,7 +438,6 @@ export function OrdersTable({
           <TableHeader className="bg-neutral-50">
             <TableRow className="border-neutral-200 hover:bg-neutral-100">
               <TableHead className="w-[40px]">
-                {/* Checkbox do Cabeçalho: Controla apenas a Página Atual */}
                 <Checkbox
                   className="border-neutral-400 data-[state=checked]:border-orange-600 data-[state=checked]:bg-orange-600"
                   checked={
@@ -410,10 +445,9 @@ export function OrdersTable({
                     selectedIds.length >= data.length &&
                     data.every((item) => selectedIds.includes(item.id))
                   }
-                  onCheckedChange={(c) => handleSelectPage(!!c)} // Correção TS 2554: Passa boolean
+                  onCheckedChange={(c) => handleSelectPage(!!c)}
                 />
               </TableHead>
-              {/* ... Cabeçalhos ... */}
               <TableHead className="font-semibold text-neutral-600">
                 Pedido
               </TableHead>
@@ -442,7 +476,6 @@ export function OrdersTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {/* ... Conteúdo da tabela (linhas mantidas) ... */}
             {data.length === 0 ? (
               <TableRow className="border-neutral-100 hover:bg-neutral-50">
                 <TableCell
@@ -483,7 +516,6 @@ export function OrdersTable({
                         onCheckedChange={(c) => handleSelectOne(!!c, order.id)}
                       />
                     </TableCell>
-                    {/* ... Resto das células (Copiado do seu original) ... */}
                     <TableCell className="font-mono text-xs font-medium text-neutral-900">
                       {order.id.slice(0, 8).toUpperCase()}
                       <div className="mt-0.5 text-[10px] text-neutral-500">
@@ -732,119 +764,59 @@ export function OrdersTable({
         </Table>
       </div>
 
-      <div className="mt-4 flex flex-col items-center justify-between gap-4 md:flex-row">
-        {/* ... Paginação e Visualização ... */}
-        <p className="text-sm text-neutral-500">
-          Exibindo {data.length} de {totalOrders} pedidos.
-        </p>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-neutral-500">Visualizar</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
-                >
-                  {limitParam === "all" ? "Todos" : limitParam}{" "}
-                  <ChevronDown className="ml-2 h-3 w-3 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="border-neutral-200 bg-white text-neutral-700 shadow-md"
-              >
-                {[10, 20, 30].map((val) => (
-                  <Link
-                    key={val}
-                    href={`?limit=${val}&page=1&search=${searchParams.get("search") || ""}`}
-                    scroll={false}
-                  >
-                    <DropdownMenuItem className="cursor-pointer hover:bg-neutral-50 focus:bg-neutral-50">
-                      {val}
-                    </DropdownMenuItem>
-                  </Link>
-                ))}
-                <DropdownMenuSeparator className="bg-neutral-100" />
-                <Link
-                  href={`?limit=all&page=1&search=${searchParams.get("search") || ""}`}
-                  scroll={false}
-                >
-                  <DropdownMenuItem className="cursor-pointer hover:bg-neutral-50 focus:bg-neutral-50">
-                    Todos
-                  </DropdownMenuItem>
-                </Link>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Link href={createPageURL(currentPage - 1)} passHref scroll={false}>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
-                disabled={currentPage <= 1}
-              >
-                Anterior
-              </Button>
-            </Link>
-            <Link href={createPageURL(currentPage + 1)} passHref scroll={false}>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
-                disabled={currentPage >= totalPages || limitParam === "all"}
-              >
-                Próxima
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className="border-neutral-200 bg-white text-neutral-900 shadow-lg sm:max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Tem certeza absoluta?</AlertDialogTitle>
-            <AlertDialogDescription className="text-neutral-500">
-              Isso excluirá permanentemente{" "}
-              <strong>{selectedIds.length}</strong> pedidos selecionados.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900">
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleBulkDelete}
-              className="bg-red-600 text-white shadow-sm hover:bg-red-700"
-              disabled={isPending}
-            >
-              {isPending ? "Excluindo..." : "Excluir Selecionados"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Modais de Tracking e Endereço */}
+      {/* MODAL DE RASTREIO E PRAZO DE ENTREGA (ATUALIZADO) */}
       <Dialog open={trackingModalOpen} onOpenChange={setTrackingModalOpen}>
         <DialogContent className="border-neutral-200 bg-white text-neutral-900 sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Código de Rastreio</DialogTitle>
+            <DialogTitle>Prazo de Entrega e Rastreio</DialogTitle>
           </DialogHeader>
-          <div className="py-4">
-            <Input
-              placeholder="Ex: AA123456789BR"
-              value={trackingCodeInput}
-              onChange={(e) => setTrackingCodeInput(e.target.value)}
-              className="border-neutral-200 bg-neutral-50 text-neutral-900 placeholder:text-neutral-400 focus:border-orange-500 focus:ring-orange-500"
-            />
-            <p className="mt-2 text-xs text-neutral-500">
-              Ao salvar, o status mudará automaticamente para
-              &quot;Enviado&quot;.
-            </p>{" "}
-            {/* CORREÇÃO ESLINT: &quot; */}
+          <div className="space-y-4 py-4">
+            {/* SEÇÃO DE DATAS */}
+            <div>
+              <h1 className="mb-2 text-sm font-medium text-neutral-700">
+                Datas do prazo de entrega:
+              </h1>
+              <div className="flex w-full gap-3">
+                <div className="flex w-full flex-col">
+                  <label className="mb-1 text-xs text-neutral-500">
+                    Início
+                  </label>
+                  <Input
+                    type="date"
+                    value={startDateInput}
+                    onChange={(e) => setStartDateInput(e.target.value)}
+                    className="border-neutral-200 bg-neutral-50 text-neutral-900 focus:border-orange-500 focus:ring-orange-500"
+                  />
+                </div>
+                <div className="flex w-full flex-col">
+                  <label className="mb-1 text-xs text-neutral-500">Fim</label>
+                  <Input
+                    type="date"
+                    value={endDateInput}
+                    onChange={(e) => setEndDateInput(e.target.value)}
+                    className="border-neutral-200 bg-neutral-50 text-neutral-900 focus:border-orange-500 focus:ring-orange-500"
+                  />
+                </div>
+              </div>
+              <p className="mt-2 text-[11px] text-neutral-400">
+                Se não alterar, manterá o prazo padrão calculado na compra.
+              </p>
+            </div>
+
+            <div className="border-t border-neutral-100 pt-4">
+              <h1 className="mb-2 text-sm font-medium text-neutral-700">
+                Código de rastreio:
+              </h1>
+              <Input
+                placeholder="Ex: AA123456789BR"
+                value={trackingCodeInput}
+                onChange={(e) => setTrackingCodeInput(e.target.value)}
+                className="border-neutral-200 bg-neutral-50 text-neutral-900 placeholder:text-neutral-400 focus:border-orange-500 focus:ring-orange-500"
+              />
+              <p className="mt-2 text-xs text-neutral-500">
+                Ao salvar, o status mudará automaticamente para &quot;Enviado&quot;.
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setTrackingModalOpen(false)}>
@@ -891,6 +863,30 @@ export function OrdersTable({
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="border-neutral-200 bg-white text-neutral-900 shadow-lg sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tem certeza absoluta?</AlertDialogTitle>
+            <AlertDialogDescription className="text-neutral-500">
+              Isso excluirá permanentemente{" "}
+              <strong>{selectedIds.length}</strong> pedidos selecionados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-red-600 text-white shadow-sm hover:bg-red-700"
+              disabled={isPending}
+            >
+              {isPending ? "Excluindo..." : "Excluir Selecionados"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

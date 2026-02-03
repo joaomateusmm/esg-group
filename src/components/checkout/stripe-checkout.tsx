@@ -3,13 +3,12 @@
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { Loader2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react"; // 1. Adicionei useRef
+import { useEffect, useRef, useState } from "react";
 
 import { useCartStore } from "@/store/cart-store";
 
 import { CheckoutForm } from "./checkout-form-global";
 
-// Sua chave pública do Stripe
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
 );
@@ -17,22 +16,19 @@ const stripePromise = loadStripe(
 export function StripeCheckout() {
   const { items } = useCartStore();
   const [clientSecret, setClientSecret] = useState("");
+  // ESTADO PARA GUARDAR O ID DO PEDIDO CRIADO PELO STRIPE
+  const [orderId, setOrderId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // 2. REF PARA EVITAR DUPLICIDADE
-  // Isso garante que a requisição só seja feita uma vez, mesmo se o componente renderizar 2x
   const hasCreatedIntent = useRef(false);
 
   useEffect(() => {
-    // Se não tem itens ou JÁ criou a intenção, para por aqui.
     if (items.length === 0 || hasCreatedIntent.current) return;
 
-    // Marca como criado IMEDIATAMENTE para bloquear a segunda chamada
     hasCreatedIntent.current = true;
 
     const cartCurrency = items[0].currency || "GBP";
 
-    // Chama sua API para criar a intenção de pagamento
     fetch("/api/create-payment-intent", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -50,23 +46,21 @@ export function StripeCheckout() {
       .then((data) => {
         if (data.error) {
           setError(data.error);
-          // Se deu erro de lógica (ex: estoque), talvez queiramos deixar tentar de novo?
-          // Por segurança, mantemos travado ou destravamos dependendo da sua regra.
-          // hasCreatedIntent.current = false;
         } else {
           setClientSecret(data.clientSecret);
-          // Opcional: Salvar o orderId num estado se precisar usar depois
+          // IMPORTANTE: SALVANDO O ORDER ID QUE VEIO DA API
+          if (data.orderId) {
+            setOrderId(data.orderId);
+          }
         }
       })
       .catch((err) => {
         console.error("Erro ao criar Intent:", err);
         setError("Não foi possível carregar o sistema de pagamento.");
-        // Se deu erro de rede, liberamos para tentar de novo
         hasCreatedIntent.current = false;
       });
   }, [items]);
 
-  // Se houver erro no carregamento inicial
   if (error) {
     return (
       <div className="flex h-40 w-full flex-col items-center justify-center gap-2 rounded-lg border border-red-100 bg-red-50 p-6 text-red-600">
@@ -76,7 +70,6 @@ export function StripeCheckout() {
     );
   }
 
-  // Loading enquanto busca o clientSecret
   if (!clientSecret || items.length === 0) {
     return (
       <div className="flex h-60 w-full items-center justify-center">
@@ -85,11 +78,10 @@ export function StripeCheckout() {
     );
   }
 
-  // Configuração visual do Stripe
   const appearance = {
     theme: "stripe" as const,
     variables: {
-      colorPrimary: "#ea580c", // orange-600
+      colorPrimary: "#ea580c",
       colorText: "#171717",
       colorBackground: "#ffffff",
       fontFamily: '"Montserrat", sans-serif',
@@ -105,7 +97,8 @@ export function StripeCheckout() {
         appearance,
       }}
     >
-      <CheckoutForm />
+      {/* PASSANDO O ORDER ID PARA O FORMULÁRIO */}
+      <CheckoutForm existingOrderId={orderId} />
     </Elements>
   );
 }

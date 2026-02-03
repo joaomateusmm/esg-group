@@ -32,7 +32,8 @@ type ShippingAddressInput = {
 };
 
 // --- HELPER PARA CALCULAR DATAS DE ENTREGA (10 a 17 dias) ---
-function calculateDeliveryDates() {
+// Movida para o topo para garantir tipagem correta
+function calculateDeliveryDates(): { start: Date; end: Date } {
   const today = new Date();
   const start = new Date(today);
   start.setDate(today.getDate() + 10);
@@ -400,6 +401,79 @@ export async function createOrderCOD(
   if (cookieStore.get("affiliate_code")) cookieStore.delete("affiliate_code");
 
   return { success: true, orderId: newOrder.id };
+}
+
+// --- NOVA FUNÇÃO: CONVERTER PEDIDO EXISTENTE PARA COD (CORREÇÃO DE DUPLICIDADE) ---
+export async function updateOrderToCOD(
+  orderId: string,
+  guestInfo?: { email: string; name: string },
+  shippingAddress?: ShippingAddressInput,
+) {
+  // 1. Busca o pedido existente
+  const existingOrder = await db.query.order.findFirst({
+    where: eq(order.id, orderId),
+    with: {
+      items: true,
+    },
+  });
+
+  if (!existingOrder) {
+    throw new Error("Pedido inicial não encontrado. Tente novamente.");
+  }
+
+  // 2. Calcula as datas de entrega
+  const { start, end } = calculateDeliveryDates();
+
+  // 3. Atualiza o pedido para COD
+  await db
+    .update(order)
+    .set({
+      paymentMethod: "cod",
+      status: "pending",
+      fulfillmentStatus: "processing",
+      shippingAddress: shippingAddress ? shippingAddress : null,
+      userPhone: shippingAddress?.phone,
+      customerName: guestInfo?.name || existingOrder.customerName,
+      customerEmail: guestInfo?.email || existingOrder.customerEmail,
+      // Salva as datas
+      estimatedDeliveryStart: start,
+      estimatedDeliveryEnd: end,
+      stripePaymentIntentId: null,
+      stripeClientSecret: null,
+    })
+    .where(eq(order.id, orderId));
+
+  // 4. Baixa o estoque
+  for (const item of existingOrder.items) {
+    await db
+      .update(product)
+      .set({ sales: sql`${product.sales} + ${item.quantity}` })
+      .where(eq(product.id, item.productId));
+
+    await db
+      .update(product)
+      .set({ stock: sql`${product.stock} - ${item.quantity}` })
+      .where(
+        and(
+          eq(product.id, item.productId),
+          eq(product.isStockUnlimited, false),
+        ),
+      );
+  }
+
+  // 5. Atualiza uso do cupom se houver
+  if (existingOrder.couponId) {
+    await db
+      .update(coupon)
+      .set({ usedCount: sql`${coupon.usedCount} + 1` })
+      .where(eq(coupon.id, existingOrder.couponId));
+  }
+
+  // 6. Limpa cookie de afiliado
+  const cookieStore = await cookies();
+  if (cookieStore.get("affiliate_code")) cookieStore.delete("affiliate_code");
+
+  return { success: true, orderId: orderId };
 }
 
 // --- FLUXO GRATUITO ---

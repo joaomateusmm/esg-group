@@ -29,7 +29,7 @@ export function OrderTabs() {
   };
 
   return (
-    <div className="sticky top-[64px] z-30 w-full border-b border-neutral-200 bg-white">
+    <div className="sticky top-[68px] z-30 w-full border-b border-neutral-200 bg-white">
       <div className="scrollbar-hide mx-auto flex w-full max-w-5xl overflow-x-auto px-4 md:px-0">
         <div className="flex w-full min-w-max gap-8">
           {TABS.map((tab) => {

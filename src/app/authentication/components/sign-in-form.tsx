@@ -175,7 +175,7 @@ const SignInForm = ({ switchToSignUp }: { switchToSignUp?: () => void }) => {
 
             <div className="relative flex w-full items-center justify-center">
               <div className="w-full border-t border-neutral-200"></div>
-              <span className="relative bg-white px-2 text-xs text-neutral-500 uppercase">
+              <span className="relative w-full bg-white px-2 text-xs text-neutral-500 uppercase">
                 Ou continue com
               </span>
               <div className="w-full border-t border-neutral-200"></div>

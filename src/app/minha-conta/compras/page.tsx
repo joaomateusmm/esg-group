@@ -119,7 +119,7 @@ export default async function MyPurchasesPage({
         <Header />
       </Suspense>
 
-      <div className="pt-[120px]">
+      <div className="pt-[120px] md:pt-[120px]">
         <Suspense
           fallback={
             <div className="h-[54px] w-full border-b border-neutral-200 bg-white" />
@@ -128,7 +128,7 @@ export default async function MyPurchasesPage({
           <OrderTabs />
         </Suspense>
 
-        <main className="mx-auto max-w-5xl px-4 py-10 md:px-0">
+        <main className="mx-auto max-w-6xl px-4 py-10 md:px-0">
           <div className="flex flex-col gap-8">
             {enrichedOrders.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-lg border border-neutral-100 bg-white py-24 text-center shadow-sm">
