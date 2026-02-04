@@ -4,11 +4,13 @@ import {
   ChevronDown,
   Flame,
   Heart,
+  HeartHandshake,
   LayoutGrid,
   Loader2,
   LogOut,
-  MapPin,
+  Moon, 
   Search,
+  ShieldQuestionMark,
   ShoppingBag,
   Sun,
   User,
@@ -16,6 +18,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes"; // 1. ADICIONADO: Import do next-themes
 import { Suspense, useEffect, useRef, useState } from "react";
 
 import { checkAffiliateStatus } from "@/actions/check-affiliate-status";
@@ -93,8 +96,9 @@ function HeaderIconButton({
 }
 
 // --- CONTEÚDO DO HEADER ---
-function HeaderContent() {
+export function HeaderContent() {
   const [mounted, setMounted] = useState(false);
+  const { setTheme, theme } = useTheme(); // 2. ADICIONADO: Hook do tema
 
   // ESTADOS UNIFICADOS
   const [categories, setCategories] = useState<CategoryLink[]>([]);
@@ -220,6 +224,11 @@ function HeaderContent() {
     });
   };
 
+  // 3. ADICIONADO: Função de alternar tema
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
+
   if (!mounted) return null;
 
   const lang = language as string;
@@ -237,7 +246,7 @@ function HeaderContent() {
   return (
     <header className="fixed top-0 z-50 w-full flex-col shadow-sm">
       {/* --- BARRA LARANJA (TOP BAR) --- */}
-      <div className="w-full bg-orange-600 px-4 py-3 text-xs font-medium text-white md:px-8">
+      <div className="w-full bg-orange-600 px-4 py-3 text-xs font-medium text-white transition-colors duration-300 md:px-8 dark:bg-neutral-950">
         <div className="mx-auto flex max-w-[1440px] items-center justify-between">
           <div className="flex items-center gap-4">
             <DropdownMenu>
@@ -309,21 +318,38 @@ function HeaderContent() {
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="flex cursor-pointer items-center gap-1 transition-opacity hover:text-white/80">
-              <Sun className="h-3 w-3" />
-            </div>
+            {/* <div className="flex cursor-pointer items-center gap-1 duration-300 hover:text-white/80">
+              <button
+                onClick={toggleTheme}
+                className="flex cursor-pointer items-center gap-1 transition-opacity outline-none hover:text-white/80"
+                aria-label="Alternar tema"
+              >
+                {mounted && theme === "dark" ? (
+                  <>
+                    <Moon className="h-3.5 w-3.5" />
+                    <span>Escuro</span>
+                  </>
+                ) : (
+                  <>
+                    <Sun className="h-3.5 w-3.5" />
+                    <span>Claro</span>
+                  </>
+                )}
+              </button>
+            </div> */}
             <div className="hidden h-3 w-[1px] bg-white/30 md:block"></div>
             <Link
-              href="#"
-              className="hidden items-center gap-1 transition-opacity hover:text-white/80 md:flex"
+              href="/sobre"
+              className="flex cursor-pointer items-center gap-1 duration-300 hover:text-white/80"
             >
-              <MapPin className="h-3 w-3" /> {t.topBar.storeLocator}
+              <ShieldQuestionMark className="h-4 w-4" /> {t.topBar.storeLocator}
             </Link>
             <div className="hidden h-3 w-[1px] bg-white/30 md:block"></div>
             <Link
-              href="#"
-              className="flex items-center gap-1 transition-opacity hover:text-white/80"
+              href="/faq"
+              className="flex cursor-pointer items-center gap-1 duration-300 hover:text-white/80"
             >
+              <HeartHandshake className="h-4 w-4" />
               {t.topBar.help}
             </Link>
           </div>
@@ -612,9 +638,7 @@ function HeaderContent() {
 export function Header() {
   return (
     <Suspense
-      fallback={
-        <div className="fixed top-0 z-50 h-[120px] w-full bg-white shadow-sm" />
-      }
+      fallback={<div className="fixed top-0 z-50 h-[120px] w-full shadow-sm" />}
     >
       <HeaderContent />
     </Suspense>

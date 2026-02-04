@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-// Tipo do Produto no Carrinho (baseado no seu Schema do Drizzle)
+// Tipo do Produto no Carrinho
 export interface CartItem {
   id: string;
   name: string;
@@ -12,28 +12,42 @@ export interface CartItem {
   currency?: string;
 }
 
+// Tipo do Cupom
+export interface AppliedCoupon {
+  code: string;
+  type: "percent" | "fixed";
+  value: number;
+}
+
 interface CartState {
   items: CartItem[];
+  coupon: AppliedCoupon | null;
+
   addItem: (item: CartItem) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, action: "increase" | "decrease") => void;
   clearCart: () => void;
 
-  // Getters computados (auxiliares)
+  // Actions de Cupom
+  applyCoupon: (coupon: AppliedCoupon) => void;
+  removeCoupon: () => void;
+
+  // Getters computados
   getTotalItems: () => number;
-  getTotalPrice: () => number;
+  getSubtotal: () => number; // Adicionado: Preço sem desconto
+  getTotalPrice: () => number; // Atualizado: Preço COM desconto
 }
 
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
+      coupon: null,
 
       addItem: (newItem) => {
         set((state) => {
           const existingItem = state.items.find((i) => i.id === newItem.id);
 
-          // Se já existe, aumenta a quantidade
           if (existingItem) {
             return {
               items: state.items.map((i) =>
@@ -42,7 +56,6 @@ export const useCartStore = create<CartState>()(
             };
           }
 
-          // Se não existe, adiciona novo
           return { items: [...state.items, { ...newItem, quantity: 1 }] };
         });
       },
@@ -59,7 +72,6 @@ export const useCartStore = create<CartState>()(
             if (i.id === id) {
               const newQuantity =
                 action === "increase" ? i.quantity + 1 : i.quantity - 1;
-              // Não permite menos que 1 (use removeItem para remover)
               return { ...i, quantity: Math.max(1, newQuantity) };
             }
             return i;
@@ -67,23 +79,50 @@ export const useCartStore = create<CartState>()(
         }));
       },
 
-      clearCart: () => set({ items: [] }),
+      clearCart: () => set({ items: [], coupon: null }),
 
+      // --- NOVAS FUNÇÕES DE CUPOM ---
+      applyCoupon: (coupon) => set({ coupon }),
+      removeCoupon: () => set({ coupon: null }),
+
+      // --- GETTERS ---
       getTotalItems: () => {
         const { items } = get();
         return items.reduce((total, item) => total + item.quantity, 0);
       },
 
-      getTotalPrice: () => {
+      // Calculates the raw total without coupons
+      getSubtotal: () => {
         const { items } = get();
         return items.reduce(
           (total, item) => total + item.price * item.quantity,
           0,
         );
       },
+
+      // Calculates the final total WITH coupon applied
+      getTotalPrice: () => {
+        const { items, coupon } = get();
+        const subtotal = items.reduce(
+          (total, item) => total + item.price * item.quantity,
+          0,
+        );
+
+        if (!coupon) return subtotal;
+
+        let discount = 0;
+        if (coupon.type === "percent") {
+          discount = Math.round(subtotal * (coupon.value / 100));
+        } else {
+          discount = coupon.value;
+        }
+
+        return Math.max(0, subtotal - discount);
+      },
     }),
     {
-      name: "ESG-Group-cart-storage", // Nome da chave no LocalStorage
+      name: "ESG-Group-cart-storage",
+      version: 1, // Update version to force clear old state structure if needed
     },
   ),
 );

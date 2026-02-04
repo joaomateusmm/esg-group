@@ -1,90 +1,178 @@
 "use client";
 
-import { CheckCircle2, Home, Loader2, Package, Truck } from "lucide-react";
+import {
+  CheckCircle2,
+  Copy,
+  Home,
+  Loader2,
+  Package,
+  Truck,
+} from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation"; // Importei useRouter
+import { Suspense, useEffect, useState } from "react";
+import { toast } from "sonner";
 
+import { getOrderIdByPaymentIntent } from "@/actions/checkout";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart-store";
 
 function SuccessContent() {
+  const router = useRouter(); // Hook para redirecionamento
   const searchParams = useSearchParams();
   const clearCart = useCartStore((state) => state.clearCart);
 
-  // Parâmetros vindos da URL
-  const paymentIntent = searchParams.get("payment_intent"); // Do Stripe
-  const redirectStatus = searchParams.get("redirect_status"); // Do Stripe
-  const orderId = searchParams.get("orderId"); // Do nosso sistema (Stripe ou Entrega)
+  const paymentIntent = searchParams.get("payment_intent");
+  const redirectStatus = searchParams.get("redirect_status");
+  const urlOrderId = searchParams.get("orderId");
 
+  const [finalOrderId, setFinalOrderId] = useState<string | null>(urlOrderId);
+  const [loadingId, setLoadingId] = useState(false);
+
+  // Estado do Timer (Começa em 10 segundos)
+  const [countdown, setCountdown] = useState(10);
+
+  // Efeito para resolver o ID do pedido
   useEffect(() => {
-    // Limpa o carrinho se houver um ID de pedido ou sucesso no Stripe
-    if (orderId || redirectStatus === "succeeded") {
-      clearCart();
-    }
-  }, [orderId, redirectStatus, clearCart]);
+    const resolveOrderId = async () => {
+      if (urlOrderId) {
+        setFinalOrderId(urlOrderId);
+        clearCart();
+        return;
+      }
 
-  // Determina o tipo de mensagem baseada nos parâmetros
-  const isDelivery = !paymentIntent && orderId;
+      if (paymentIntent && redirectStatus === "succeeded") {
+        setLoadingId(true);
+        try {
+          const id = await getOrderIdByPaymentIntent(paymentIntent);
+          if (id) {
+            setFinalOrderId(id);
+            clearCart();
+          }
+        } catch (error) {
+          console.error("Erro ao recuperar ID do pedido", error);
+        } finally {
+          setLoadingId(false);
+        }
+      }
+    };
+
+    resolveOrderId();
+  }, [urlOrderId, paymentIntent, redirectStatus, clearCart]);
+
+  // Efeito para o Timer de Redirecionamento
+  useEffect(() => {
+    // Só inicia o timer se já tivermos o ID do pedido (para garantir que o usuário viu o sucesso)
+    // ou se o processo de loading já terminou
+    if (loadingId) return;
+
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          router.push("/minha-conta/compras"); // Redireciona
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [router, loadingId]);
+
+  const isCardPayment = !!paymentIntent;
+
+  const handleCopyOrder = () => {
+    if (finalOrderId) {
+      navigator.clipboard.writeText(finalOrderId.slice(0, 8).toUpperCase());
+      toast.success("Código copiado!");
+    }
+  };
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-4 pt-22 text-center">
-      <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-green-100 text-green-600">
-        <CheckCircle2 className="h-12 w-12" />
+      {/* Mensagem discreta do Timer */}
+      <div className="animate-fade-in mb-4 text-xs font-medium text-neutral-400">
+        Redirecionando para seus pedidos em{" "}
+        <span className="font-bold text-orange-600">{countdown}s</span>...
       </div>
 
-      <h1 className="mb-2 text-3xl font-bold md:text-4xl">
-        Pedido Confirmado!
+      {/* --- IMAGEM DE SUCESSO AQUI --- */}
+      <div className="animate-in zoom-in mb-6 duration-500">
+        <Image
+          src="/images/illustration-sucess.svg" // Corrigi a barra invertida para barra normal (padrão web)
+          alt="Pedido Confirmado"
+          width={150}
+          height={150}
+          className="h-55 w-auto object-contain duration-500 hover:scale-105"
+          priority
+        />
+      </div>
+
+      <h1 className="text-3xl font-bold text-neutral-900 md:text-4xl">
+        {isCardPayment ? "Pagamento Confirmado!" : "Pedido Realizado!"}
       </h1>
 
-      <p className="mb-8 max-w-md text-neutral-500">
-        {isDelivery
-          ? "Recebemos seu pedido. O pagamento será realizado no momento da entrega."
-          : "Obrigado pela sua compra. O pagamento foi processado com sucesso."}
+      <p className="my-5 max-w-md text-neutral-500">
+        {isCardPayment
+          ? "Obrigado pela sua compra. Seu pagamento foi processado com sucesso e já estamos preparando seu envio."
+          : "Recebemos seu pedido. O pagamento será realizado no momento da entrega."}
       </p>
 
-      <div className="mb-8 w-full max-w-sm space-y-3 rounded-lg border border-neutral-200 bg-white p-4 text-sm shadow-sm">
-        {orderId && (
-          <div className="flex justify-between border-b border-neutral-100 pb-2">
-            <span className="text-neutral-500">Número do Pedido:</span>
-            <span className="font-mono font-bold text-neutral-900">
-              #{orderId.slice(0, 8).toUpperCase()}
-            </span>
-          </div>
-        )}
+      <div className="mb-8 w-full max-w-sm space-y-3 rounded-lg border border-neutral-200 bg-white p-5 text-sm shadow-sm">
+        <div className="flex flex-col gap-1 border-b border-neutral-100 pb-4">
+          <span className="text-xs font-bold tracking-wider text-neutral-400 uppercase">
+            Número do Pedido
+          </span>
 
-        {paymentIntent && (
-          <div className="flex justify-between">
-            <span className="text-neutral-500">Transação:</span>
-            <span
-              className="max-w-[150px] truncate font-mono text-xs text-neutral-900"
-              title={paymentIntent}
-            >
-              {paymentIntent}
-            </span>
+          <div className="flex items-center justify-center gap-2">
+            {loadingId ? (
+              <Loader2 className="h-5 w-5 animate-spin text-orange-600" />
+            ) : finalOrderId ? (
+              <>
+                <span className="font-mono text-2xl font-bold tracking-tight text-neutral-900">
+                  #{finalOrderId.slice(0, 8).toUpperCase()}
+                </span>
+                <button
+                  onClick={handleCopyOrder}
+                  className="rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+                  title="Copiar código"
+                >
+                  <Copy className="h-4 w-4" />
+                </button>
+              </>
+            ) : (
+              <span className="text-neutral-400 italic">Processando ID...</span>
+            )}
           </div>
-        )}
+        </div>
 
-        {isDelivery && (
+        {/* Informação Extra baseada no método */}
+        {!isCardPayment ? (
           <div className="flex items-center justify-center gap-2 pt-2 font-medium text-orange-600">
             <Truck className="h-4 w-4" /> Pagamento na Entrega
           </div>
+        ) : (
+          <div className="flex items-center justify-center gap-2 pt-2 font-medium text-green-600">
+            <CheckCircle2 className="h-4 w-4" /> Pagamento via Cartão
+          </div>
         )}
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Link href="/minha-conta/compras">
+      <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+        <Link href="/minha-conta/compras" className="w-full sm:w-auto">
           <Button
             variant="outline"
-            className="h-12 w-full gap-2 border-neutral-300 sm:w-auto"
+            className="h-12 w-full gap-2 border-neutral-300 px-8 sm:w-auto"
           >
             <Package className="h-4 w-4" /> Meus Pedidos
           </Button>
         </Link>
-        <Link href="/">
-          <Button className="h-12 w-full gap-2 bg-orange-600 text-white hover:bg-orange-700 sm:w-auto">
+        <Link href="/" className="w-full sm:w-auto">
+          <Button className="h-12 w-full gap-2 bg-orange-600 px-8 font-bold text-white hover:bg-orange-700 sm:w-auto">
             <Home className="h-4 w-4" /> Voltar para a Loja
           </Button>
         </Link>

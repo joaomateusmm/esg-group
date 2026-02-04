@@ -4,21 +4,19 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
 import { db } from "@/db";
-import { order, orderItem, product } from "@/db/schema";
+import { coupon, order, orderItem, product } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
-// Initialize Stripe
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
+
+// Taxa fixa de segurança (BRL -> GBP) caso o cupom fixo esteja em reais
+const BRL_TO_GBP_RATE = 1 / 7.35;
 
 export async function POST(req: Request) {
   try {
-    // 1. Validação da Chave Stripe
     if (!stripeSecret) {
-      console.error(
-        "❌ STRIPE_SECRET_KEY not defined in environment variables.",
-      );
       return NextResponse.json(
-        { error: "Server configuration error (Stripe Key Missing)" },
+        { error: "Stripe Key Missing" },
         { status: 500 },
       );
     }
@@ -28,64 +26,42 @@ export async function POST(req: Request) {
       typescript: true,
     });
 
-    // 2. Ler Corpo da Requisição
     const body = await req.json();
-    const { items, currency, shippingAddress } = body;
+    const { items, currency, shippingAddress, couponCode, existingOrderId } =
+      body;
 
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+    const session = await auth.api.getSession({ headers: await headers() });
 
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "User not authenticated" },
-        { status: 401 },
-      );
-    }
+    const userId = session?.user?.id || "guest-user";
+    const userName = session?.user?.name || "Guest User";
+    const userEmail = session?.user?.email || "guest@example.com";
 
     if (!items || items.length === 0) {
       return NextResponse.json({ error: "No items in cart" }, { status: 400 });
     }
 
-    // 3. Calcular Totais (Produtos + Frete) e Preparar Itens
+    // --- 1. CÁLCULO DOS PRODUTOS ---
     let itemsTotal = 0;
-    let shippingTotal = 0; // Acumulador de frete
+    let shippingTotal = 0;
     const orderItemsToInsert = [];
 
     for (const item of items) {
-      // Busca dados frescos do banco
       const productData = await db.query.product.findFirst({
         where: eq(product.id, item.id),
       });
 
       if (!productData) continue;
 
-      // 3.1 Calcular Preço do Produto
       const finalPrice = productData.discountPrice || productData.price;
       itemsTotal += finalPrice * item.quantity;
 
-      // 3.2 Calcular Frete deste Item
-      // Lógica simplificada: Se for fixo, soma. Se for grátis, é 0.
-      // Se for "calculated" (ex: Correios), aqui você chamaria uma API externa.
-      // Por enquanto, assumiremos que "calculated" ou sem tipo definido é 0 ou um valor base se necessário.
-
-      let itemShippingCost = 0;
-
+      // Frete simples
+      let itemShipping = 0;
       if (productData.shippingType === "fixed") {
-        // Se o frete é fixo, multiplicamos pela quantidade?
-        // Geralmente sim, ou cobra uma vez só. Aqui vou assumir por unidade para simplificar,
-        // mas você pode mudar para cobrar uma vez se preferir.
-        itemShippingCost =
-          (productData.fixedShippingPrice || 0) * item.quantity;
-      } else if (productData.shippingType === "free") {
-        itemShippingCost = 0;
+        itemShipping = (productData.fixedShippingPrice || 0) * item.quantity;
       }
-      // Caso precise de lógica para "calculated", adicione aqui.
-      // Por padrão, deixamos 0 se não for 'fixed'.
+      shippingTotal += itemShipping;
 
-      shippingTotal += itemShippingCost;
-
-      // Prepara objeto para inserção
       orderItemsToInsert.push({
         productId: item.id,
         productName: productData.name,
@@ -95,79 +71,128 @@ export async function POST(req: Request) {
       });
     }
 
-    // Soma final: Produtos + Frete Total
-    const totalAmount = itemsTotal + shippingTotal;
+    // --- 2. CÁLCULO DO DESCONTO ---
+    let discountAmount = 0;
+    let activeCouponId = null;
 
-    // 4. Sanitização do Endereço
-    const rawAddress = shippingAddress || {};
-    const sanitizedAddress = {
-      street: rawAddress.street || "Not provided",
-      number: rawAddress.number || "N/A",
-      complement: rawAddress.complement || "",
-      city: rawAddress.city || "",
-      state: rawAddress.state || "",
-      zipCode: rawAddress.zipCode || "",
-      country: rawAddress.country || "BR",
-    };
+    if (couponCode) {
+      const foundCoupon = await db.query.coupon.findFirst({
+        where: eq(coupon.code, couponCode.toString().toUpperCase()),
+      });
 
-    // 5. CRIAR PEDIDO NO BANCO
-    const [newOrder] = await db
-      .insert(order)
-      .values({
-        userId: session.user.id,
-        amount: totalAmount, // Total cobrado do cliente
-        status: "pending",
-        fulfillmentStatus: "idle",
-        currency: currency || "GBP",
-        shippingCost: shippingTotal, // Salva quanto foi de frete
-        shippingAddress: sanitizedAddress,
-        customerName: session.user.name,
-        customerEmail: session.user.email,
-      })
-      .returning();
+      if (
+        foundCoupon &&
+        foundCoupon.isActive &&
+        (!foundCoupon.expiresAt || new Date() < foundCoupon.expiresAt) &&
+        (foundCoupon.maxUses === null ||
+          foundCoupon.usedCount < foundCoupon.maxUses)
+      ) {
+        if (foundCoupon.type === "percent") {
+          discountAmount = Math.round(itemsTotal * (foundCoupon.value / 100));
+        } else {
+          // Se for fixo e a loja for GBP, aplica conversão de segurança
+          if (currency?.toUpperCase() === "GBP") {
+            discountAmount = Math.round(foundCoupon.value * BRL_TO_GBP_RATE);
+          } else {
+            discountAmount = foundCoupon.value;
+          }
+        }
 
-    console.log(
-      `📝 Order created: ${newOrder.id} | Total: ${totalAmount} | Shipping: ${shippingTotal}`,
-    );
-
-    // 6. Inserir Itens
-    if (orderItemsToInsert.length > 0) {
-      await db.insert(orderItem).values(
-        orderItemsToInsert.map((item) => ({
-          orderId: newOrder.id,
-          productId: item.productId,
-          productName: item.productName,
-          quantity: item.quantity,
-          price: item.price,
-          image: item.image,
-        })),
-      );
+        if (discountAmount > itemsTotal) discountAmount = itemsTotal;
+        activeCouponId = foundCoupon.id;
+      }
     }
 
-    // 7. Criar Payment Intent na Stripe
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: totalAmount,
-      currency: currency || "gbp",
+    // --- 3. TOTAL FINAL ---
+    const totalAmount =
+      Math.max(0, itemsTotal - discountAmount) + shippingTotal;
 
-      payment_method_types: ["card"], // Forçar cartão para evitar erros
+    const sanitizedAddress = {
+      street: shippingAddress?.street || "Not provided",
+      number: shippingAddress?.number || "N/A",
+      complement: shippingAddress?.complement || "",
+      city: shippingAddress?.city || "",
+      state: shippingAddress?.state || "",
+      zipCode: shippingAddress?.zipCode || "",
+      country: shippingAddress?.country || "BR",
+    };
 
-      metadata: {
-        orderId: newOrder.id,
-        userId: session.user.id,
-      },
-    });
+    // --- 4. ATUALIZAR OU CRIAR PEDIDO ---
+    let orderId = existingOrderId;
 
-    return NextResponse.json({
-      clientSecret: paymentIntent.client_secret,
-      orderId: newOrder.id,
-    });
-  } catch (error) {
-    console.error("❌ Error creating Payment Intent:", error);
-    return NextResponse.json(
-      {
-        error: `Error processing payment: ${error instanceof Error ? error.message : "Unknown"}`,
-      },
-      { status: 500 },
-    );
+    if (existingOrderId) {
+      // MODO ATUALIZAÇÃO: Se já existe ID, atualiza os valores
+      await db
+        .update(order)
+        .set({
+          amount: totalAmount,
+          discountAmount: discountAmount,
+          couponId: activeCouponId,
+          shippingCost: shippingTotal,
+          updatedAt: new Date(), // Atualiza data
+        })
+        .where(eq(order.id, existingOrderId));
+    } else {
+      // MODO CRIAÇÃO: Cria novo
+      const [newOrder] = await db
+        .insert(order)
+        .values({
+          userId: userId,
+          amount: totalAmount,
+          discountAmount: discountAmount,
+          couponId: activeCouponId,
+          status: "pending",
+          fulfillmentStatus: "idle",
+          currency: currency || "GBP",
+          shippingCost: shippingTotal,
+          shippingAddress: sanitizedAddress,
+          customerName: userName,
+          customerEmail: userEmail,
+        })
+        .returning();
+
+      orderId = newOrder.id;
+
+      // Insere itens apenas se for novo pedido
+      if (orderItemsToInsert.length > 0) {
+        await db
+          .insert(orderItem)
+          .values(orderItemsToInsert.map((i) => ({ ...i, orderId: orderId })));
+      }
+    }
+
+    // --- 5. STRIPE INTENT ---
+    // Se for atualização e o valor mudou, criamos um novo intent ou atualizamos
+    // Por simplicidade e segurança, criamos um novo intent com o valor correto
+    // O Stripe gerencia intents pendentes sem problemas.
+
+    if (totalAmount >= 30) {
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: totalAmount,
+        currency: currency || "gbp",
+        payment_method_types: ["card"],
+        metadata: {
+          orderId: orderId,
+          userId: userId,
+          couponCode: couponCode || "",
+        },
+      });
+
+      return NextResponse.json({
+        clientSecret: paymentIntent.client_secret,
+        orderId: orderId,
+      });
+    } else {
+      return NextResponse.json({
+        clientSecret: null,
+        orderId: orderId,
+        message: "Order is free",
+      });
+    }
+  } catch (error: unknown) {
+    console.error("❌ API Error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

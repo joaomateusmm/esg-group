@@ -52,14 +52,14 @@ export async function validateCoupon(code: string, currentTotal: number) {
     }
 
     if (couponData.minValue && currentTotal < couponData.minValue) {
-      const formattedMin = new Intl.NumberFormat("pt-BR", {
+      const formattedMin = new Intl.NumberFormat("en-GB", {
         style: "currency",
-        currency: "BRL",
+        currency: "GBP", // Mude para Libras aqui
       }).format(couponData.minValue / 100);
 
       return {
         valid: false,
-        message: `Valor mínimo para este cupom: ${formattedMin}`,
+        message: `O valor mínimo para usar esse cupom é: ${formattedMin}`,
       };
     }
 

@@ -11,8 +11,8 @@ import {
   Eye,
   EyeOff,
   MapPin,
-  ShieldCheck,
   Store,
+  Ticket, // Adicionado ícone de cupom
   Truck,
 } from "lucide-react";
 import Image from "next/image";
@@ -52,8 +52,10 @@ interface OrderProps {
   id: string;
   status: string;
   fulfillmentStatus: string;
-  amount: number;
+  amount: number; // Valor Total Pago (Final)
   shippingCost: number | null;
+  discountAmount?: number | null; // Valor do desconto aplicado
+  couponId?: string | null; // ID ou Código do cupom (se disponível via join)
   createdAt: Date;
   trackingCode?: string | null;
   paymentMethod?: string | null;
@@ -237,7 +239,6 @@ export function OrderCard({ order }: { order: OrderProps }) {
               // SE FOR AGUARDANDO PAGAMENTO
               <div className="font-montserrat flex flex-col items-start justify-center gap-1 text-sm font-semibold text-orange-600">
                 <span>Aguardando a confirmação do pagamento</span>
-                {/* Descrição vazia como solicitado */}
                 <p className="font-montserrat text-[11px] font-normal text-neutral-400"></p>
               </div>
             ) : (
@@ -366,9 +367,11 @@ export function OrderCard({ order }: { order: OrderProps }) {
               </div>
             </div>
 
-            <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-6 md:items-end">
-              <div className="flex items-center gap-2 text-sm">
-                <ShieldCheck className="h-4 w-4 text-orange-600" />
+            {/* LADO DIREITO: TOTAIS E VALORES */}
+            <div className="flex flex-col items-end gap-1">
+              {/* Frete */}
+              <div className="flex items-center gap-2 text-xs">
+                <Truck className="h-3.5 w-3.5 text-neutral-400" />
                 <span className="text-neutral-500">Frete:</span>
                 <span className="font-medium text-neutral-900">
                   {order.shippingCost
@@ -376,15 +379,26 @@ export function OrderCard({ order }: { order: OrderProps }) {
                     : "Grátis"}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-neutral-600">
-                  Total do pedido:
+
+              {/* Desconto (NOVO) */}
+              {order.discountAmount && order.discountAmount > 0 && (
+                <div className="flex items-center gap-2 text-xs">
+                  <Ticket className="h-3.5 w-3.5 text-green-500" />
+                  <span className="text-green-600">Desconto:</span>
+                  <span className="font-medium text-green-700">
+                    - {formatCurrency(order.discountAmount, order.currency)}
+                  </span>
+                </div>
+              )}
+
+              {/* Total Final */}
+              <div className="mt-1 flex items-center gap-2 border-t border-dashed border-orange-200 pt-1">
+                <span className="text-sm font-medium text-neutral-600">
+                  Total pago:
                 </span>
                 <span className="text-xl font-bold text-orange-600">
-                  {formatCurrency(
-                    order.amount + (order.shippingCost || 0),
-                    order.currency,
-                  )}
+                  {/* Usa diretamente o valor salvo no banco, que já é o final */}
+                  {formatCurrency(order.amount, order.currency)}
                 </span>
               </div>
             </div>

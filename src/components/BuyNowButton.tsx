@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
-import { useCartStore } from "@/store/cart-store"; // Importamos a store do carrinho
+import { useCartStore } from "@/store/cart-store";
 
 interface BuyNowButtonProps {
   product: {
@@ -45,17 +45,20 @@ export function BuyNowButton({
   const [showGuestModal, setShowGuestModal] = useState(false);
 
   const { data: session } = authClient.useSession();
-
   const user = session?.user || initialUser;
 
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
 
-  // Ações do Carrinho
-  const { clearCart, addItem } = useCartStore();
+  // Ações do Carrinho - INCLUINDO applyCoupon e o coupon atual do store
+  const {
+    clearCart,
+    addItem,
+    applyCoupon,
+    coupon: storeCoupon,
+  } = useCartStore();
 
   const isFree = product.price === 0;
-  // Se o estoque for 0 e não for ilimitado, está esgotado
   const isOutOfStock = !product.isStockUnlimited && (product.stock ?? 0) <= 0;
 
   const handleBuyNow = async () => {
@@ -65,10 +68,15 @@ export function BuyNowButton({
     if (!isFree) {
       setLoading(true);
       try {
-        // 1. Limpa o carrinho atual (compra direta substitui o carrinho)
+        // 1. SALVA O CUPOM ATUAL ANTES DE LIMPAR (O Pulo do Gato 😺)
+        // Se o cupom aplicado na tela bate com o do store, guardamos ele.
+        const backupCoupon =
+          storeCoupon?.code === couponCode ? storeCoupon : null;
+
+        // 2. Limpa o carrinho (Isso apaga o cupom do store)
         clearCart();
 
-        // 2. Adiciona o produto atual
+        // 3. Adiciona o produto atual
         addItem({
           id: product.id,
           name: product.name,
@@ -77,7 +85,12 @@ export function BuyNowButton({
           image: product.image,
         });
 
-        // 3. Redireciona para a página de checkout
+        // 4. RESTAURA O CUPOM (Se existia)
+        if (backupCoupon) {
+          applyCoupon(backupCoupon);
+        }
+
+        // 5. Redireciona para a página de checkout
         router.push("/checkout");
       } catch (error) {
         console.error(error);
@@ -87,7 +100,7 @@ export function BuyNowButton({
       return;
     }
 
-    // Se for GRATUITO, mantém a lógica de modal para capturar lead
+    // Se for GRATUITO...
     if (!user) {
       setShowGuestModal(true);
       return;
@@ -103,7 +116,6 @@ export function BuyNowButton({
     try {
       setLoading(true);
 
-      // Lógica de pedido gratuito (Server Action)
       await createFreeOrder(
         [
           {
@@ -173,7 +185,6 @@ export function BuyNowButton({
         )}
       </Button>
 
-      {/* MODAL APENAS PARA PRODUTOS GRATUITOS (LEAD CAPTURE) */}
       <Dialog open={showGuestModal} onOpenChange={setShowGuestModal}>
         <DialogContent className="max-w-[90vw] border-neutral-200 bg-white text-neutral-900 sm:max-w-[425px]">
           <DialogHeader>

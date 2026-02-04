@@ -11,6 +11,7 @@ import { CouponPopup } from "@/components/coupon-popup";
 import FloatingScrollbar from "@/components/FloatingScrollbar";
 import { GoogleTranslator } from "@/components/google-translator";
 import SmoothScroll from "@/components/SmoothScroll";
+import { ThemeProvider } from "@/components/theme-provider";
 import { LanguageProvider } from "@/contexts/language-context";
 import { db } from "@/db";
 import { coupon } from "@/db/schema";
@@ -81,24 +82,31 @@ export default function RootLayout({
     <html lang="pt-br">
       <body
         suppressHydrationWarning
-        className={`${geistSans.variable} ${geistMono.variable} ${montserrat.variable} ${clash.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${montserrat.variable} ${clash.variable} bg-background text-foreground antialiased`}
       >
-        <Suspense fallback={null}>
-          <GoogleTranslator />
-          <LanguageProvider>
-            <SmoothScroll>
-              <FloatingScrollbar />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light" // Começa claro por padrão
+          enableSystem={false} // Desabilita sistema para evitar confusão inicial
+          disableTransitionOnChange
+        >
+          <Suspense fallback={null}>
+            <GoogleTranslator />
+            <LanguageProvider>
+              <SmoothScroll>
+                <FloatingScrollbar />
 
-              {children}
+                {children}
 
-              <Suspense fallback={null}>
-                <CouponDataWrapper />
-              </Suspense>
-            </SmoothScroll>
+                <Suspense fallback={null}>
+                  <CouponDataWrapper />
+                </Suspense>
+              </SmoothScroll>
 
-            <Toaster position="top-left" />
-          </LanguageProvider>
-        </Suspense>
+              <Toaster position="top-left" />
+            </LanguageProvider>
+          </Suspense>
+        </ThemeProvider>
       </body>
     </html>
   );

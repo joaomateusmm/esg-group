@@ -6,15 +6,11 @@ import {
   Globe, // Ícone para o accordion
   Lock,
   ShieldCheck,
-  Ticket,
-  X,
   XCircle,
   Zap,
 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 
-import { validateCoupon } from "@/actions/coupons";
 import { AddToCartButton } from "@/components/add-to-cart-button";
 import { AddToWishlistButton } from "@/components/AddToWishlistButton";
 import { BuyNowButton } from "@/components/BuyNowButton";
@@ -25,9 +21,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 
 // --- CONFIGURAÇÃO DE MOEDAS ---
@@ -66,15 +60,13 @@ export function ProductPurchaseCard({
   categoryNames,
 }: ProductPurchaseCardProps) {
   const initialPrice = product.discountPrice || product.price;
-  const productCurrency = product.currency || "GBP"; // Padrão GBP
+  const productCurrency = product.currency || "GBP";
 
-  const [finalPrice, setFinalPrice] = useState(initialPrice);
-  const [couponCode, setCouponCode] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<{
+  const [finalPrice] = useState(initialPrice);
+  const [appliedCoupon] = useState<{
     code: string;
     discount: number;
   } | null>(null);
-  const [isValidating, setIsValidating] = useState(false);
 
   const originalDiscountPercentage =
     product.discountPrice && product.price
@@ -88,39 +80,6 @@ export function ProductPurchaseCard({
     const basePrice = priceInCents / EXCHANGE_RATES[productCurrency];
     const converted = basePrice * EXCHANGE_RATES[targetCurrency];
     return formatPrice(converted, targetCurrency);
-  };
-
-  const handleApplyCoupon = async () => {
-    if (!couponCode) return;
-    setIsValidating(true);
-
-    try {
-      const result = await validateCoupon(couponCode, initialPrice);
-
-      if (result.valid && result.newTotal !== undefined) {
-        setFinalPrice(result.newTotal);
-        setAppliedCoupon({
-          code: couponCode,
-          discount: result.discountAmount || 0,
-        });
-        toast.success(result.message);
-      } else {
-        toast.error(result.message);
-        setAppliedCoupon(null);
-        setFinalPrice(initialPrice);
-      }
-    } catch {
-      toast.error("Erro ao validar cupom.");
-    } finally {
-      setIsValidating(false);
-    }
-  };
-
-  const handleRemoveCoupon = () => {
-    setAppliedCoupon(null);
-    setCouponCode("");
-    setFinalPrice(initialPrice);
-    toast.info("Cupom removido.");
   };
 
   const productImage = product.images?.[0] || "";
@@ -266,57 +225,6 @@ export function ProductPurchaseCard({
                   category: categoryNames[0] || "Geral",
                 }}
               />
-            </div>
-
-            {/* Área do Cupom */}
-            <div className="pt-2">
-              {!appliedCoupon ? (
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Ticket className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-                    <Input
-                      placeholder="Cupom de desconto"
-                      className="h-10 border-neutral-300 bg-white pl-9 text-neutral-900 placeholder:text-neutral-400 focus:border-orange-500 focus:ring-orange-500"
-                      value={couponCode}
-                      onChange={(e) =>
-                        setCouponCode(e.target.value.toUpperCase())
-                      }
-                    />
-                  </div>
-                  <Button
-                    variant="secondary"
-                    className="h-10 border border-neutral-200 bg-neutral-100 text-neutral-700 shadow-sm hover:bg-neutral-200"
-                    onClick={handleApplyCoupon}
-                    disabled={!couponCode || isValidating}
-                  >
-                    {isValidating ? "..." : "Aplicar"}
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between rounded-md border border-green-200 bg-green-50 p-3">
-                  <div className="flex items-center gap-2">
-                    <Ticket className="h-4 w-4 text-green-600" />
-                    <div>
-                      <p className="text-sm font-bold text-green-700">
-                        {appliedCoupon.code}
-                      </p>
-                      <p className="text-xs text-green-600">
-                        Desconto de{" "}
-                        {formatPrice(appliedCoupon.discount, productCurrency)}{" "}
-                        aplicado
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-green-600 hover:bg-green-100"
-                    onClick={handleRemoveCoupon}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              )}
             </div>
           </div>
 

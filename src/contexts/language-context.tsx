@@ -10,7 +10,7 @@ const defaultTranslations = {
   topBar: {
     promo:
       "Frete Grátis Para Qualquer Produto em Nossa Loja! | 5% OFF Com o Cupom: GROUPESG",
-    storeLocator: "Lojas",
+    storeLocator: "Sobre",
     help: "Ajuda",
   },
   header: {

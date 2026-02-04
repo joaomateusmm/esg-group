@@ -9,7 +9,7 @@ import Silk from "@/components/Silk";
 export default function Home() {
   return (
     // REMOVIDO: overflow-x-hidden (Isso causava o travamento do scroll)
-    <div className="font-montserrat relative flex min-h-screen flex-col bg-[#FFFFFF] text-neutral-900">
+    <div className="font-montserrat relative flex min-h-screen flex-col ">
       <Header />
 
       <HeroBanners />

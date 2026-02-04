@@ -6,21 +6,23 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
-import { CreditCard, Loader2, Lock, PackageCheck, Truck } from "lucide-react";
+import { CreditCard, Loader2, Lock, Ticket, Truck, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
-// IMPORTAR A NOVA ACTION: updateOrderToCOD
 import {
   createOrderCOD,
   getCartShippingCost,
+  updateOrderAddressAction, // <--- 1. NOVA IMPORTAÇÃO NECESSÁRIA
   updateOrderToCOD,
 } from "@/actions/checkout";
+import { validateCoupon } from "@/actions/coupons";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/store/cart-store";
 
-// RECEBER A PROP existingOrderId
 export function CheckoutForm({
   existingOrderId,
 }: {
@@ -28,13 +30,26 @@ export function CheckoutForm({
 }) {
   const stripe = useStripe();
   const elements = useElements();
-  const { items, getTotalPrice, clearCart } = useCartStore();
+
+  const {
+    items,
+    getTotalPrice,
+    getSubtotal,
+    coupon,
+    applyCoupon,
+    removeCoupon,
+    clearCart,
+  } = useCartStore();
+
   const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
   const [shippingCost, setShippingCost] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
+
+  const [couponInput, setCouponInput] = useState("");
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
   const [paymentMethod, setPaymentMethod] = useState<"card" | "cod">("card");
 
@@ -46,7 +61,6 @@ export function CheckoutForm({
       currency: cartCurrency,
     }).format(val / 100);
 
-  // CÁLCULO DAS DATAS DE ENTREGA
   const today = new Date();
   const deliveryStart = new Date(today);
   deliveryStart.setDate(today.getDate() + 10);
@@ -88,6 +102,38 @@ export function CheckoutForm({
     if (!event.complete) return;
   };
 
+  const handleApplyCoupon = async () => {
+    if (!couponInput) return;
+    setIsValidatingCoupon(true);
+
+    try {
+      const currentSubtotal = getSubtotal();
+      const result = await validateCoupon(couponInput, currentSubtotal);
+
+      if (result.valid) {
+        applyCoupon({
+          code: couponInput.toUpperCase(),
+          type: "fixed",
+          value: result.discountAmount || 0,
+        });
+        toast.success(result.message);
+        setCouponInput("");
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao validar cupom.");
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    removeCoupon();
+    toast.info("Cupom removido.");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -104,7 +150,7 @@ export function CheckoutForm({
       return;
     }
 
-    // --- FLUXO 1: PAGAMENTO COM CARTÃO (STRIPE) ---
+    // --- FLUXO 1: CARTÃO (STRIPE) ---
     if (paymentMethod === "card") {
       if (!stripe || !elements) return;
 
@@ -113,6 +159,23 @@ export function CheckoutForm({
         setMessage(submitError.message || "Erro na validação do formulário.");
         setIsLoading(false);
         return;
+      }
+
+      // 2. SALVAR ENDEREÇO NO BANCO (CRUCIAL PARA O ORDER CARD FUNCIONAR)
+      if (existingOrderId) {
+        try {
+          await updateOrderAddressAction(existingOrderId, {
+            street: addressDetails.address.line1,
+            number: "N/A",
+            complement: addressDetails.address.line2,
+            city: addressDetails.address.city,
+            state: addressDetails.address.state,
+            zipCode: addressDetails.address.postal_code,
+            phone: addressDetails.phone,
+          });
+        } catch (err) {
+          console.error("Erro ao salvar endereço:", err);
+        }
       }
 
       const shippingDetails = {
@@ -144,7 +207,7 @@ export function CheckoutForm({
       setIsLoading(false);
     }
 
-    // --- FLUXO 2: PAGAMENTO NA ENTREGA (COD) ---
+    // --- FLUXO 2: COD (PAGAMENTO NA ENTREGA) ---
     else {
       try {
         const shippingData = {
@@ -159,26 +222,23 @@ export function CheckoutForm({
 
         let result;
 
-        // LÓGICA DE CORREÇÃO DE DUPLICIDADE:
-        // Se já existe um pedido criado pelo Stripe (existingOrderId), ATUALIZAMOS ele.
         if (existingOrderId) {
           result = await updateOrderToCOD(
             existingOrderId,
             {
-              email: "guest@example.com", // Ajustar se tiver user logado
+              email: "guest@example.com",
               name: addressDetails.name,
             },
             shippingData,
           );
         } else {
-          // Se não existe (ex: stripe falhou em carregar), CRIAMOS um novo.
           result = await createOrderCOD(
             items,
             {
               email: "guest@example.com",
               name: addressDetails.name,
             },
-            undefined,
+            coupon?.code,
             shippingData,
           );
         }
@@ -199,12 +259,13 @@ export function CheckoutForm({
     }
   };
 
-  const total = getTotalPrice() + shippingCost;
+  const subtotal = getSubtotal();
+  const totalPrice = getTotalPrice();
+  const discountAmount = Math.max(0, subtotal - totalPrice);
+  const total = totalPrice + shippingCost;
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-2">
-      {/* ... (RESTO DO JSX MANTIDO IGUAL) ... */}
-      {/* Apenas certifique-se de copiar o JSX do seu arquivo original ou do anterior, não mudei nada no visual */}
       <div className="space-y-6">
         <div className="rounded-xl border border-neutral-200 bg-white p-6">
           <h2 className="mb-4 text-lg font-bold text-neutral-900">
@@ -303,12 +364,16 @@ export function CheckoutForm({
 
           <div className="space-y-3 border-t border-neutral-100 pt-4 text-sm">
             <div className="flex justify-between text-neutral-600">
-              <span>Subtotal</span>
-              <span>{formatPrice(getTotalPrice())}</span>
+              <span className="flex items-center gap-2 font-semibold">
+                Subtotal
+              </span>
+              <span>{formatPrice(subtotal)}</span>
             </div>
 
             <div className="flex items-center justify-between text-neutral-600">
-              <span className="flex items-center gap-2">Frete</span>
+              <span className="flex items-center gap-2 font-semibold">
+                Frete
+              </span>
               <span className="font-medium text-orange-600">
                 {isCalculatingShipping ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -320,11 +385,74 @@ export function CheckoutForm({
               </span>
             </div>
 
-            <div className="flex items-center justify-between rounded-md bg-green-50 px-3 py-2 text-green-800">
-              <span className="flex items-center gap-2 text-xs font-semibold tracking-wide uppercase">
-                <PackageCheck className="h-4 w-4" /> Previsão de Entrega
+            {/* Exibe o desconto explicitamente se houver */}
+            {coupon && discountAmount > 0 && (
+              <div className="flex justify-between font-medium text-emerald-600">
+                <span className="flex items-center gap-1"> Cupom</span>
+                <span>- {formatPrice(discountAmount)}</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between rounded-md text-neutral-600">
+              <span className="flex items-center gap-2 text-sm font-semibold tracking-wide">
+                {" "}
+                Previsão de Entrega
               </span>
-              <span className="font-bold">{deliveryDateString}</span>
+              <span>Dos dias {deliveryDateString}</span>
+            </div>
+            {/* --- ÁREA DE CUPONS --- */}
+            <div className="border-t border-neutral-200/70 pt-4">
+              {!coupon ? (
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Ticket className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                    <Input
+                      placeholder="Possui um cupom?"
+                      className="h-10 border-neutral-300 bg-white pl-9 text-neutral-900 placeholder:text-neutral-400 focus:border-orange-500 focus:ring-orange-500"
+                      value={couponInput}
+                      onChange={(e) =>
+                        setCouponInput(e.target.value.toUpperCase())
+                      }
+                    />
+                  </div>
+                  <Button
+                    type="button" // IMPORTANTE para não submeter o form
+                    variant="secondary"
+                    className="h-10 border border-neutral-200/70 bg-neutral-100 text-neutral-700 shadow-sm hover:bg-neutral-200"
+                    onClick={handleApplyCoupon}
+                    disabled={!couponInput || isValidatingCoupon}
+                  >
+                    {isValidatingCoupon ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Aplicar"
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between rounded-md border border-neutral-200 bg-neutral-50 p-3">
+                  <div className="flex items-center gap-2">
+                    <Ticket className="h-4 w-4 text-neutral-600" />
+                    <div>
+                      <p className="text-sm font-bold text-neutral-700">
+                        {coupon.code}
+                      </p>
+                      <p className="text-xs text-neutral-600">
+                        Desconto de {formatPrice(discountAmount)} aplicado
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-neutral-600 hover:bg-neutral-100"
+                    onClick={handleRemoveCoupon}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 
