@@ -263,6 +263,50 @@ export async function getCartShippingCost(items: CartItemInput[]) {
   return { price: shippingCost };
 }
 
+// --- LÓGICA DE USUÁRIO (SHADOW ACCOUNT) ---
+// Função auxiliar interna para garantir que temos um userId
+async function getOrCreateUserId(
+  sessionUserId?: string,
+  guestInfo?: { email: string; name: string },
+): Promise<string> {
+  if (sessionUserId) {
+    return sessionUserId;
+  }
+
+  if (!guestInfo?.email) {
+    throw new Error("E-mail é obrigatório para finalizar a compra.");
+  }
+
+  const email = guestInfo.email.toLowerCase();
+
+  // 1. Verifica se já existe (mesmo que não logado)
+  const existingUser = await db.query.user.findFirst({
+    where: eq(user.email, email),
+  });
+
+  if (existingUser) {
+    return existingUser.id;
+  }
+
+  // 2. Cria conta sombra (Shadow Account)
+  const now = new Date();
+  const [newUser] = await db
+    .insert(user)
+    .values({
+      id: crypto.randomUUID(),
+      name: guestInfo.name || "Visitante",
+      email: email,
+      image: "",
+      emailVerified: false,
+      createdAt: now,
+      updatedAt: now,
+      role: "user",
+    })
+    .returning();
+
+  return newUser.id;
+}
+
 export async function createCheckoutSession(
   items: CartItemInput[],
   guestInfo?: { email: string; name: string },
@@ -298,37 +342,9 @@ export async function createCheckoutSession(
   }
 
   const session = await auth.api.getSession({ headers: await headers() });
-  let userId: string;
 
-  if (session) {
-    userId = session.user.id;
-  } else {
-    if (!guestInfo?.email) throw new Error("E-mail obrigatório.");
-    const email = guestInfo.email.toLowerCase();
-    const existingUser = await db.query.user.findFirst({
-      where: eq(user.email, email),
-    });
-
-    if (existingUser) {
-      userId = existingUser.id;
-    } else {
-      const now = new Date();
-      const [newUser] = await db
-        .insert(user)
-        .values({
-          id: crypto.randomUUID(),
-          name: guestInfo.name || "Visitante",
-          email: email,
-          image: "",
-          emailVerified: false,
-          createdAt: now,
-          updatedAt: now,
-          role: "user",
-        })
-        .returning();
-      userId = newUser.id;
-    }
-  }
+  // --- APLICA A LÓGICA DE SHADOW ACCOUNT ---
+  const userId = await getOrCreateUserId(session?.user.id, guestInfo);
 
   const { finalTotal, discountAmount, activeCouponId, shippingCost } =
     await calculateOrderTotals(items, couponCode);
@@ -439,36 +455,9 @@ export async function createOrderCOD(
   }
 
   const session = await auth.api.getSession({ headers: await headers() });
-  let userId: string;
 
-  if (session) {
-    userId = session.user.id;
-  } else {
-    if (!guestInfo?.email) throw new Error("E-mail obrigatório.");
-    const email = guestInfo.email.toLowerCase();
-    const existingUser = await db.query.user.findFirst({
-      where: eq(user.email, email),
-    });
-    if (existingUser) {
-      userId = existingUser.id;
-    } else {
-      const now = new Date();
-      const [newUser] = await db
-        .insert(user)
-        .values({
-          id: crypto.randomUUID(),
-          name: guestInfo.name || "Visitante",
-          email: email,
-          image: "",
-          emailVerified: false,
-          createdAt: now,
-          updatedAt: now,
-          role: "user",
-        })
-        .returning();
-      userId = newUser.id;
-    }
-  }
+  // --- APLICA A LÓGICA DE SHADOW ACCOUNT ---
+  const userId = await getOrCreateUserId(session?.user.id, guestInfo);
 
   const { finalTotal, discountAmount, activeCouponId, shippingCost } =
     await calculateOrderTotals(items, couponCode);
@@ -525,9 +514,6 @@ export async function createOrderCOD(
       .where(eq(coupon.id, activeCouponId));
   }
 
-  // CORREÇÃO: Aqui estamos passando os itens corretamente agora
-  // items tem { name, price, quantity }, mas o template usa { productName, price, quantity }
-  // O template foi ajustado acima para usar item.productName || item.name
   if (newOrder && newOrder.customerEmail) {
     sendOrderConfirmationEmail(
       newOrder.customerEmail,
@@ -535,7 +521,7 @@ export async function createOrderCOD(
       newOrder.id,
       newOrder.amount,
       newOrder.currency || "GBP",
-      items, // Passando a lista de itens do carrinho
+      items,
     ).catch((err) => console.error("Erro ao enviar email COD:", err));
   }
 
@@ -563,6 +549,7 @@ export async function updateOrderToCOD(
 
   const { start, end } = calculateDeliveryDates();
 
+  // Para updates, usamos os dados que já existem ou os novos do guest
   const customerName = guestInfo?.name || existingOrder.customerName;
   const customerEmail = guestInfo?.email || existingOrder.customerEmail;
 
@@ -608,7 +595,6 @@ export async function updateOrderToCOD(
   }
 
   if (customerEmail) {
-    // Aqui usamos existingOrder.items, que vem do banco e tem 'productName'
     sendOrderConfirmationEmail(
       customerEmail,
       customerName || "Cliente",
@@ -648,36 +634,9 @@ export async function createFreeOrder(
   }
 
   const session = await auth.api.getSession({ headers: await headers() });
-  let userId: string;
 
-  if (session) {
-    userId = session.user.id;
-  } else {
-    if (!guestInfo?.email) throw new Error("E-mail obrigatório.");
-    const email = guestInfo.email.toLowerCase();
-    const existingUser = await db.query.user.findFirst({
-      where: eq(user.email, email),
-    });
-    if (existingUser) {
-      userId = existingUser.id;
-    } else {
-      const now = new Date();
-      const [newUser] = await db
-        .insert(user)
-        .values({
-          id: crypto.randomUUID(),
-          name: guestInfo.name || "Visitante",
-          email: email,
-          image: "",
-          emailVerified: false,
-          createdAt: now,
-          updatedAt: now,
-          role: "user",
-        })
-        .returning();
-      userId = newUser.id;
-    }
-  }
+  // --- APLICA A LÓGICA DE SHADOW ACCOUNT ---
+  const userId = await getOrCreateUserId(session?.user.id, guestInfo);
 
   const { finalTotal, discountAmount, activeCouponId, shippingCost } =
     await calculateOrderTotals(items, couponCode);
@@ -739,7 +698,6 @@ export async function createFreeOrder(
   }
 
   if (newOrder && newOrder.customerEmail) {
-    // CORREÇÃO: Passando os itens
     sendOrderConfirmationEmail(
       newOrder.customerEmail,
       newOrder.customerName || "Cliente",
@@ -767,8 +725,15 @@ export async function updateOrderAddressAction(
     zipCode: string;
     phone?: string;
   },
+  guestEmail?: string,
 ) {
   try {
+    if (guestEmail) {
+      await db
+        .update(order)
+        .set({ customerEmail: guestEmail })
+        .where(eq(order.id, orderId));
+    }
     await db
       .update(order)
       .set({

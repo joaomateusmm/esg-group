@@ -6,7 +6,15 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
-import { CreditCard, Loader2, Lock, Ticket, Truck, X } from "lucide-react";
+import {
+  CreditCard,
+  Loader2,
+  Lock,
+  Mail,
+  Ticket,
+  Truck,
+  X,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -25,8 +33,10 @@ import { useCartStore } from "@/store/cart-store";
 
 export function CheckoutForm({
   existingOrderId,
+  userEmail,
 }: {
   existingOrderId: string | null;
+  userEmail?: string | null;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -42,6 +52,9 @@ export function CheckoutForm({
   } = useCartStore();
 
   const router = useRouter();
+
+  // Estado para o email do visitante
+  const [guestEmail, setGuestEmail] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
@@ -141,7 +154,7 @@ export function CheckoutForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // TRAVA DUPLA: Se o endereço não estiver completo, nem tenta processar
+    // TRAVA DUPLA: Valida Endereço E Email
     if (
       !isAddressComplete ||
       !addressDetails ||
@@ -151,6 +164,13 @@ export function CheckoutForm({
       setMessage("Por favor, preencha o endereço de entrega completo.");
       return;
     }
+
+    if (!userEmail && !guestEmail) {
+      setMessage("Por favor, informe seu e-mail para contato.");
+      return;
+    }
+
+    const finalEmail = userEmail || guestEmail;
 
     if (paymentMethod === "card" && (!stripe || !elements)) {
       return;
@@ -170,18 +190,22 @@ export function CheckoutForm({
         return;
       }
 
-      // 2. SALVAR ENDEREÇO NO BANCO (CRUCIAL PARA O ORDER CARD FUNCIONAR)
+      // 2. SALVAR ENDEREÇO E EMAIL NO BANCO (CRUCIAL PARA O ORDER CARD FUNCIONAR)
       if (existingOrderId) {
         try {
-          await updateOrderAddressAction(existingOrderId, {
-            street: addressDetails.address.line1,
-            number: "N/A",
-            complement: addressDetails.address.line2,
-            city: addressDetails.address.city,
-            state: addressDetails.address.state,
-            zipCode: addressDetails.address.postal_code,
-            phone: addressDetails.phone,
-          });
+          await updateOrderAddressAction(
+            existingOrderId,
+            {
+              street: addressDetails.address.line1,
+              number: "N/A",
+              complement: addressDetails.address.line2,
+              city: addressDetails.address.city,
+              state: addressDetails.address.state,
+              zipCode: addressDetails.address.postal_code,
+              phone: addressDetails.phone,
+            },
+            finalEmail, // <--- AQUI ESTÁ A CORREÇÃO: Passando o e-mail!
+          );
         } catch (err) {
           console.error("Erro ao salvar endereço:", err);
         }
@@ -205,6 +229,7 @@ export function CheckoutForm({
         confirmParams: {
           return_url: `${window.location.origin}/checkout/sucesso`,
           shipping: shippingDetails,
+          receipt_email: finalEmail, // Passa o e-mail para o Stripe
         },
       });
 
@@ -231,22 +256,21 @@ export function CheckoutForm({
 
         let result;
 
+        const customerInfo = {
+          email: finalEmail, // E-mail real (shadow ou user)
+          name: addressDetails.name,
+        };
+
         if (existingOrderId) {
           result = await updateOrderToCOD(
             existingOrderId,
-            {
-              email: "guest@example.com",
-              name: addressDetails.name,
-            },
+            customerInfo,
             shippingData,
           );
         } else {
           result = await createOrderCOD(
             items,
-            {
-              email: "guest@example.com",
-              name: addressDetails.name,
-            },
+            customerInfo,
             coupon?.code,
             shippingData,
           );
@@ -276,6 +300,30 @@ export function CheckoutForm({
   return (
     <form onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-2">
       <div className="space-y-6">
+        {/* --- 3. INPUT DE EMAIL (Só aparece se não estiver logado) --- */}
+        {!userEmail && (
+          <div className="rounded-xl border border-neutral-200 bg-white p-6">
+            <h2 className="mb-4 text-lg font-bold text-neutral-900">
+              Dados de Contato
+            </h2>
+            <div className="relative">
+              <Mail className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+              <Input
+                type="email"
+                placeholder="Seu melhor e-mail para receber atualizações"
+                className="h-11 border-neutral-300 pl-10 focus:border-orange-500 focus:ring-orange-500"
+                value={guestEmail}
+                onChange={(e) => setGuestEmail(e.target.value)}
+                required
+              />
+            </div>
+            <p className="mt-2 text-xs text-neutral-500">
+              Usaremos este e-mail para enviar o rastreio e atualizações do
+              pedido.
+            </p>
+          </div>
+        )}
+
         <div className="rounded-xl border border-neutral-200 bg-white p-6">
           <h2 className="mb-4 text-lg font-bold text-neutral-900">
             Endereço de Entrega
@@ -394,7 +442,6 @@ export function CheckoutForm({
               </span>
             </div>
 
-            {/* Exibe o desconto explicitamente se houver */}
             {coupon && discountAmount > 0 && (
               <div className="flex justify-between font-medium text-emerald-600">
                 <span className="flex items-center gap-1"> Cupom</span>
@@ -409,7 +456,7 @@ export function CheckoutForm({
               </span>
               <span>Dos dias {deliveryDateString}</span>
             </div>
-            {/* --- ÁREA DE CUPONS --- */}
+
             <div className="border-t border-neutral-200/70 pt-4">
               {!coupon ? (
                 <div className="flex gap-2">
@@ -425,7 +472,7 @@ export function CheckoutForm({
                     />
                   </div>
                   <Button
-                    type="button" // IMPORTANTE para não submeter o form
+                    type="button"
                     variant="secondary"
                     className="h-10 border border-neutral-200/70 bg-neutral-100 text-neutral-700 shadow-sm hover:bg-neutral-200"
                     onClick={handleApplyCoupon}
@@ -474,11 +521,12 @@ export function CheckoutForm({
             disabled={
               isLoading ||
               isCalculatingShipping ||
-              !isAddressComplete || // <--- TRAVA AQUI
+              !isAddressComplete || // Trava Endereço
+              (!userEmail && !guestEmail) || // Trava E-mail
               (paymentMethod === "card" && (!stripe || !elements))
             }
             type="submit"
-            className="mt-6 h-12 w-full cursor-pointer bg-emerald-500 text-base font-bold text-white shadow-md duration-300 hover:-translate-y-0.5 hover:bg-emerald-600 disabled:transform-none disabled:cursor-not-allowed disabled:text-neutral-800 disabled:bg-neutral-300 disabled:shadow-none"
+            className="mt-6 h-12 w-full cursor-pointer bg-emerald-500 text-base font-bold text-white shadow-md duration-300 hover:-translate-y-0.5 hover:bg-emerald-600 disabled:transform-none disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-800 disabled:shadow-none"
           >
             {isLoading ? (
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -492,11 +540,12 @@ export function CheckoutForm({
             )}
           </Button>
 
-          {!isAddressComplete && !isLoading && (
-            <div className="mt-4 text-center text-xs text-neutral-500">
-              Preencha o endereço de entrega.
-            </div>
-          )}
+          {(!isAddressComplete || (!userEmail && !guestEmail)) &&
+            !isLoading && (
+              <div className="mt-4 text-center text-xs text-neutral-500">
+                Preencha os dados de contato e entrega.
+              </div>
+            )}
 
           {message && (
             <div className="mt-4 rounded bg-red-50 p-2 text-center text-sm text-red-500">

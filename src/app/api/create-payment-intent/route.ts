@@ -1,83 +1,120 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
 import { db } from "@/db";
-import { coupon, order, orderItem, product } from "@/db/schema";
+import { coupon, order, orderItem, product, user } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
-const stripeSecret = process.env.STRIPE_SECRET_KEY;
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2025-02-24.acacia" as unknown as Stripe.LatestApiVersion,
+  typescript: true,
+});
 
-// Taxa fixa de segurança (BRL -> GBP) caso o cupom fixo esteja em reais
-const BRL_TO_GBP_RATE = 1 / 7.35;
+// --- FUNÇÃO AUXILIAR SHADOW ACCOUNT ---
+async function getOrCreateGuestUser(email: string, name: string) {
+  const normalizedEmail = email.toLowerCase();
+
+  // 1. Verifica se já existe
+  const existingUser = await db.query.user.findFirst({
+    where: eq(user.email, normalizedEmail),
+  });
+
+  if (existingUser) {
+    return existingUser.id;
+  }
+
+  // 2. Cria usuário fantasma
+  const now = new Date();
+  const [newUser] = await db
+    .insert(user)
+    .values({
+      id: crypto.randomUUID(),
+      name: name || "Visitante",
+      email: normalizedEmail,
+      image: "",
+      emailVerified: false,
+      createdAt: now,
+      updatedAt: now,
+      role: "user",
+    })
+    .returning();
+
+  return newUser.id;
+}
 
 export async function POST(req: Request) {
   try {
-    if (!stripeSecret) {
-      return NextResponse.json(
-        { error: "Stripe Key Missing" },
-        { status: 500 },
-      );
-    }
-
-    const stripe = new Stripe(stripeSecret, {
-      apiVersion: "2025-02-24.acacia" as unknown as Stripe.LatestApiVersion,
-      typescript: true,
-    });
-
     const body = await req.json();
-    const { items, currency, shippingAddress, couponCode, existingOrderId } =
-      body;
-
-    const session = await auth.api.getSession({ headers: await headers() });
-
-    const userId = session?.user?.id || "guest-user";
-    const userName = session?.user?.name || "Guest User";
-    const userEmail = session?.user?.email || "guest@example.com";
+    const { items, existingOrderId, guestEmail, guestName, couponCode } = body;
 
     if (!items || items.length === 0) {
-      return NextResponse.json({ error: "No items in cart" }, { status: 400 });
+      return new NextResponse("Carrinho vazio", { status: 400 });
     }
 
-    // --- 1. CÁLCULO DOS PRODUTOS ---
-    let itemsTotal = 0;
-    let shippingTotal = 0;
-    const orderItemsToInsert = [];
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    let userId: string;
+    let customerEmail: string;
+    let customerName: string;
+
+    // --- LÓGICA DE USUÁRIO ROBUSTA (CORREÇÃO AQUI) ---
+    if (session) {
+      userId = session.user.id;
+      customerEmail = session.user.email;
+      customerName = session.user.name;
+    } else {
+      // CENÁRIO: Visitante não logado
+      if (guestEmail) {
+        // Se já digitou o e-mail, cria/recupera a conta sombra real
+        userId = await getOrCreateGuestUser(
+          guestEmail,
+          guestName || "Visitante",
+        );
+        customerEmail = guestEmail;
+        customerName = guestName || "Visitante";
+      } else {
+        // CORREÇÃO CRÍTICA: Se não tem e-mail (load inicial), cria um placeholder
+        // para não quebrar a página de checkout. O e-mail será atualizado no submit.
+        const tempId = crypto.randomUUID();
+        const tempEmail = `pending-${tempId}@temp.esggroup.shop`; // Email temporário único
+
+        userId = await getOrCreateGuestUser(tempEmail, "Visitante Pendente");
+        customerEmail = tempEmail;
+        customerName = "Visitante";
+      }
+    }
+
+    // 3. Calcula Totais
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const productIds = items.map((i: any) => i.id);
+    const productsDb = await db.query.product.findMany({
+      where: inArray(product.id, productIds),
+    });
+
+    let subtotal = 0;
+    let totalShippingCost = 0;
 
     for (const item of items) {
-      const productData = await db.query.product.findFirst({
-        where: eq(product.id, item.id),
-      });
-
-      if (!productData) continue;
-
-      const finalPrice = productData.discountPrice || productData.price;
-      itemsTotal += finalPrice * item.quantity;
-
-      // Frete simples
-      let itemShipping = 0;
-      if (productData.shippingType === "fixed") {
-        itemShipping = (productData.fixedShippingPrice || 0) * item.quantity;
+      const prodInfo = productsDb.find((p) => p.id === item.id);
+      if (prodInfo) {
+        subtotal += prodInfo.price * item.quantity;
+        if (prodInfo.shippingType === "fixed") {
+          totalShippingCost +=
+            (prodInfo.fixedShippingPrice || 0) * item.quantity;
+        }
       }
-      shippingTotal += itemShipping;
-
-      orderItemsToInsert.push({
-        productId: item.id,
-        productName: productData.name,
-        quantity: item.quantity,
-        price: finalPrice,
-        image: productData.images?.[0] || null,
-      });
     }
 
-    // --- 2. CÁLCULO DO DESCONTO ---
     let discountAmount = 0;
-    let activeCouponId = null;
+    let activeCouponId: string | null = null;
 
     if (couponCode) {
       const foundCoupon = await db.query.coupon.findFirst({
-        where: eq(coupon.code, couponCode.toString().toUpperCase()),
+        where: eq(coupon.code, couponCode.toUpperCase()),
       });
 
       if (
@@ -85,114 +122,120 @@ export async function POST(req: Request) {
         foundCoupon.isActive &&
         (!foundCoupon.expiresAt || new Date() < foundCoupon.expiresAt) &&
         (foundCoupon.maxUses === null ||
-          foundCoupon.usedCount < foundCoupon.maxUses)
+          foundCoupon.usedCount < foundCoupon.maxUses) &&
+        (foundCoupon.minValue === null || subtotal >= foundCoupon.minValue)
       ) {
         if (foundCoupon.type === "percent") {
-          discountAmount = Math.round(itemsTotal * (foundCoupon.value / 100));
+          discountAmount = Math.round(subtotal * (foundCoupon.value / 100));
         } else {
-          // Se for fixo e a loja for GBP, aplica conversão de segurança
-          if (currency?.toUpperCase() === "GBP") {
-            discountAmount = Math.round(foundCoupon.value * BRL_TO_GBP_RATE);
-          } else {
-            discountAmount = foundCoupon.value;
-          }
+          discountAmount = foundCoupon.value;
         }
-
-        if (discountAmount > itemsTotal) discountAmount = itemsTotal;
+        if (discountAmount > subtotal) discountAmount = subtotal;
         activeCouponId = foundCoupon.id;
       }
     }
 
-    // --- 3. TOTAL FINAL ---
-    const totalAmount =
-      Math.max(0, itemsTotal - discountAmount) + shippingTotal;
+    const totalAmount = Math.round(
+      subtotal - discountAmount + totalShippingCost,
+    );
 
-    const sanitizedAddress = {
-      street: shippingAddress?.street || "Not provided",
-      number: shippingAddress?.number || "N/A",
-      complement: shippingAddress?.complement || "",
-      city: shippingAddress?.city || "",
-      state: shippingAddress?.state || "",
-      zipCode: shippingAddress?.zipCode || "",
-      country: shippingAddress?.country || "BR",
-    };
-
-    // --- 4. ATUALIZAR OU CRIAR PEDIDO ---
+    // 4. Cria ou Atualiza Pedido
     let orderId = existingOrderId;
 
     if (existingOrderId) {
-      // MODO ATUALIZAÇÃO: Se já existe ID, atualiza os valores
-      await db
-        .update(order)
-        .set({
-          amount: totalAmount,
-          discountAmount: discountAmount,
-          couponId: activeCouponId,
-          shippingCost: shippingTotal,
-          updatedAt: new Date(), // Atualiza data
-        })
-        .where(eq(order.id, existingOrderId));
-    } else {
-      // MODO CRIAÇÃO: Cria novo
+      const currentOrder = await db.query.order.findFirst({
+        where: eq(order.id, existingOrderId),
+      });
+
+      if (currentOrder) {
+        // Se agora temos um e-mail real (e antes era temp), atualizamos o userId e email
+        await db
+          .update(order)
+          .set({
+            amount: totalAmount,
+            discountAmount: discountAmount,
+            couponId: activeCouponId,
+            userId: userId, // Atualiza vínculo se mudou de temp para real
+            customerEmail: customerEmail,
+            shippingCost: totalShippingCost,
+            updatedAt: new Date(),
+          })
+          .where(eq(order.id, existingOrderId));
+      } else {
+        orderId = null;
+      }
+    }
+
+    if (!orderId) {
       const [newOrder] = await db
         .insert(order)
         .values({
-          userId: userId,
+          userId: userId, // Agora sempre válido (Real ou Temp)
           amount: totalAmount,
-          discountAmount: discountAmount,
-          couponId: activeCouponId,
           status: "pending",
+          currency: "GBP",
           fulfillmentStatus: "idle",
-          currency: currency || "GBP",
-          shippingCost: shippingTotal,
-          shippingAddress: sanitizedAddress,
-          customerName: userName,
-          customerEmail: userEmail,
+          paymentMethod: "card",
+          shippingAddress: {
+            street: "Not provided",
+            number: "N/A",
+            complement: "",
+            city: "",
+            state: "",
+            zipCode: "",
+            country: "BR",
+          },
+          shippingCost: totalShippingCost,
+          customerName: customerName,
+          customerEmail: customerEmail,
+          couponId: activeCouponId,
+          discountAmount: discountAmount,
         })
         .returning();
 
       orderId = newOrder.id;
 
-      // Insere itens apenas se for novo pedido
-      if (orderItemsToInsert.length > 0) {
-        await db
-          .insert(orderItem)
-          .values(orderItemsToInsert.map((i) => ({ ...i, orderId: orderId })));
-      }
+      await db.insert(orderItem).values(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        items.map((item: any) => ({
+          orderId: newOrder.id,
+          productId: item.id,
+          productName: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          image: item.image,
+        })),
+      );
     }
 
-    // --- 5. STRIPE INTENT ---
-    // Se for atualização e o valor mudou, criamos um novo intent ou atualizamos
-    // Por simplicidade e segurança, criamos um novo intent com o valor correto
-    // O Stripe gerencia intents pendentes sem problemas.
-
-    if (totalAmount >= 30) {
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: totalAmount,
-        currency: currency || "gbp",
-        payment_method_types: ["card"],
-        metadata: {
-          orderId: orderId,
-          userId: userId,
-          couponCode: couponCode || "",
-        },
-      });
-
-      return NextResponse.json({
-        clientSecret: paymentIntent.client_secret,
+    // 5. Gera Payment Intent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: totalAmount,
+      currency: "gbp",
+      automatic_payment_methods: { enabled: true },
+      metadata: {
         orderId: orderId,
-      });
-    } else {
-      return NextResponse.json({
-        clientSecret: null,
-        orderId: orderId,
-        message: "Order is free",
-      });
-    }
-  } catch (error: unknown) {
-    console.error("❌ API Error:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+        userId: userId,
+      },
+      receipt_email: customerEmail.includes("@temp.esggroup.shop")
+        ? undefined
+        : customerEmail,
+    });
+
+    await db
+      .update(order)
+      .set({
+        stripePaymentIntentId: paymentIntent.id,
+        stripeClientSecret: paymentIntent.client_secret,
+      })
+      .where(eq(order.id, orderId));
+
+    return NextResponse.json({
+      clientSecret: paymentIntent.client_secret,
+      orderId: orderId,
+    });
+  } catch (error) {
+    console.error("Erro interno no create-payment-intent:", error);
+    return new NextResponse(`Internal Error: ${error}`, { status: 500 });
   }
 }

@@ -87,7 +87,7 @@ function HeaderIconButton({
       className="group relative flex cursor-pointer items-center text-neutral-700 duration-300 hover:scale-105 hover:text-black active:scale-95"
     >
       <div className="relative">
-        <Icon className="h-5 w-5" strokeWidth={2} />
+        <Icon className="h-6 w-6" strokeWidth={2} />
         {!!badgeCount && badgeCount > 0 && (
           <div className="absolute -top-1.5 -right-1.5 flex h-4 w-4 cursor-pointer items-center justify-center rounded-full bg-orange-600 text-[10px] font-bold text-white shadow-sm">
             {badgeCount}
@@ -489,7 +489,7 @@ export function HeaderContent() {
                               className="cursor-pointer object-cover"
                             />
                           ) : (
-                            <ShoppingCart className="m-auto mt-3 h-5 w-5 cursor-pointer text-neutral-300" />
+                            <ShoppingCart className="m-auto mt-3 h-6 w-6 cursor-pointer text-neutral-300" />
                           )}
                         </div>
                         <div className="flex flex-col">
