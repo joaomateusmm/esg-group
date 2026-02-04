@@ -96,10 +96,16 @@ async function sendStripeOrderEmail(
             </div>
 
             <div class="summary-box">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 14px; font-weight: bold; color: #ea580c;">Total Pago</span>
-                <span style="font-size: 18px; font-weight: bold; color: #ea580c;">${formattedTotal}</span>
-              </div>
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="font-size: 14px; font-weight: bold; color: #ea580c; text-align: left;">
+                    Total Pago
+                  </td>
+                  <td style="font-size: 18px; font-weight: bold; color: #ea580c; text-align: right;">
+                    ${formattedTotal}
+                  </td>
+                </tr>
+              </table>
             </div>
 
             <div style="text-align: center;">
