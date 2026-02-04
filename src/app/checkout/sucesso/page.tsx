@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart-store";
 
 function SuccessContent() {
+  const router = useRouter(); // Hook para redirecionamento
   const searchParams = useSearchParams();
   const clearCart = useCartStore((state) => state.clearCart);
 
@@ -30,6 +31,9 @@ function SuccessContent() {
 
   const [finalOrderId, setFinalOrderId] = useState<string | null>(urlOrderId);
   const [loadingId, setLoadingId] = useState(false);
+
+  // Estado do Timer (Começa em 10 segundos)
+  const [countdown, setCountdown] = useState(10);
 
   // Efeito para resolver o ID do pedido
   useEffect(() => {
@@ -59,6 +63,26 @@ function SuccessContent() {
     resolveOrderId();
   }, [urlOrderId, paymentIntent, redirectStatus, clearCart]);
 
+  // Efeito para o Timer de Redirecionamento
+  useEffect(() => {
+    // Só inicia o timer se já tivermos o ID do pedido (para garantir que o usuário viu o sucesso)
+    // ou se o processo de loading já terminou
+    if (loadingId) return;
+
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          router.push("/minha-conta/compras"); // Redireciona
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [router, loadingId]);
+
   const isCardPayment = !!paymentIntent;
 
   const handleCopyOrder = () => {
@@ -70,6 +94,12 @@ function SuccessContent() {
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-4 pt-22 text-center">
+      {/* Mensagem discreta do Timer */}
+      <div className="animate-fade-in mb-4 text-xs font-medium text-neutral-400">
+        Redirecionando para seus pedidos em{" "}
+        <span className="font-bold text-orange-600">{countdown}s</span>...
+      </div>
+
       {/* --- IMAGEM DE SUCESSO AQUI --- */}
       <div className="animate-in zoom-in mb-6 duration-500">
         <Image

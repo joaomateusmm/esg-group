@@ -37,7 +37,7 @@ async function sendStripeOrderEmail(
   try {
     const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://esggroup.com";
     const LOGO_URL = `${BASE_URL}/images/logo.png`;
-    const ORDER_LINK = `${BASE_URL}/pedido/${orderId}`;
+    const ORDER_LINK = `${BASE_URL}/minha-conta/compras/${orderId}`;
     const formattedTotal = formatCurrency(amount, currency);
 
     // GERA HTML DA LISTA DE PRODUTOS

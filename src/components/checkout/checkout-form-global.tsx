@@ -6,15 +6,7 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
-import {
-  CreditCard,
-  Loader2,
-  Lock,
-  Mail,
-  Ticket,
-  Truck,
-  X,
-} from "lucide-react";
+import { CreditCard, Loader2, Lock, Ticket, Truck, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -28,8 +20,11 @@ import {
 import { validateCoupon } from "@/actions/coupons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { authClient } from "@/lib/auth-client"; // <--- Importação necessária
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/store/cart-store";
+
+import { CheckoutAuth } from "./checkout-auth";
 
 export function CheckoutForm({
   existingOrderId,
@@ -40,6 +35,13 @@ export function CheckoutForm({
 }) {
   const stripe = useStripe();
   const elements = useElements();
+  const router = useRouter();
+
+  // --- CORREÇÃO: Verifica sessão no cliente também ---
+  const { data: session } = authClient.useSession();
+
+  // Usa o email que vier: ou da prop (servidor) ou da sessão (cliente)
+  const finalUserEmail = userEmail || session?.user?.email;
 
   const {
     items,
@@ -51,11 +53,6 @@ export function CheckoutForm({
     clearCart,
   } = useCartStore();
 
-  const router = useRouter();
-
-  // Estado para o email do visitante
-  const [guestEmail, setGuestEmail] = useState("");
-
   const [isLoading, setIsLoading] = useState(false);
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
   const [shippingCost, setShippingCost] = useState(0);
@@ -65,9 +62,10 @@ export function CheckoutForm({
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
   const [paymentMethod, setPaymentMethod] = useState<"card" | "cod">("card");
-
-  // ESTADO PARA CONTROLAR SE O ENDEREÇO ESTÁ COMPLETO
   const [isAddressComplete, setIsAddressComplete] = useState(false);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [addressDetails, setAddressDetails] = useState<any>(null);
 
   const cartCurrency = items.length > 0 ? items[0].currency || "GBP" : "GBP";
 
@@ -91,42 +89,72 @@ export function CheckoutForm({
     month: "2-digit",
   })}`;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [addressDetails, setAddressDetails] = useState<any>(null);
-
   useEffect(() => {
-    const fetchShipping = async () => {
-      setIsCalculatingShipping(true);
-      try {
-        const result = await getCartShippingCost(items);
-        setShippingCost(result.price);
-      } catch (error) {
-        console.error("Erro ao buscar frete:", error);
-      } finally {
-        setIsCalculatingShipping(false);
-      }
-    };
-
     if (items.length > 0) {
+      const fetchShipping = async () => {
+        setIsCalculatingShipping(true);
+        try {
+          const result = await getCartShippingCost(items);
+          setShippingCost(result.price);
+        } catch (error) {
+          console.error("Erro frete:", error);
+        } finally {
+          setIsCalculatingShipping(false);
+        }
+      };
       fetchShipping();
     }
   }, [items]);
 
+  // --- BLOQUEIO PARA VISITANTES (Usando finalUserEmail) ---
+  if (!finalUserEmail) {
+    return (
+      <div className="grid gap-8 lg:grid-cols-2">
+        {/* Coluna da Esquerda: Auth Inline */}
+        <div className="space-y-6">
+          <CheckoutAuth />
+        </div>
+
+        <div>
+          <div className="pointer-events-none sticky top-36 rounded-xl border border-neutral-200 bg-white p-6 opacity-70 shadow-lg grayscale-[0.5]">
+            <h2 className="mb-6 text-xl font-bold text-neutral-900">
+              Resumo do Pedido
+            </h2>
+            <div className="mb-4 space-y-2">
+              {items.map((item) => (
+                <div key={item.id} className="flex justify-between text-sm">
+                  <span className="w-2/3 truncate">
+                    {item.quantity}x {item.name}
+                  </span>
+                  <span>{formatPrice(item.price * item.quantity)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between border-t border-neutral-200 pt-4 font-bold">
+              <span>Total Estimado</span>
+              <span>{formatPrice(getTotalPrice())}</span>
+            </div>
+            <div className="mt-4 rounded bg-orange-100 p-3 text-center text-xs font-medium text-orange-800">
+              Complete seu cadastro ao lado para finalizar a compra
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleAddressChange = async (event: any) => {
     setAddressDetails(event.value);
-    // O Stripe manda event.complete = true quando todos os campos obrigatórios estão preenchidos
     setIsAddressComplete(event.complete);
   };
 
   const handleApplyCoupon = async () => {
     if (!couponInput) return;
     setIsValidatingCoupon(true);
-
     try {
       const currentSubtotal = getSubtotal();
       const result = await validateCoupon(couponInput, currentSubtotal);
-
       if (result.valid) {
         applyCoupon({
           code: couponInput.toUpperCase(),
@@ -138,8 +166,7 @@ export function CheckoutForm({
       } else {
         toast.error(result.message);
       }
-    } catch (error) {
-      console.error(error);
+    } catch {
       toast.error("Erro ao validar cupom.");
     } finally {
       setIsValidatingCoupon(false);
@@ -154,27 +181,12 @@ export function CheckoutForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // TRAVA DUPLA: Valida Endereço E Email
-    if (
-      !isAddressComplete ||
-      !addressDetails ||
-      !addressDetails.address ||
-      !addressDetails.name
-    ) {
+    if (!isAddressComplete || !addressDetails?.name) {
       setMessage("Por favor, preencha o endereço de entrega completo.");
       return;
     }
 
-    if (!userEmail && !guestEmail) {
-      setMessage("Por favor, informe seu e-mail para contato.");
-      return;
-    }
-
-    const finalEmail = userEmail || guestEmail;
-
-    if (paymentMethod === "card" && (!stripe || !elements)) {
-      return;
-    }
+    if (paymentMethod === "card" && (!stripe || !elements)) return;
 
     setIsLoading(true);
     setMessage(null);
@@ -185,12 +197,11 @@ export function CheckoutForm({
 
       const { error: submitError } = await elements.submit();
       if (submitError) {
-        setMessage(submitError.message || "Erro na validação do formulário.");
+        setMessage(submitError.message || "Erro na validação.");
         setIsLoading(false);
         return;
       }
 
-      // 2. SALVAR ENDEREÇO E EMAIL NO BANCO (CRUCIAL PARA O ORDER CARD FUNCIONAR)
       if (existingOrderId) {
         try {
           await updateOrderAddressAction(
@@ -204,44 +215,38 @@ export function CheckoutForm({
               zipCode: addressDetails.address.postal_code,
               phone: addressDetails.phone,
             },
-            finalEmail, // <--- AQUI ESTÁ A CORREÇÃO: Passando o e-mail!
+            // Sem guestEmail, pois estamos garantindo login
           );
         } catch (err) {
-          console.error("Erro ao salvar endereço:", err);
+          console.error(err);
         }
       }
-
-      const shippingDetails = {
-        name: addressDetails.name,
-        phone: addressDetails.phone,
-        address: {
-          line1: addressDetails.address.line1,
-          line2: addressDetails.address.line2,
-          city: addressDetails.address.city,
-          state: addressDetails.address.state,
-          postal_code: addressDetails.address.postal_code,
-          country: addressDetails.address.country,
-        },
-      };
 
       const { error } = await stripe.confirmPayment({
         elements,
         confirmParams: {
           return_url: `${window.location.origin}/checkout/sucesso`,
-          shipping: shippingDetails,
-          receipt_email: finalEmail, // Passa o e-mail para o Stripe
+          shipping: {
+            name: addressDetails.name,
+            phone: addressDetails.phone,
+            address: {
+              line1: addressDetails.address.line1,
+              line2: addressDetails.address.line2,
+              city: addressDetails.address.city,
+              state: addressDetails.address.state,
+              postal_code: addressDetails.address.postal_code,
+              country: addressDetails.address.country,
+            },
+          },
+          receipt_email: finalUserEmail, // Passa o email garantido
         },
       });
 
-      if (error.type === "card_error" || error.type === "validation_error") {
-        setMessage(error.message || "Ocorreu um erro.");
-      } else {
-        setMessage("Erro inesperado.");
-      }
+      if (error) setMessage(error.message || "Ocorreu um erro.");
       setIsLoading(false);
     }
 
-    // --- FLUXO 2: COD (PAGAMENTO NA ENTREGA) ---
+    // --- FLUXO 2: COD ---
     else {
       try {
         const shippingData = {
@@ -256,24 +261,12 @@ export function CheckoutForm({
 
         let result;
 
-        const customerInfo = {
-          email: finalEmail, // E-mail real (shadow ou user)
-          name: addressDetails.name,
-        };
-
         if (existingOrderId) {
-          result = await updateOrderToCOD(
-            existingOrderId,
-            customerInfo,
-            shippingData,
-          );
+          result = await updateOrderToCOD(existingOrderId, shippingData);
         } else {
-          result = await createOrderCOD(
-            items,
-            customerInfo,
-            coupon?.code,
-            shippingData,
-          );
+          // Passamos apenas o necessário, as actions pegam a sessão do servidor
+          // Mas como já validamos finalUserEmail aqui, o servidor deve ter sessão também
+          result = await createOrderCOD(items, coupon?.code, shippingData);
         }
 
         if (result.success) {
@@ -282,48 +275,19 @@ export function CheckoutForm({
         }
       } catch (error) {
         console.error(error);
-        if (error instanceof Error) {
-          setMessage(error.message);
-        } else {
-          setMessage("Erro ao processar pedido.");
-        }
+        setMessage("Erro ao processar pedido. Verifique se está logado.");
         setIsLoading(false);
       }
     }
   };
 
   const subtotal = getSubtotal();
-  const totalPrice = getTotalPrice();
-  const discountAmount = Math.max(0, subtotal - totalPrice);
-  const total = totalPrice + shippingCost;
+  const total = getTotalPrice() + shippingCost;
+  const discountAmount = Math.max(0, subtotal - getTotalPrice());
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-2">
       <div className="space-y-6">
-        {/* --- 3. INPUT DE EMAIL (Só aparece se não estiver logado) --- */}
-        {!userEmail && (
-          <div className="rounded-xl border border-neutral-200 bg-white p-6">
-            <h2 className="mb-4 text-lg font-bold text-neutral-900">
-              Dados de Contato
-            </h2>
-            <div className="relative">
-              <Mail className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-              <Input
-                type="email"
-                placeholder="Seu melhor e-mail para receber atualizações"
-                className="h-11 border-neutral-300 pl-10 focus:border-orange-500 focus:ring-orange-500"
-                value={guestEmail}
-                onChange={(e) => setGuestEmail(e.target.value)}
-                required
-              />
-            </div>
-            <p className="mt-2 text-xs text-neutral-500">
-              Usaremos este e-mail para enviar o rastreio e atualizações do
-              pedido.
-            </p>
-          </div>
-        )}
-
         <div className="rounded-xl border border-neutral-200 bg-white p-6">
           <h2 className="mb-4 text-lg font-bold text-neutral-900">
             Endereço de Entrega
@@ -350,7 +314,6 @@ export function CheckoutForm({
 
         <div className="rounded-xl border border-neutral-200 bg-white p-6">
           <h2 className="mb-4 text-lg font-bold text-neutral-900">Pagamento</h2>
-
           <div className="mb-6 flex w-full flex-col gap-3 sm:flex-row">
             <button
               type="button"
@@ -362,8 +325,7 @@ export function CheckoutForm({
                   : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900",
               )}
             >
-              <CreditCard className="h-4 w-4" />
-              Pagar Agora
+              <CreditCard className="h-4 w-4" /> Pagar Agora
             </button>
             <button
               type="button"
@@ -375,8 +337,7 @@ export function CheckoutForm({
                   : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900",
               )}
             >
-              <Truck className="h-4 w-4" />
-              Pagar na Entrega
+              <Truck className="h-4 w-4" /> Pagar na Entrega
             </button>
           </div>
 
@@ -392,8 +353,7 @@ export function CheckoutForm({
               </p>
               <p>
                 Você pagará o valor total de{" "}
-                <strong>{formatPrice(total)}</strong> diretamente ao entregador
-                quando receber seu pedido. Aceitamos dinheiro, cartão ou PIX.
+                <strong>{formatPrice(total)}</strong> diretamente ao entregador.
               </p>
             </div>
           )}
@@ -402,10 +362,7 @@ export function CheckoutForm({
 
       <div>
         <div className="sticky top-36 rounded-xl border border-neutral-200 bg-white p-6 shadow-lg">
-          <h2 className="mb-6 text-xl font-bold text-neutral-900">
-            Resumo do Pedido
-          </h2>
-
+          <h2 className="mb-6 text-xl font-bold text-neutral-900">Resumo</h2>
           <div className="mb-4 max-h-40 overflow-y-auto pr-2">
             {items.map((item) => (
               <div key={item.id} className="mb-2 flex justify-between text-sm">
@@ -421,16 +378,11 @@ export function CheckoutForm({
 
           <div className="space-y-3 border-t border-neutral-100 pt-4 text-sm">
             <div className="flex justify-between text-neutral-600">
-              <span className="flex items-center gap-2 font-semibold">
-                Subtotal
-              </span>
+              <span className="font-semibold">Subtotal</span>
               <span>{formatPrice(subtotal)}</span>
             </div>
-
             <div className="flex items-center justify-between text-neutral-600">
-              <span className="flex items-center gap-2 font-semibold">
-                Frete
-              </span>
+              <span className="font-semibold">Frete</span>
               <span className="font-medium text-orange-600">
                 {isCalculatingShipping ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -441,21 +393,14 @@ export function CheckoutForm({
                 )}
               </span>
             </div>
-
             {coupon && discountAmount > 0 && (
               <div className="flex justify-between font-medium text-emerald-600">
-                <span className="flex items-center gap-1"> Cupom</span>
+                <span className="flex items-center gap-1">
+                  Cupom ({coupon.code})
+                </span>
                 <span>- {formatPrice(discountAmount)}</span>
               </div>
             )}
-
-            <div className="flex items-center justify-between rounded-md text-neutral-600">
-              <span className="flex items-center gap-2 text-sm font-semibold tracking-wide">
-                {" "}
-                Previsão de Entrega
-              </span>
-              <span>Dos dias {deliveryDateString}</span>
-            </div>
 
             <div className="border-t border-neutral-200/70 pt-4">
               {!coupon ? (
@@ -463,8 +408,8 @@ export function CheckoutForm({
                   <div className="relative flex-1">
                     <Ticket className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-400" />
                     <Input
-                      placeholder="Possui um cupom?"
-                      className="h-10 border-neutral-300 bg-white pl-9 text-neutral-900 placeholder:text-neutral-400 focus:border-orange-500 focus:ring-orange-500"
+                      placeholder="Cupom"
+                      className="h-10 pl-9"
                       value={couponInput}
                       onChange={(e) =>
                         setCouponInput(e.target.value.toUpperCase())
@@ -474,7 +419,6 @@ export function CheckoutForm({
                   <Button
                     type="button"
                     variant="secondary"
-                    className="h-10 border border-neutral-200/70 bg-neutral-100 text-neutral-700 shadow-sm hover:bg-neutral-200"
                     onClick={handleApplyCoupon}
                     disabled={!couponInput || isValidatingCoupon}
                   >
@@ -486,23 +430,15 @@ export function CheckoutForm({
                   </Button>
                 </div>
               ) : (
-                <div className="flex items-center justify-between rounded-md border border-neutral-200 bg-neutral-50 p-3">
-                  <div className="flex items-center gap-2">
-                    <Ticket className="h-4 w-4 text-neutral-600" />
-                    <div>
-                      <p className="text-sm font-bold text-neutral-700">
-                        {coupon.code}
-                      </p>
-                      <p className="text-xs text-neutral-600">
-                        Desconto de {formatPrice(discountAmount)} aplicado
-                      </p>
-                    </div>
-                  </div>
+                <div className="flex justify-between rounded-md bg-neutral-50 p-3">
+                  <span className="text-sm font-bold">
+                    {coupon.code} aplicado
+                  </span>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 text-neutral-600 hover:bg-neutral-100"
+                    className="h-6 w-6"
                     onClick={handleRemoveCoupon}
                   >
                     <X className="h-3 w-3" />
@@ -521,31 +457,22 @@ export function CheckoutForm({
             disabled={
               isLoading ||
               isCalculatingShipping ||
-              !isAddressComplete || // Trava Endereço
-              (!userEmail && !guestEmail) || // Trava E-mail
+              !isAddressComplete ||
               (paymentMethod === "card" && (!stripe || !elements))
             }
             type="submit"
-            className="mt-6 h-12 w-full cursor-pointer bg-emerald-500 text-base font-bold text-white shadow-md duration-300 hover:-translate-y-0.5 hover:bg-emerald-600 disabled:transform-none disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-800 disabled:shadow-none"
+            className="mt-6 h-12 w-full bg-emerald-500 font-bold text-white hover:bg-emerald-600 disabled:bg-neutral-300"
           >
             {isLoading ? (
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             ) : paymentMethod === "card" ? (
               <>
-                <Lock className="mr-2 h-4 w-4" />
-                Comprar Agora
+                <Lock className="mr-2 h-4 w-4" /> Comprar Agora
               </>
             ) : (
-              <>Concluir Pedido</>
+              "Concluir Pedido"
             )}
           </Button>
-
-          {(!isAddressComplete || (!userEmail && !guestEmail)) &&
-            !isLoading && (
-              <div className="mt-4 text-center text-xs text-neutral-500">
-                Preencha os dados de contato e entrega.
-              </div>
-            )}
 
           {message && (
             <div className="mt-4 rounded bg-red-50 p-2 text-center text-sm text-red-500">

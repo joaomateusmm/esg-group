@@ -6,7 +6,7 @@ import { Resend } from "resend";
 import Stripe from "stripe";
 
 import { db } from "@/db";
-import { coupon, order, orderItem, product, user } from "@/db/schema";
+import { coupon, order, orderItem, product } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -35,8 +35,6 @@ type ShippingAddressInput = {
   phone?: string;
 };
 
-// --- FUNÇÕES AUXILIARES ---
-
 const formatCurrency = (amount: number, currency = "GBP") => {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -48,10 +46,8 @@ function calculateDeliveryDates(): { start: Date; end: Date } {
   const today = new Date();
   const start = new Date(today);
   start.setDate(today.getDate() + 10);
-
   const end = new Date(today);
   end.setDate(today.getDate() + 17);
-
   return { start, end };
 }
 
@@ -133,8 +129,6 @@ async function calculateOrderTotals(
   };
 }
 
-// --- EMAIL ACTION ---
-
 export async function sendOrderConfirmationEmail(
   email: string,
   name: string,
@@ -142,12 +136,13 @@ export async function sendOrderConfirmationEmail(
   amount: number,
   currency: string = "GBP",
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  items: any[] = [], // Recebe itens do banco ou adaptados
+  items: any[] = [],
 ) {
   try {
     const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://esggroup.com";
     const LOGO_URL = `${BASE_URL}/images/logo.png`;
-    const ORDER_LINK = `${BASE_URL}/pedido/${orderId}`;
+    // VOLTOU PARA LINK PRIVADO (APENAS LOGADO)
+    const ORDER_LINK = `${BASE_URL}/minha-conta/compras/${orderId}`;
 
     const formattedTotal = formatCurrency(amount, currency);
 
@@ -237,79 +232,25 @@ export async function sendOrderConfirmationEmail(
       </html>
     `;
 
-    const { data, error } = await resend.emails.send({
+    await resend.emails.send({
       from: process.env.EMAIL_FROM || "ESG Group <contato@esggroup.shop>",
       to: [email, ADMIN_EMAIL],
       subject: `Pedido #${orderId.slice(0, 8).toUpperCase()} Confirmado!`,
       html: emailHtml,
     });
-
-    if (error) {
-      console.error("❌ ERRO RESEND (Checkout):", error);
-    } else {
-      console.log(
-        `✅ E-mail de compra enviado para ${email} (ID: ${data?.id})`,
-      );
-    }
   } catch (err) {
     console.error("❌ Erro ao enviar email de checkout:", err);
   }
 }
-
-// --- CHECKOUT ACTIONS ---
 
 export async function getCartShippingCost(items: CartItemInput[]) {
   const { shippingCost } = await calculateOrderTotals(items);
   return { price: shippingCost };
 }
 
-// --- LÓGICA DE USUÁRIO (SHADOW ACCOUNT) ---
-// Função auxiliar interna para garantir que temos um userId
-async function getOrCreateUserId(
-  sessionUserId?: string,
-  guestInfo?: { email: string; name: string },
-): Promise<string> {
-  if (sessionUserId) {
-    return sessionUserId;
-  }
-
-  if (!guestInfo?.email) {
-    throw new Error("E-mail é obrigatório para finalizar a compra.");
-  }
-
-  const email = guestInfo.email.toLowerCase();
-
-  // 1. Verifica se já existe (mesmo que não logado)
-  const existingUser = await db.query.user.findFirst({
-    where: eq(user.email, email),
-  });
-
-  if (existingUser) {
-    return existingUser.id;
-  }
-
-  // 2. Cria conta sombra (Shadow Account)
-  const now = new Date();
-  const [newUser] = await db
-    .insert(user)
-    .values({
-      id: crypto.randomUUID(),
-      name: guestInfo.name || "Visitante",
-      email: email,
-      image: "",
-      emailVerified: false,
-      createdAt: now,
-      updatedAt: now,
-      role: "user",
-    })
-    .returning();
-
-  return newUser.id;
-}
-
 export async function createCheckoutSession(
   items: CartItemInput[],
-  guestInfo?: { email: string; name: string },
+  // Sem guestInfo
   couponCode?: string,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _returnUrl?: string,
@@ -341,16 +282,18 @@ export async function createCheckoutSession(
     }
   }
 
+  // --- OBRIGA SESSÃO ---
   const session = await auth.api.getSession({ headers: await headers() });
-
-  // --- APLICA A LÓGICA DE SHADOW ACCOUNT ---
-  const userId = await getOrCreateUserId(session?.user.id, guestInfo);
+  if (!session) {
+    throw new Error("Você precisa estar logado para finalizar a compra.");
+  }
+  const userId = session.user.id;
 
   const { finalTotal, discountAmount, activeCouponId, shippingCost } =
     await calculateOrderTotals(items, couponCode);
 
   if (finalTotal === 0) {
-    return await createFreeOrder(items, guestInfo, couponCode);
+    return await createFreeOrder(items, couponCode);
   }
 
   try {
@@ -367,8 +310,8 @@ export async function createCheckoutSession(
         paymentMethod: "card",
         shippingCost: shippingCost,
         currency: firstCurrency,
-        customerName: guestInfo?.name || session?.user.name,
-        customerEmail: guestInfo?.email || session?.user.email,
+        customerName: session.user.name,
+        customerEmail: session.user.email,
         fulfillmentStatus: "idle",
         estimatedDeliveryStart: start,
         estimatedDeliveryEnd: end,
@@ -418,7 +361,7 @@ export async function createCheckoutSession(
       mode: "payment",
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/sucesso?orderId=${newOrder.id}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/cancelado`,
-      customer_email: guestInfo?.email || session?.user.email,
+      customer_email: session.user.email,
       metadata: {
         orderId: newOrder.id,
         userId: userId,
@@ -434,7 +377,7 @@ export async function createCheckoutSession(
 
 export async function createOrderCOD(
   items: CartItemInput[],
-  guestInfo?: { email: string; name: string },
+  // Sem guestInfo
   couponCode?: string,
   shippingAddress?: ShippingAddressInput,
 ) {
@@ -454,10 +397,12 @@ export async function createOrderCOD(
     }
   }
 
+  // --- OBRIGA SESSÃO ---
   const session = await auth.api.getSession({ headers: await headers() });
-
-  // --- APLICA A LÓGICA DE SHADOW ACCOUNT ---
-  const userId = await getOrCreateUserId(session?.user.id, guestInfo);
+  if (!session) {
+    throw new Error("Você precisa estar logado para finalizar a compra.");
+  }
+  const userId = session.user.id;
 
   const { finalTotal, discountAmount, activeCouponId, shippingCost } =
     await calculateOrderTotals(items, couponCode);
@@ -480,8 +425,8 @@ export async function createOrderCOD(
       fulfillmentStatus: "processing",
       estimatedDeliveryStart: start,
       estimatedDeliveryEnd: end,
-      customerName: guestInfo?.name || session?.user.name,
-      customerEmail: guestInfo?.email || session?.user.email,
+      customerName: session.user.name,
+      customerEmail: session.user.email,
     })
     .returning();
 
@@ -533,7 +478,7 @@ export async function createOrderCOD(
 
 export async function updateOrderToCOD(
   orderId: string,
-  guestInfo?: { email: string; name: string },
+  // Sem guestInfo
   shippingAddress?: ShippingAddressInput,
 ) {
   const existingOrder = await db.query.order.findFirst({
@@ -549,10 +494,6 @@ export async function updateOrderToCOD(
 
   const { start, end } = calculateDeliveryDates();
 
-  // Para updates, usamos os dados que já existem ou os novos do guest
-  const customerName = guestInfo?.name || existingOrder.customerName;
-  const customerEmail = guestInfo?.email || existingOrder.customerEmail;
-
   await db
     .update(order)
     .set({
@@ -561,8 +502,6 @@ export async function updateOrderToCOD(
       fulfillmentStatus: "processing",
       shippingAddress: shippingAddress ? shippingAddress : null,
       userPhone: shippingAddress?.phone,
-      customerName: customerName,
-      customerEmail: customerEmail,
       estimatedDeliveryStart: start,
       estimatedDeliveryEnd: end,
       stripePaymentIntentId: null,
@@ -594,10 +533,10 @@ export async function updateOrderToCOD(
       .where(eq(coupon.id, existingOrder.couponId));
   }
 
-  if (customerEmail) {
+  if (existingOrder.customerEmail) {
     sendOrderConfirmationEmail(
-      customerEmail,
-      customerName || "Cliente",
+      existingOrder.customerEmail,
+      existingOrder.customerName || "Cliente",
       existingOrder.id,
       existingOrder.amount,
       existingOrder.currency || "GBP",
@@ -613,7 +552,7 @@ export async function updateOrderToCOD(
 
 export async function createFreeOrder(
   items: CartItemInput[],
-  guestInfo?: { email: string; name: string },
+  // Sem guestInfo
   couponCode?: string,
   shippingAddress?: ShippingAddressInput,
 ) {
@@ -633,10 +572,12 @@ export async function createFreeOrder(
     }
   }
 
+  // --- OBRIGA SESSÃO ---
   const session = await auth.api.getSession({ headers: await headers() });
-
-  // --- APLICA A LÓGICA DE SHADOW ACCOUNT ---
-  const userId = await getOrCreateUserId(session?.user.id, guestInfo);
+  if (!session) {
+    throw new Error("Você precisa estar logado para finalizar a compra.");
+  }
+  const userId = session.user.id;
 
   const { finalTotal, discountAmount, activeCouponId, shippingCost } =
     await calculateOrderTotals(items, couponCode);
@@ -663,8 +604,8 @@ export async function createFreeOrder(
       fulfillmentStatus: "processing",
       estimatedDeliveryStart: start,
       estimatedDeliveryEnd: end,
-      customerName: guestInfo?.name || session?.user.name,
-      customerEmail: guestInfo?.email || session?.user.email,
+      customerName: session.user.name,
+      customerEmail: session.user.email,
     })
     .returning();
 
@@ -725,15 +666,9 @@ export async function updateOrderAddressAction(
     zipCode: string;
     phone?: string;
   },
-  guestEmail?: string,
+  // Sem guestEmail
 ) {
   try {
-    if (guestEmail) {
-      await db
-        .update(order)
-        .set({ customerEmail: guestEmail })
-        .where(eq(order.id, orderId));
-    }
     await db
       .update(order)
       .set({
