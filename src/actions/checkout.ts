@@ -147,7 +147,7 @@ export async function sendOrderConfirmationEmail(
   try {
     const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://esggroup.com";
     const LOGO_URL = `${BASE_URL}/images/logo.png`;
-    const ORDER_LINK = `${BASE_URL}/minha-conta/compras/${orderId}`;
+    const ORDER_LINK = `${BASE_URL}/pedido/${orderId}`;
 
     const formattedTotal = formatCurrency(amount, currency);
 
