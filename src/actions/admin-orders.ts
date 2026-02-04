@@ -335,7 +335,7 @@ export async function updateOrderStatus(
                 </div>
 
                 <div class="btn-container">
-                  <a href="https://www.mateusdev.shop/minha-conta/compras/${orderData.id}" class="btn">
+                  <a href="https://www.esggroup.shop/minha-conta/compras/${orderData.id}" class="btn">
                     Ver Pedido Completo
                   </a>
                 </div>
@@ -358,7 +358,7 @@ export async function updateOrderStatus(
 
         if (targetEmail) {
           const { data, error } = await resend.emails.send({
-            from: "ESG Group <contato@mateusdev.shop>",
+            from: process.env.EMAIL_FROM || "ESG Group <contato@esggroup.shop>",
             to: [targetEmail, ADMIN_EMAIL],
             subject: `${currentStatus.label}: Atualização do Pedido #${orderData.id.slice(0, 8).toUpperCase()}`,
             html: emailHtml,

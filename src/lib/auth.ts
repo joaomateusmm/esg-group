@@ -35,8 +35,8 @@ export const auth = betterAuth({
   },
 
   trustedOrigins: [
-    "https://mateusdev.shop",
-    "https://www.mateusdev.shop",
+    "https://esggroup.shop",
+    "https://www.esggroup.shop",
     "https://esg-group.vercel.app",
     "http://localhost:3000",
   ],

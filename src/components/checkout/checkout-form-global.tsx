@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import {
   createOrderCOD,
   getCartShippingCost,
-  updateOrderAddressAction, // <--- 1. NOVA IMPORTAÇÃO NECESSÁRIA
+  updateOrderAddressAction,
   updateOrderToCOD,
 } from "@/actions/checkout";
 import { validateCoupon } from "@/actions/coupons";
@@ -52,6 +52,9 @@ export function CheckoutForm({
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
   const [paymentMethod, setPaymentMethod] = useState<"card" | "cod">("card");
+
+  // ESTADO PARA CONTROLAR SE O ENDEREÇO ESTÁ COMPLETO
+  const [isAddressComplete, setIsAddressComplete] = useState(false);
 
   const cartCurrency = items.length > 0 ? items[0].currency || "GBP" : "GBP";
 
@@ -99,7 +102,8 @@ export function CheckoutForm({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleAddressChange = async (event: any) => {
     setAddressDetails(event.value);
-    if (!event.complete) return;
+    // O Stripe manda event.complete = true quando todos os campos obrigatórios estão preenchidos
+    setIsAddressComplete(event.complete);
   };
 
   const handleApplyCoupon = async () => {
@@ -137,18 +141,23 @@ export function CheckoutForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // TRAVA DUPLA: Se o endereço não estiver completo, nem tenta processar
+    if (
+      !isAddressComplete ||
+      !addressDetails ||
+      !addressDetails.address ||
+      !addressDetails.name
+    ) {
+      setMessage("Por favor, preencha o endereço de entrega completo.");
+      return;
+    }
+
     if (paymentMethod === "card" && (!stripe || !elements)) {
       return;
     }
 
     setIsLoading(true);
     setMessage(null);
-
-    if (!addressDetails || !addressDetails.address || !addressDetails.name) {
-      setMessage("Por favor, preencha o endereço de entrega completo.");
-      setIsLoading(false);
-      return;
-    }
 
     // --- FLUXO 1: CARTÃO (STRIPE) ---
     if (paymentMethod === "card") {
@@ -465,22 +474,29 @@ export function CheckoutForm({
             disabled={
               isLoading ||
               isCalculatingShipping ||
+              !isAddressComplete || // <--- TRAVA AQUI
               (paymentMethod === "card" && (!stripe || !elements))
             }
             type="submit"
-            className="mt-6 h-12 w-full bg-orange-600 text-base font-bold text-white hover:bg-orange-700 disabled:bg-neutral-300"
+            className="mt-6 h-12 w-full cursor-pointer bg-emerald-500 text-base font-bold text-white shadow-md duration-300 hover:-translate-y-0.5 hover:bg-emerald-600 disabled:transform-none disabled:cursor-not-allowed disabled:text-neutral-800 disabled:bg-neutral-300 disabled:shadow-none"
           >
             {isLoading ? (
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             ) : paymentMethod === "card" ? (
               <>
                 <Lock className="mr-2 h-4 w-4" />
-                Pagar {formatPrice(total)}
+                Comprar Agora
               </>
             ) : (
               <>Concluir Pedido</>
             )}
           </Button>
+
+          {!isAddressComplete && !isLoading && (
+            <div className="mt-4 text-center text-xs text-neutral-500">
+              Preencha o endereço de entrega.
+            </div>
+          )}
 
           {message && (
             <div className="mt-4 rounded bg-red-50 p-2 text-center text-sm text-red-500">

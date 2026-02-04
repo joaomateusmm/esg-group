@@ -109,7 +109,7 @@ async function sendStripeOrderEmail(
     `;
 
     await resend.emails.send({
-      from: "ESG Group <contato@mateusdev.shop>",
+      from: process.env.EMAIL_FROM || "ESG Group <contato@esggroup.shop>",
       to: [email, ADMIN_EMAIL],
       subject: `✅ Pagamento Confirmado: Pedido #${orderId.slice(0, 8).toUpperCase()}`,
       html: emailHtml,

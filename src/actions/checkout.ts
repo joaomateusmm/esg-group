@@ -206,7 +206,7 @@ export async function sendOrderConfirmationEmail(
     `;
 
     const { data, error } = await resend.emails.send({
-      from: "ESG Group <contato@mateusdev.shop>",
+      from: process.env.EMAIL_FROM || "ESG Group <contato@esggroup.shop>",
       to: [email, ADMIN_EMAIL],
       subject: `🎉 Pedido #${orderId.slice(0, 8).toUpperCase()} Confirmado!`,
       html: emailHtml,
