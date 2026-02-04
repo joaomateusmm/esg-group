@@ -176,9 +176,12 @@ export async function sendOrderConfirmationEmail(
         <style>
           body { font-family: sans-serif; background-color: #f5f5f5; margin: 0; padding: 0; color: #333; }
           .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+          /* GRADIENTE LARANJA (Igual ao Stripe) */
           .header { background: linear-gradient(to right, #ea580c, #f97316); padding: 30px 20px; text-align: center; color: white; }
           .content { padding: 30px 25px; }
+          /* BOTÃO LARANJA */
           .btn { display: inline-block; background-color: #ea580c; color: #ffffff !important; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: bold; margin-top: 20px; }
+          /* CAIXA DE RESUMO LARANJA CLARO */
           .summary-box { background-color: #fff7ed; border: 1px solid #ffedd5; padding: 15px; border-radius: 6px; margin-top: 20px; }
           .footer { background-color: #fafafa; padding: 20px; text-align: center; font-size: 11px; color: #999; }
         </style>
@@ -194,10 +197,11 @@ export async function sendOrderConfirmationEmail(
               style="display: block; margin: 0 auto 15px auto; background-color: #ffffff; padding: 10px; border-radius: 50%; object-fit: contain;" 
             />
             <h2 style="margin:0;">Pedido Confirmado!</h2>
-            <p style="margin:5px 0 0 0; opacity:0.9;">#${orderId.slice(0, 8).toUpperCase()}</p>
+            <p style="margin:5px 0 0 0; opacity:0.9;">Pedido #${orderId.slice(0, 8).toUpperCase()}</p>
           </div>
           <div class="content">
             <p style="font-size: 16px;">Olá, <strong>${name}</strong>!</p>
+            
             <p style="color: #555; line-height: 1.5;">
               Seu pedido está sendo processado com sucesso. Estamos muito felizes em ter você como cliente!
               <br>Já estamos preparando tudo para o envio.
@@ -216,7 +220,7 @@ export async function sendOrderConfirmationEmail(
             </div>
 
             <div style="text-align: center;">
-              <p style="font-size: 13px; color: #777; margin-bottom: 20px;">
+              <p style="font-size: 13px; color: #777; margin-bottom: 20px; margin-top: 20px;">
                 Você receberá atualizações no seu email sobre o rastreio assim que o pedido for despachado.
               </p>
               <a href="${ORDER_LINK}" class="btn">Acompanhar Meus Pedidos</a>
