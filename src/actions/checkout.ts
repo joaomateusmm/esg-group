@@ -141,6 +141,8 @@ export async function sendOrderConfirmationEmail(
   orderId: string,
   amount: number,
   currency: string = "GBP",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  items: any[] = [], // Recebe itens do banco
 ) {
   try {
     const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://esggroup.com";
@@ -149,56 +151,79 @@ export async function sendOrderConfirmationEmail(
 
     const formattedTotal = formatCurrency(amount, currency);
 
+    const productsHtml = items
+      .map(
+        (item) => `
+      <div style="border-bottom: 1px solid #eeeeee; padding: 15px 0; display: flex; align-items: center;">
+        <img src="${item.image || "https://placehold.co/60"}" width="60" height="60" style="border-radius: 6px; object-fit: cover; margin-right: 15px; background-color: #f9f9f9;" />
+        <div style="flex: 1;">
+          <p style="margin: 0; font-size: 14px; font-weight: 600; color: #333;">${item.productName}</p>
+          <p style="margin: 4px 0 0; font-size: 12px; color: #888;">Qtd: ${item.quantity}</p>
+        </div>
+        <div style="font-size: 14px; font-weight: 600; color: #333;">
+          ${formatCurrency(item.price, currency)}
+        </div>
+      </div>
+    `,
+      )
+      .join("");
+
     const emailHtml = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Pedido Confirmado</title>
         <style>
-          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 0; color: #333333; }
-          .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; }
-          .header { background: linear-gradient(to right, #15803d, #16a34a); padding: 30px 20px; text-align: center; color: white; }
-          .content { padding: 30px 25px; text-align: center; }
-          .info-box { background-color: #f0fdf4; border: 1px solid #dcfce7; border-radius: 6px; padding: 20px; margin: 20px 0; }
-          .btn { display: inline-block; background-color: #15803d; color: #ffffff !important; text-decoration: none; padding: 14px 35px; border-radius: 4px; font-weight: bold; }
+          body { font-family: sans-serif; background-color: #f5f5f5; margin: 0; padding: 0; color: #333; }
+          .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+          .header { background: linear-gradient(to right, #ea580c, #f97316); padding: 30px 20px; text-align: center; color: white; }
+          .content { padding: 30px 25px; }
+          .btn { display: inline-block; background-color: #ea580c; color: #ffffff !important; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: bold; margin-top: 20px; }
+          .summary-box { background-color: #fff7ed; border: 1px solid #ffedd5; padding: 15px; border-radius: 6px; margin-top: 20px; }
           .footer { background-color: #fafafa; padding: 20px; text-align: center; font-size: 11px; color: #999; }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <img src="${LOGO_URL}" alt="ESG Group" width="100" style="display: block; margin: 0 auto 15px auto;" />
-            <h2 style="margin:0;">Compra Confirmada!</h2>
-            <p style="margin:5px 0 0 0; opacity:0.9;">Pedido #${orderId.slice(0, 8).toUpperCase()}</p>
+            <img 
+              src="${LOGO_URL}" 
+              alt="ESG Group" 
+              width="80" 
+              height="80" 
+              style="display: block; margin: 0 auto 15px auto; background-color: #ffffff; padding: 10px; border-radius: 50%; object-fit: contain;" 
+            />
+            <h2 style="margin:0;">Pedido Confirmado!</h2>
+            <p style="margin:5px 0 0 0; opacity:0.9;">#${orderId.slice(0, 8).toUpperCase()}</p>
           </div>
-          
           <div class="content">
-            <div style="font-size: 40px; margin-bottom: 10px;">🎉</div>
-            <p style="font-size: 18px; margin-bottom: 15px;">Olá, <strong>${name}</strong>!</p>
+            <p style="font-size: 16px;">Olá, <strong>${name}</strong>!</p>
             <p style="color: #555; line-height: 1.5;">
-              Sua compra foi realizada com sucesso. Estamos muito felizes em ter você como cliente!
+              Seu pedido está sendo processado com sucesso. Estamos muito felizes em ter você como cliente!
               <br>Já estamos preparando tudo para o envio.
             </p>
-
-            <div class="info-box">
-              <div style="font-size: 12px; color: #15803d; text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">Valor Total</div>
-              <div style="font-size: 24px; color: #14532d; font-weight: bold;">${formattedTotal}</div>
+            
+            <div style="margin-top: 25px; margin-bottom: 25px;">
+              <h3 style="font-size: 14px; text-transform: uppercase; color: #888; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 0;">Itens do Pedido</h3>
+              ${productsHtml}
             </div>
 
-            <p style="font-size: 13px; color: #777; margin-bottom: 30px;">
-              Você receberá atualizações sobre o rastreio assim que o pedido for despachado.
-            </p>
+            <div class="summary-box">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 14px; font-weight: bold; color: #ea580c;">Valor Total</span>
+                <span style="font-size: 18px; font-weight: bold; color: #ea580c;">${formattedTotal}</span>
+              </div>
+            </div>
 
-            <div>
+            <div style="text-align: center;">
+              <p style="font-size: 13px; color: #777; margin-bottom: 20px;">
+                Você receberá atualizações no seu email sobre o rastreio assim que o pedido for despachado.
+              </p>
               <a href="${ORDER_LINK}" class="btn">Acompanhar Meus Pedidos</a>
             </div>
           </div>
-
           <div class="footer">
-            <p>Este é um e-mail automático, por favor não responda.</p>
-            <p>© ${new Date().getFullYear()} ESG Group.</p>
+            <p>© ${new Date().getFullYear()} ESG Group. Todos os direitos reservados.</p>
           </div>
         </div>
       </body>

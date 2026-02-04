@@ -76,7 +76,13 @@ async function sendStripeOrderEmail(
       <body>
         <div class="container">
           <div class="header">
-            <img src="${LOGO_URL}" alt="ESG Group" width="100" style="display: block; margin: 0 auto 15px auto;" />
+            <img 
+              src="${LOGO_URL}" 
+              alt="ESG Group" 
+              width="80" 
+              height="80" 
+              style="display: block; margin: 0 auto 15px auto; background-color: #ffffff; padding: 10px; border-radius: 50%; object-fit: contain;" 
+            />
             <h2 style="margin:0;">Pagamento Aprovado!</h2>
             <p style="margin:5px 0 0 0; opacity:0.9;">#${orderId.slice(0, 8).toUpperCase()}</p>
           </div>
@@ -111,13 +117,10 @@ async function sendStripeOrderEmail(
     await resend.emails.send({
       from: process.env.EMAIL_FROM || "ESG Group <contato@esggroup.shop>",
       to: [email, ADMIN_EMAIL],
-      subject: `✅ Pagamento Confirmado: Pedido #${orderId.slice(0, 8).toUpperCase()}`,
+      subject: `Pagamento Confirmado: Pedido #${orderId.slice(0, 8).toUpperCase()}`,
       html: emailHtml,
     });
-    console.log(`✅ E-mail enviado para ${email}`);
-  } catch (err) {
-    console.error("❌ Erro email webhook:", err);
-  }
+  } catch {}
 }
 
 export async function POST(req: Request) {
@@ -150,8 +153,6 @@ export async function POST(req: Request) {
     const orderId = obj.metadata?.orderId;
 
     if (orderId) {
-      console.log(`💰 Pagamento confirmado: ${orderId}`);
-
       try {
         await db
           .update(order)

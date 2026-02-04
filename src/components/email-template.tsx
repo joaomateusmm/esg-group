@@ -19,7 +19,7 @@ export function EmailTemplate({
 }: Readonly<EmailTemplateProps>) {
   return (
     <div style={{ fontFamily: "sans-serif", color: "#333" }}>
-      <h1>Pagamento Confirmado! 🚀</h1>
+      <h1>Pagamento Confirmado!</h1>
       <p>
         Olá, <strong>{customerName}</strong>!
       </p>
