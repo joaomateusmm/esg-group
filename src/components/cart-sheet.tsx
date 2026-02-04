@@ -28,7 +28,7 @@ function CartIconBadge({ count }: { count: number }) {
       <div className="relative">
         <ShoppingCart className="h-5 w-5" strokeWidth={2} />
         {count > 0 && (
-          <div className="-top-1.8 -right-1.8 absolute flex h-4 w-4 items-center justify-center rounded-full bg-orange-600 text-[10px] font-bold text-white shadow-sm">
+          <div className="-top-1.5 -right-1.5 absolute flex h-4 w-4 items-center justify-center rounded-full bg-orange-600 text-[10px] font-bold text-white shadow-sm">
             {count}
           </div>
         )}

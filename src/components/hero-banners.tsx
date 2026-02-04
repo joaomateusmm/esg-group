@@ -15,7 +15,7 @@ const BANNERS = [
     src: "/images/banners/quarto.jpg",
     title: "Quartos",
     description: "Melhores móveis para o seu quarto.",
-    href: "/categorias/quarto",
+    href: "/categorias/quartos",
     position: "left-top",
   },
   {

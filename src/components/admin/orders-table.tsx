@@ -477,14 +477,22 @@ export function OrdersTable({
           </TableHeader>
           <TableBody>
             {data.length === 0 ? (
-              <TableRow className="border-neutral-100 hover:bg-neutral-50">
+              <TableRow>
                 <TableCell
-                  colSpan={10}
-                  className="h-32 text-center text-neutral-500"
+                  colSpan={7}
+                  className="h-96 text-center text-neutral-500"
                 >
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <Package className="h-8 w-8 opacity-20" />
-                    <p>Nenhum pedido encontrado.</p>
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-4 py-10 md:translate-x-25">
+                    <Image
+                      src="/images/illustration.svg"
+                      alt="Sem produtos"
+                      width={200}
+                      height={200}
+                      className="opacity-50 grayscale"
+                    />
+                    <p className="text-lg font-light text-neutral-400">
+                      Nenhum pedido encontrado.
+                    </p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -814,7 +822,8 @@ export function OrdersTable({
                 className="border-neutral-200 bg-neutral-50 text-neutral-900 placeholder:text-neutral-400 focus:border-orange-500 focus:ring-orange-500"
               />
               <p className="mt-2 text-xs text-neutral-500">
-                Ao salvar, o status mudará automaticamente para &quot;Enviado&quot;.
+                Ao salvar, o status mudará automaticamente para
+                &quot;Enviado&quot;.
               </p>
             </div>
           </div>

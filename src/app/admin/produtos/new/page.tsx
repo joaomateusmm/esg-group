@@ -399,6 +399,8 @@ export default function NewProductPage() {
                   </CardTitle>
                   <CardDescription className="text-neutral-500">
                     Defina como o frete será cobrado para este produto.
+                    Independente da opção escolhida, o frete será grátis para
+                    moradores de Londres.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">

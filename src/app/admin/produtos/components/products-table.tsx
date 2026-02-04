@@ -230,7 +230,13 @@ export function ProductsTable({
                   className="h-96 text-center text-neutral-500"
                 >
                   <div className="flex h-full w-full flex-col items-center justify-center gap-4 py-10">
-                    <ImageIcon className="h-16 w-16 text-neutral-200" />
+                    <Image
+                      src="/images/illustration.svg" // Garanta que essa imagem funciona no claro ou troque
+                      alt="Sem produtos"
+                      width={200}
+                      height={200}
+                      className="opacity-50 grayscale"
+                    />
                     <p className="text-lg font-light text-neutral-400">
                       Nenhum produto encontrado.
                     </p>

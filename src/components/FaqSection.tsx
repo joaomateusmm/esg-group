@@ -12,63 +12,74 @@ import {
 const faqData = [
   {
     value: "item-1",
-    question: "Quem nós somos?",
+    question: "Quem é o ESG Group?",
     answer:
-      "Somos um serviço online de revenda de citizens, mods de som, configs e etc para Fivem, com a disponibilidade de vendas de contas Rockstar para os que não tem e para os 'banidinhos', oferecendo o melhor preço e melhor serviço desde 2020.",
+      "Somos uma empresa especializada na venda de móveis de alta qualidade e prestação de serviços residenciais no Reino Unido. Nosso foco é oferecer soluções, conforto e praticidade com o melhor custo-benefício do mercado.",
   },
   {
     value: "item-2",
-    question: "Corre risco de banimentos?",
+    question: "Quais regiões vocês atendem?",
     answer:
-      "Como todos os mods e citizens o usuario dos mesmos se torna sujeito a algum tipo de punição dependendo da cidade, porém nós sempre mantemos nossas citizens, mods e etc o mais atualizados possivel para evitar banimentos ou punições vindas das próprias cidades.",
+      "Atualmente realizamos entregas e serviços em toda a região de Londres e arredores. Para outras localidades no Reino Unido, por favor, consulte a disponibilidade inserindo seu código postal no checkout ou entrando em contato com nosso suporte.",
   },
   {
     value: "item-3",
-    question: "Como recebo meu produto?",
+    question: "Como funciona a entrega e montagem?",
     answer:
-      "O seu produto é enviado automaticamente pro seu email após a confirmação do pagamento. (Coloque um email valido para recebimento.)",
+      "Nossos produtos são entregues com todo cuidado pela nossa equipe logística. Oferecemos também o serviço de montagem profissional, que pode ser contratado à parte ou estar incluso em promoções específicas. Verifique os detalhes na página do produto.",
   },
   {
     value: "item-4",
-    question: "E se eu tiver algum problema com a compra ou produto?",
+    question: "Qual o prazo de garantia e devolução?",
     answer:
-      "Você deverá abrir ticket no Discord e informar seu problema para podermos lhe ajudar da melhor forma.",
+      "Todos os nossos móveis possuem garantia contra defeitos de fabricação. Caso não fique satisfeito, você tem um prazo para solicitar a devolução, desde que o produto esteja nas condições originais. Consulte nossos Termos de Uso para mais detalhes.",
+  },
+  {
+    value: "item-5",
+    question: "Vocês realizam serviços de reforma ou reparos?",
+    answer:
+      "Sim! Além da venda de móveis, o ESG Group conta com uma equipe qualificada para diversos serviços residenciais. Você pode solicitar um orçamento diretamente pelo nosso site ou através do nosso canal de atendimento.",
   },
 ];
 
 const FaqSection = () => {
   return (
-    <section className="relative mb-15 bg-[#fff] py-10">
+    <section className="relative mb-15 bg-white py-16">
       <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
           viewport={{ once: true }}
-          className="mx-auto mb-12 flex max-w-[600px] flex-col items-center text-center"
+          className="mx-auto mb-12 flex max-w-[700px] flex-col items-center text-center"
         >
-          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+          <h2 className="font-montserrat text-3xl font-bold tracking-tight text-neutral-900 sm:text-4xl md:text-5xl">
             Perguntas Frequentes
           </h2>
-          <p className="text-muted-foreground mt-4 text-lg">
-            Algumas perguntas básicas sobre a loja e sobre nós.
+          <p className="mt-4 text-lg text-neutral-500">
+            Tire suas dúvidas sobre nossos produtos, entregas e serviços.
           </p>
+          <div className="mt-4 h-1 w-20 rounded-full bg-orange-600" />
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.7 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
           viewport={{ once: true }}
-          className="mx-auto max-w-2xl"
+          className="mx-auto max-w-3xl"
         >
           <Accordion type="single" collapsible className="w-full">
             {faqData.map((item) => (
-              <AccordionItem key={item.value} value={item.value}>
-                <AccordionTrigger className="text-left text-lg font-medium">
+              <AccordionItem
+                key={item.value}
+                value={item.value}
+                className="border-b border-neutral-200"
+              >
+                <AccordionTrigger className="text-left text-lg font-medium text-neutral-900 transition-all hover:text-orange-600 hover:no-underline data-[state=open]:text-orange-600">
                   {item.question}
                 </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground text-base leading-relaxed">
+                <AccordionContent className="text-base leading-relaxed text-neutral-600">
                   {item.answer}
                 </AccordionContent>
               </AccordionItem>

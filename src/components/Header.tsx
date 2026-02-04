@@ -6,13 +6,17 @@ import {
   Heart,
   HeartHandshake,
   LayoutGrid,
+  LifeBuoy, // Para suporte
   Loader2,
   LogOut,
   Moon,
+  Package,
   Search,
+  Settings,
   ShieldQuestionMark,
   ShoppingCart,
   Sun,
+  User,
   UserRound,
 } from "lucide-react";
 import Image from "next/image";
@@ -32,6 +36,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
@@ -83,7 +89,7 @@ function HeaderIconButton({
       <div className="relative">
         <Icon className="h-5 w-5" strokeWidth={2} />
         {!!badgeCount && badgeCount > 0 && (
-          <div className="absolute -top-1.8 -right-1.8 flex h-4 w-4 cursor-pointer items-center justify-center rounded-full bg-orange-600 text-[10px] font-bold text-white shadow-sm">
+          <div className="absolute -top-1.5 -right-1.5 flex h-4 w-4 cursor-pointer items-center justify-center rounded-full bg-orange-600 text-[10px] font-bold text-white shadow-sm">
             {badgeCount}
           </div>
         )}
@@ -576,49 +582,107 @@ export function HeaderContent() {
             {/* CARRINHO */}
             <CartSheet />
 
-            {/* USER/MINHA CONTA */}
+            {/* USER/MINHA CONTA - REDESIGN MODERNO */}
             {session ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex cursor-pointer items-center gap-2 outline-none">
-                    <Avatar className="h-9 w-9 cursor-pointer border border-neutral-200 transition-transform hover:scale-105">
+                  <button className="group flex cursor-pointer items-center gap-2 outline-none">
+                    <Avatar className="h-9 w-9 border-2 border-white shadow-sm ring-1 ring-neutral-200 transition-all duration-300 group-hover:ring-orange-200">
                       <AvatarImage src={session.user.image || ""} />
                       <AvatarFallback className="bg-orange-100 font-bold text-orange-700">
                         {session.user.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
+                    {/* Seta discreta para indicar menu (opcional) */}
+                    <ChevronDown className="h-4 w-4 text-neutral-400 transition-transform duration-300 group-data-[state=open]:rotate-180" />
                   </button>
                 </DropdownMenuTrigger>
+
                 <DropdownMenuContent
                   align="end"
-                  className="z-[150] w-56 rounded-lg border border-neutral-200 bg-white p-1 shadow-lg"
+                  sideOffset={8}
+                  className="z-[150] w-72 rounded-xl border border-neutral-100 bg-white p-2 shadow-xl ring-1 ring-neutral-900/5"
                 >
+                  {/* CABEÇALHO DO PERFIL (Estilo Card) */}
+                  <div className="mb-2 flex items-center gap-3 rounded-lg bg-neutral-50 p-3">
+                    <Avatar className="h-10 w-10 border border-neutral-200">
+                      <AvatarImage src={session.user.image || ""} />
+                      <AvatarFallback className="bg-white font-bold text-orange-600">
+                        {session.user.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col overflow-hidden">
+                      <span className="truncate text-sm font-bold text-neutral-900">
+                        {session.user.name}
+                      </span>
+                      <span className="truncate text-xs text-neutral-500">
+                        {session.user.email}
+                      </span>
+                    </div>
+                  </div>
+
+                  <DropdownMenuSeparator className="my-1 bg-neutral-100" />
+
+                  {/* GRUPO: LOJA */}
+                  <DropdownMenuLabel className="px-3 py-1.5 text-[10px] font-semibold tracking-wider text-neutral-400 uppercase">
+                    Minha Loja
+                  </DropdownMenuLabel>
+
                   <DropdownMenuItem
-                    disabled
-                    className="mb-1 rounded-md bg-neutral-50 px-3 py-2 font-semibold text-neutral-900 opacity-100"
-                  >
-                    {session.user.name}
-                  </DropdownMenuItem>
-                  <Separator className="my-1 bg-neutral-100" />
-                  <DropdownMenuItem
-                    className="cursor-pointer rounded-sm px-3 py-2 hover:bg-neutral-50"
-                    onClick={() => router.push("/minha-conta")}
-                  >
-                    {t.header.account.myAccount}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="cursor-pointer rounded-sm px-3 py-2 hover:bg-neutral-50"
+                    className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-neutral-600 transition-colors focus:bg-orange-50 focus:text-orange-700"
                     onClick={() => router.push("/minha-conta/compras")}
                   >
-                    {t.header.account.orders}
+                    <Package className="h-4 w-4" />
+                    <span>{t.header.account.orders}</span>
                   </DropdownMenuItem>
-                  <Separator className="my-1 bg-neutral-100" />
+
                   <DropdownMenuItem
-                    className="cursor-pointer rounded-sm px-3 py-2 text-red-600 focus:bg-red-50 focus:text-red-700"
+                    className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-neutral-600 transition-colors focus:bg-orange-50 focus:text-orange-700"
+                    onClick={() => router.push("/minha-conta/favoritos")} // Rota sugerida
+                  >
+                    <Heart className="h-4 w-4" />
+                    <span>Lista de Desejos</span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-neutral-600 transition-colors focus:bg-orange-50 focus:text-orange-700"
+                    onClick={() => router.push("/minha-conta/carrinho")} // Rota sugerida
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                    <span>Meu Carrinho</span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator className="my-1 bg-neutral-100" />
+
+                  <DropdownMenuLabel className="px-3 py-1.5 text-[10px] font-semibold tracking-wider text-neutral-400 uppercase">
+                    Configurações
+                  </DropdownMenuLabel>
+
+                  <DropdownMenuItem
+                    className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-neutral-600 transition-colors focus:bg-orange-50 focus:text-orange-700"
+                    onClick={() => router.push("/minha-conta")}
+                  >
+                    <User className="h-4 w-4" />
+                    <span>Dados Pessoais</span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-neutral-600 transition-colors focus:bg-orange-50 focus:text-orange-700"
+                    onClick={() => router.push("/faq")}
+                  >
+                    <LifeBuoy className="h-4 w-4" />
+                    <span>Central de Ajuda</span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator className="my-1 bg-neutral-100" />
+
+                  {/* LOGOUT */}
+                  <DropdownMenuItem
+                    className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-red-600 transition-colors focus:bg-red-50 focus:text-red-700"
                     onClick={handleSignOut}
                   >
-                    <LogOut className="mr-2 h-4 w-4" />{" "}
-                    {t.header.account.logout}
+                    <LogOut className="h-4 w-4" />
+                    <span>{t.header.account.logout}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

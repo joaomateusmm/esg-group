@@ -16,7 +16,7 @@ const benefits = [
   {
     icon: Truck,
     title: "Frete",
-    subtitle: "entrega rápida e segura",
+    subtitle: "Frete Grátis em Londres",
   },
   {
     icon: BadgePercent,

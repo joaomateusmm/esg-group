@@ -44,12 +44,12 @@ export default async function AdminAffiliatesPage() {
 
       <div className="flex flex-row items-center justify-between gap-4">
         <div>
-          <h1 className="font-clash-display text-3xl font-medium text-white">
-            Meus Produtos
+          <h1 className="font-clash-display text-3xl font-medium text-black">
+            Meus Afiliados
           </h1>
 
-          <p className="text-sm text-neutral-400">
-            Gerencie o catálogo da sua loja.
+          <p className="text-sm text-neutral-700">
+            Gerencie os afiliados da sua loja.
           </p>
         </div>
       </div>

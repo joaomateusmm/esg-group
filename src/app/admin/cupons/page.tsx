@@ -43,10 +43,10 @@ export default async function AdminCouponsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#fff] ">
+    <div className="min-h-screen bg-[#fff]">
       {" "}
       {/* Fundo geral claro */}
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto">
         <div className="mb-8 flex items-center justify-between">
           <div className="space-y-1">
             <h1 className="font-clash-display flex items-center gap-3 text-3xl font-medium text-neutral-900">
@@ -65,9 +65,9 @@ export default async function AdminCouponsPage() {
               Cupons Ativos e Inativos
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="px-0">
             <Table>
-              <TableHeader className="bg-neutral-50">
+              <TableHeader className="bg-neutral-50 px-8">
                 <TableRow className="border-neutral-200 hover:bg-neutral-100">
                   <TableHead className="font-semibold text-neutral-600">
                     Código

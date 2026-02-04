@@ -121,14 +121,14 @@ export function AffiliatesTable({ data }: AffiliatesTableProps) {
         </div>
       </div>
 
-      <Card className="border-white/10 bg-[#0A0A0A]">
+      <Card className="border-black/10 bg-[#ffffff]">
         <CardHeader>
-          <CardTitle className="text-white">Lista de Afiliados</CardTitle>
+          <CardTitle className="text-neutral-800">Lista de Afiliados</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow className="border-white/10 hover:bg-white/5">
+              <TableRow className="border-black/10 hover:bg-black/5">
                 <TableHead className="text-neutral-400">Afiliado</TableHead>
                 <TableHead className="text-neutral-400">Código</TableHead>
                 <TableHead className="text-neutral-400">Status</TableHead>
@@ -148,19 +148,19 @@ export function AffiliatesTable({ data }: AffiliatesTableProps) {
               {data.map((affiliate) => (
                 <TableRow
                   key={affiliate.id}
-                  className="border-white/10 hover:bg-white/5"
+                  className="border-black/10 hover:bg-black/5"
                 >
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9 border border-white/10">
+                      <Avatar className="h-9 w-9 border border-black/10">
                         <AvatarImage src={affiliate.user?.image || ""} />
-                        <AvatarFallback className="bg-neutral-800 text-xs text-white">
+                        <AvatarFallback className="bg-neutral-800 text-xs text-black">
                           {affiliate.user?.name?.slice(0, 2).toUpperCase() ||
                             "AF"}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-white">
+                        <span className="text-sm font-medium text-black">
                           {affiliate.user?.name || "Sem nome"}
                         </span>
                         <span className="text-xs text-neutral-500">

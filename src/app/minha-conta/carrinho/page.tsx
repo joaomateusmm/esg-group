@@ -117,13 +117,13 @@ function CartContent() {
   if (!mounted) return null;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pt-12 pb-20 md:px-8 lg:pt-16">
-      <h1 className="font-clash-display mb-8 text-4xl font-bold text-neutral-900">
+    <div className="mx-auto max-w-6xl px-4 pt-42 md:px-8 md:pt-38">
+      <h1 className="font-montserrat mb-8 text-4xl font-bold text-neutral-900">
         Seu Carrinho
       </h1>
 
       {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-300 bg-white py-20 text-center shadow-sm">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-300 bg-white px-4 py-20 text-center shadow-sm">
           <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-neutral-100">
             <ShoppingCart className="h-10 w-10 text-neutral-400" />
           </div>

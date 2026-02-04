@@ -14,41 +14,43 @@ function SmoothScroll({ children }: SmoothScrollProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  // Função de Debounce para evitar recálculos excessivos (Performance)
+  const debounce = (fn: () => void, ms: number) => {
+    let timer: NodeJS.Timeout;
+    return () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        fn();
+      }, ms);
+    };
+  };
+
   useEffect(() => {
     const lenis = lenisRef.current?.lenis;
     if (!lenis) return;
 
-    lenis.resize();
+    // Reseta o scroll ao mudar de página
     lenis.scrollTo(0, { immediate: true });
 
-    // Debug
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        `[SmoothScroll] Rota mudou para: ${pathname}. Scroll resetado.`,
-      );
-    }
+    // Diminuímos a frequência de chamadas aqui também
+    const timer = setTimeout(() => {
+      lenis.resize();
+    }, 150);
 
-    const timeouts = [100, 300, 1000].map((ms) =>
-      setTimeout(() => {
-        lenis.resize();
-        if (process.env.NODE_ENV === "development")
-          console.log(`[SmoothScroll] Recálculo de segurança (${ms}ms)`);
-      }, ms),
-    );
-
-    return () => timeouts.forEach((t) => clearTimeout(t));
+    return () => clearTimeout(timer);
   }, [pathname, searchParams]);
 
   useEffect(() => {
     const lenis = lenisRef.current?.lenis;
     if (!lenis) return;
-    const resizeObserver = new ResizeObserver(() => {
-      lenis.resize();
-    });
 
-    const mutationObserver = new MutationObserver(() => {
+    // Otimização: Debounce para não calcular pixel por pixel
+    const handleResize = debounce(() => {
       lenis.resize();
-    });
+    }, 100); // Espera 100ms antes de recalcular
+
+    const resizeObserver = new ResizeObserver(handleResize);
+    const mutationObserver = new MutationObserver(handleResize);
 
     if (document.body) {
       resizeObserver.observe(document.body);
@@ -69,18 +71,22 @@ function SmoothScroll({ children }: SmoothScrollProps) {
       ref={lenisRef}
       root
       options={{
-        lerp: 0.08,
-        duration: 1.2,
+        // CONFIGURAÇÕES DE "PESO" E SENSIBILIDADE
+        lerp: 0.065, // Reduzi para dar mais sensação de peso (inércia)
+        duration: 1.5, // Duração um pouco maior para suavizar a parada
         smoothWheel: true,
+        wheelMultiplier: 0.8, // Roda do mouse percorre menos distância (mais controle)
+
+        // CONFIGURAÇÕES MOBILE
         syncTouch: true,
-        touchMultiplier: 2,
+        touchMultiplier: 0.8, // Reduzi de 2 para 0.8. Isso resolve a velocidade excessiva no celular.
       }}
     >
       <style jsx global>{`
         html.lenis,
         html.lenis body {
           height: auto !important;
-          overflow: auto !important; /* Deixa o overflow fluir */
+          overflow: auto !important;
         }
         .lenis.lenis-smooth {
           scroll-behavior: auto !important;

@@ -9,7 +9,7 @@ export type Language = "pt" | "en" | "es";
 const defaultTranslations = {
   topBar: {
     promo:
-      "Frete Grátis Para Qualquer Produto em Nossa Loja! | 5% OFF Com o Cupom: GROUPESG",
+      "Frete Grátis Para Moradores de Londres em Qualquer Produto! | 5% OFF Com o Cupom: GROUPESG",
     storeLocator: "Sobre",
     help: "Ajuda",
   },

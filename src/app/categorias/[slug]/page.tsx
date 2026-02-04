@@ -1,5 +1,6 @@
 import { desc, eq } from "drizzle-orm"; // Adicionei 'eq'
-import { ArrowLeft, Frown } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -91,16 +92,19 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
         {/* --- GRID DE PRODUTOS --- */}
         {categoryProducts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-white/5 bg-[#f4f4f4] py-20 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/5 shadow-md">
-              <Frown className="h-8 w-8 text-neutral-700" />
+          <div className="h-full w-full rounded-md border border-neutral-200 shadow-md shadow-neutral-200">
+            <div className="flex h-full w-full flex-col items-center justify-center gap-4 py-18">
+              <Image
+                src="/images/illustration.svg" // Garanta que essa imagem funciona no claro ou troque
+                alt="Sem produtos"
+                width={220}
+                height={220}
+                className="opacity-80 grayscale"
+              />
+              <p className="text-lg font-light text-neutral-400">
+                Nenhum produto encontrado nessa categoria.
+              </p>
             </div>
-            <h3 className="text-xl font-medium text-black">
-              Nenhum produto encontrado
-            </h3>
-            <p className="mt-2 text-neutral-400">
-              Ainda não temos produtos cadastrados nesta categoria.
-            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
