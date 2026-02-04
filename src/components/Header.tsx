@@ -8,12 +8,12 @@ import {
   LayoutGrid,
   Loader2,
   LogOut,
-  Moon, 
+  Moon,
   Search,
   ShieldQuestionMark,
-  ShoppingBag,
+  ShoppingCart,
   Sun,
-  User,
+  UserRound,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -78,12 +78,12 @@ function HeaderIconButton({
     <button
       type="button"
       onClick={onClick}
-      className="group relative flex items-center gap-2 text-neutral-700 transition-colors hover:text-black"
+      className="group relative flex cursor-pointer items-center text-neutral-700 duration-300 hover:scale-105 hover:text-black active:scale-95"
     >
       <div className="relative">
-        <Icon className="h-6 w-6" strokeWidth={1.5} />
+        <Icon className="h-5 w-5" strokeWidth={2} />
         {!!badgeCount && badgeCount > 0 && (
-          <div className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-orange-600 text-[10px] font-bold text-white shadow-sm">
+          <div className="absolute -top-1.8 -right-1.8 flex h-4 w-4 cursor-pointer items-center justify-center rounded-full bg-orange-600 text-[10px] font-bold text-white shadow-sm">
             {badgeCount}
           </div>
         )}
@@ -474,16 +474,16 @@ export function HeaderContent() {
                         onClick={() => setShowResults(false)}
                         className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-neutral-50"
                       >
-                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md border border-neutral-100 bg-neutral-50">
+                        <div className="relative h-12 w-12 shrink-0 cursor-pointer overflow-hidden rounded-md border border-neutral-100 bg-neutral-50">
                           {product.images?.[0] ? (
                             <Image
                               src={product.images[0]}
                               alt={product.name}
                               fill
-                              className="object-cover"
+                              className="cursor-pointer object-cover"
                             />
                           ) : (
-                            <ShoppingBag className="m-auto mt-3 h-5 w-5 text-neutral-300" />
+                            <ShoppingCart className="m-auto mt-3 h-5 w-5 cursor-pointer text-neutral-300" />
                           )}
                         </div>
                         <div className="flex flex-col">
@@ -511,7 +511,7 @@ export function HeaderContent() {
           <div className="flex items-center gap-2 sm:gap-6">
             <Link
               href="/categorias/promocoes"
-              className="hidden items-center gap-2 text-neutral-700 transition-colors hover:text-orange-600 xl:flex"
+              className="hidden items-center gap-2 text-neutral-700 duration-100 hover:text-orange-600 active:scale-95 xl:flex"
             >
               <Flame className="h-5 w-5" />
               <span className="text-sm font-bold">{t.header.bestDeals}</span>
@@ -520,7 +520,7 @@ export function HeaderContent() {
             {/* FAVORITOS */}
             <Sheet>
               <SheetTrigger asChild>
-                <div className="hidden sm:block">
+                <div className="hidden cursor-pointer sm:block">
                   <HeaderIconButton
                     icon={Heart}
                     badgeCount={wishlistItems.length}
@@ -580,7 +580,7 @@ export function HeaderContent() {
             {session ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 outline-none">
+                  <button className="flex cursor-pointer items-center gap-2 outline-none">
                     <Avatar className="h-9 w-9 cursor-pointer border border-neutral-200 transition-transform hover:scale-105">
                       <AvatarImage src={session.user.image || ""} />
                       <AvatarFallback className="bg-orange-100 font-bold text-orange-700">
@@ -623,8 +623,8 @@ export function HeaderContent() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link href="/authentication">
-                <HeaderIconButton icon={User} />
+              <Link className="cursor-pointer" href="/authentication">
+                <HeaderIconButton icon={UserRound} />
               </Link>
             )}
           </div>

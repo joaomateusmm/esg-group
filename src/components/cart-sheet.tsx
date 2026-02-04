@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { Loader2, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -24,11 +24,11 @@ import { useCartStore } from "@/store/cart-store";
 // 1. Badge do Ícone do Carrinho
 function CartIconBadge({ count }: { count: number }) {
   return (
-    <div className="group relative flex cursor-pointer items-center gap-2 text-neutral-700 transition-colors hover:text-black">
+    <div className="group relative flex cursor-pointer items-center text-neutral-700 duration-300 hover:scale-105 hover:text-black active:scale-95">
       <div className="relative">
-        <ShoppingBag className="h-6 w-6" strokeWidth={1.5} />
+        <ShoppingCart className="h-5 w-5" strokeWidth={2} />
         {count > 0 && (
-          <div className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-orange-600 text-[10px] font-bold text-white shadow-sm">
+          <div className="-top-1.8 -right-1.8 absolute flex h-4 w-4 items-center justify-center rounded-full bg-orange-600 text-[10px] font-bold text-white shadow-sm">
             {count}
           </div>
         )}
@@ -74,7 +74,7 @@ function CartItemCard({ item, onUpdateQuantity, onRemove }: CartItemCardProps) {
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-neutral-300">
-            <ShoppingBag className="h-8 w-8" />
+            <ShoppingCart className="h-8 w-8" />
           </div>
         )}
       </div>
@@ -208,7 +208,7 @@ export function CartSheet() {
         {/* HEADER */}
         <SheetHeader className="border-b border-neutral-100 bg-white px-6 py-4">
           <SheetTitle className="flex items-center gap-2 text-lg font-bold">
-            <ShoppingBag className="h-5 w-5 text-orange-600" />
+            <ShoppingCart className="h-5 w-5 text-orange-600" />
             {t.header.cart.title}
           </SheetTitle>
         </SheetHeader>
@@ -218,7 +218,7 @@ export function CartSheet() {
           {cartItems.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-neutral-500">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-neutral-100">
-                <ShoppingBag className="h-8 w-8 opacity-40" />
+                <ShoppingCart className="h-8 w-8 opacity-40" />
               </div>
               <p className="font-medium">{t.header.cart.empty}</p>
               <Button

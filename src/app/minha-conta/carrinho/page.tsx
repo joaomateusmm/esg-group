@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Loader2,
-  Minus,
-  Plus,
-  ShoppingBag,
-  ShoppingCart,
-  Trash2,
-} from "lucide-react";
+import { Loader2, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -167,7 +160,7 @@ function CartContent() {
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
-                      <ShoppingBag className="h-6 w-6 text-neutral-300" />
+                      <ShoppingCart className="h-6 w-6 text-neutral-300" />
                     </div>
                   )}
                 </div>

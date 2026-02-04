@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Loader2, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Loader2, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 
@@ -42,7 +42,7 @@ function CheckoutContent() {
       {items.length === 0 ? (
         <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-neutral-300 bg-white p-8 text-center shadow-sm">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-neutral-100">
-            <ShoppingBag className="h-10 w-10 text-neutral-400" />
+            <ShoppingCart className="h-10 w-10 text-neutral-400" />
           </div>
           <h2 className="text-xl font-bold text-neutral-900">
             Seu carrinho está vazio

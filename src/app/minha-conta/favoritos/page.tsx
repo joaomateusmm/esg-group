@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart, ShoppingBag, ShoppingCart, Trash2 } from "lucide-react";
+import { Heart, ShoppingCart, Trash2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react"; // 1. IMPORTAR SUSPENSE
@@ -103,7 +103,7 @@ export default function WishlistPage() {
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
-                      <ShoppingBag className="h-10 w-10 text-neutral-600" />
+                      <ShoppingCart className="h-10 w-10 text-neutral-600" />
                     </div>
                   )}
 

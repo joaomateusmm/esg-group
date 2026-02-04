@@ -4,21 +4,14 @@ import { ChevronLeft, Home } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
     <Suspense fallback={null}>
       <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-[#f4f4f4]">
-        {/* --- HEADER SIMPLIFICADO --- */}
-        {/* Criamos um header visual apenas para o 404, sem lógica de sessão/URL */}
-        <div className="z-[100] w-full border-b border-white/5 bg-white py-4 shadow-sm">
-          <div className="mx-auto flex w-full max-w-7xl items-center justify-center">
-            <Link href="/" className="text-xl font-bold tracking-tight">
-              ESG-Group
-            </Link>
-          </div>
-        </div>
+        <Header />
 
         {/* --- CONTEÚDO PRINCIPAL --- */}
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 text-center">
@@ -29,11 +22,6 @@ export default function NotFound() {
                 <h1 className="font-clash-display text-[150px] font-bold text-neutral-900/10 md:text-[200px]">
                   404
                 </h1>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-xl font-bold text-neutral-900 md:text-3xl">
-                    Ops!
-                  </span>
-                </div>
               </div>
 
               <div className="space-y-2">

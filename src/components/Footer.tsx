@@ -27,7 +27,7 @@ function FooterSection({
   return (
     <div className="flex flex-col gap-4">
       {/* Título agora é escuro e bold */}
-      <h3 className="font-clash-display text-lg font-bold text-neutral-800">
+      <h3 className="font-montserrat text-lg font-bold text-neutral-800">
         {title}
       </h3>
       <div className="flex flex-col gap-2">{children}</div>
@@ -46,7 +46,7 @@ function FooterLink({
     <Link
       href={href}
       // Hover agora é laranja
-      className="text-sm text-neutral-500 transition-colors hover:text-orange-600 hover:underline"
+      className="text-sm text-neutral-700 transition-colors hover:text-orange-600 hover:underline"
     >
       {children}
     </Link>
@@ -90,7 +90,7 @@ export function Footer() {
               </span>
             </Link>
 
-            <p className="max-w-sm text-sm leading-relaxed text-neutral-500">
+            <p className="max-w-sm text-sm leading-relaxed text-neutral-700">
               Compre móveis e Contrate serviços, no melhor preço da Inglaterra.
             </p>
 
@@ -110,7 +110,7 @@ export function Footer() {
           </div>
 
           {/* COLUNA 2, 3, 4: LINKS */}
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 pb-6 lg:col-span-8 lg:pl-12">
+          <div className="grid grid-cols-2 gap-8 pb-6 sm:grid-cols-3 lg:col-span-8 lg:pl-12">
             <FooterSection title="Categorias">
               {categories.length > 0 ? (
                 categories.map((cat) => (
@@ -119,7 +119,7 @@ export function Footer() {
                   </FooterLink>
                 ))
               ) : (
-                <span className="text-sm text-neutral-400">Carregando...</span>
+                <span className="text-sm text-neutral-700">Carregando...</span>
               )}
             </FooterSection>
 
@@ -150,12 +150,12 @@ export function Footer() {
 
         {/* --- RODAPÉ INFERIOR --- */}
         <div className="flex flex-col items-center justify-between gap-6 pt-10 md:flex-row">
-          <div className="text-center text-xs text-neutral-500 md:text-left">
+          <div className="text-center text-xs text-neutral-700 md:text-left">
             <p>
               © {currentYear} ESG-Group Store. Todos os direitos reservados.
             </p>
           </div>
-          <div className="text-center text-xs text-neutral-500 md:text-left">
+          <div className="text-center text-xs text-neutral-700 md:text-left">
             <p className="mt-1">
               CNPJ: XX.XXX.XXX/0001-XX • Desenvolvido por ESG-Group Team
             </p>
