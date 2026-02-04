@@ -1,21 +1,12 @@
 "use client";
 
-import { Loader2, Lock, ShoppingCart } from "lucide-react";
+import { Loader2, ShoppingCart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { createFreeOrder } from "@/actions/checkout";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import { useCartStore } from "@/store/cart-store";
 
@@ -42,15 +33,11 @@ export function BuyNowButton({
 }: BuyNowButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [showGuestModal, setShowGuestModal] = useState(false);
 
+  // Verifica sessão no cliente (mais seguro) ou usa a inicial
   const { data: session } = authClient.useSession();
   const user = session?.user || initialUser;
 
-  const [guestName, setGuestName] = useState("");
-  const [guestEmail, setGuestEmail] = useState("");
-
-  // Ações do Carrinho - INCLUINDO applyCoupon e o coupon atual do store
   const {
     clearCart,
     addItem,
@@ -64,19 +51,16 @@ export function BuyNowButton({
   const handleBuyNow = async () => {
     if (isOutOfStock) return;
 
-    // Se for produto pago, o fluxo é: Carrinho -> Checkout Page
+    // --- FLUXO 1: PRODUTO PAGO ---
     if (!isFree) {
       setLoading(true);
       try {
-        // 1. SALVA O CUPOM ATUAL ANTES DE LIMPAR (O Pulo do Gato 😺)
-        // Se o cupom aplicado na tela bate com o do store, guardamos ele.
+        // 1. Lógica do Cupom (Backup)
         const backupCoupon =
           storeCoupon?.code === couponCode ? storeCoupon : null;
 
-        // 2. Limpa o carrinho (Isso apaga o cupom do store)
+        // 2. Limpa e adiciona
         clearCart();
-
-        // 3. Adiciona o produto atual
         addItem({
           id: product.id,
           name: product.name,
@@ -85,12 +69,12 @@ export function BuyNowButton({
           image: product.image,
         });
 
-        // 4. RESTAURA O CUPOM (Se existia)
+        // 3. Restaura cupom
         if (backupCoupon) {
           applyCoupon(backupCoupon);
         }
 
-        // 5. Redireciona para a página de checkout
+        // 4. Vai para checkout (Lá o login será exigido pelo CheckoutForm)
         router.push("/checkout");
       } catch (error) {
         console.error(error);
@@ -100,22 +84,24 @@ export function BuyNowButton({
       return;
     }
 
-    // Se for GRATUITO...
+    // --- FLUXO 2: PRODUTO GRATUITO ---
+    
+    // Se não estiver logado, manda para o login
     if (!user) {
-      setShowGuestModal(true);
+      toast.info("Você precisa entrar na sua conta para baixar este item.");
+      // Redireciona para login e volta para a página do produto depois
+      router.push(`/login?callbackUrl=${window.location.pathname}`);
       return;
     }
 
     await processFreeCheckout();
   };
 
-  const processFreeCheckout = async (guestData?: {
-    name: string;
-    email: string;
-  }) => {
+  const processFreeCheckout = async () => {
     try {
       setLoading(true);
 
+      // AQUI ESTAVA O ERRO: Removemos o argumento guestData
       await createFreeOrder(
         [
           {
@@ -126,8 +112,7 @@ export function BuyNowButton({
             image: product.image,
           },
         ],
-        guestData,
-        couponCode,
+        couponCode, // Agora o segundo argumento é o cupom
       );
 
       toast.success("Produto resgatado com sucesso! Verifique seu e-mail.");
@@ -144,109 +129,31 @@ export function BuyNowButton({
     }
   };
 
-  const handleGuestSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!guestEmail) {
-      toast.error("Por favor, informe seu e-mail.");
-      return;
-    }
-
-    await processFreeCheckout({
-      name: guestName || "Visitante",
-      email: guestEmail,
-    });
-  };
-
   return (
-    <>
-      <Button
-        size="lg"
-        className={`mb-4 h-14 w-full text-lg font-bold text-white shadow-lg transition-all ${
-          isOutOfStock
-            ? "cursor-not-allowed bg-neutral-400 hover:bg-neutral-400"
-            : "bg-orange-600 hover:-translate-y-0.5 hover:bg-orange-700 hover:shadow-xl"
-        }`}
-        onClick={handleBuyNow}
-        disabled={loading || isOutOfStock}
-      >
-        {loading ? (
-          <>
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            PROCESSANDO...
-          </>
-        ) : isOutOfStock ? (
-          "ESGOTADO"
-        ) : isFree ? (
-          "BAIXAR AGORA"
-        ) : (
-          <span className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5" /> COMPRAR AGORA
-          </span>
-        )}
-      </Button>
-
-      <Dialog open={showGuestModal} onOpenChange={setShowGuestModal}>
-        <DialogContent className="max-w-[90vw] border-neutral-200 bg-white text-neutral-900 sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold">
-              Resgatar Produto Gratuito
-            </DialogTitle>
-            <DialogDescription className="text-neutral-500">
-              Informe seu e-mail para receber o link de download.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleGuestSubmit} className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="guest-name">
-                Nome: <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="guest-name"
-                placeholder="Ex: João Silva"
-                className="border-neutral-300 bg-white text-neutral-900 focus:border-orange-500"
-                value={guestName}
-                onChange={(e) => setGuestName(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="guest-email">
-                E-mail: <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="guest-email"
-                type="email"
-                placeholder="seu@email.com"
-                className="border-neutral-300 bg-white text-neutral-900 focus:border-orange-500"
-                value={guestEmail}
-                onChange={(e) => setGuestEmail(e.target.value)}
-                required
-              />
-              <p className="flex items-center justify-start text-xs text-neutral-500">
-                <Lock className="mr-1 inline h-3 w-3" />
-                Seus dados estão seguros.
-              </p>
-            </div>
-
-            <Button
-              type="submit"
-              className="h-12 w-full bg-orange-600 text-lg font-bold text-white hover:bg-orange-700"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Resgatando...
-                </>
-              ) : (
-                "Confirmar Resgate"
-              )}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
+    <Button
+      size="lg"
+      className={`mb-4 h-14 w-full text-lg font-bold text-white shadow-lg transition-all ${
+        isOutOfStock
+          ? "cursor-not-allowed bg-neutral-400 hover:bg-neutral-400"
+          : "bg-orange-600 hover:-translate-y-0.5 hover:bg-orange-700 hover:shadow-xl"
+      }`}
+      onClick={handleBuyNow}
+      disabled={loading || isOutOfStock}
+    >
+      {loading ? (
+        <>
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          PROCESSANDO...
+        </>
+      ) : isOutOfStock ? (
+        "ESGOTADO"
+      ) : isFree ? (
+        "BAIXAR AGORA"
+      ) : (
+        <span className="flex items-center gap-2">
+          <ShoppingCart className="h-5 w-5" /> COMPRAR AGORA
+        </span>
+      )}
+    </Button>
   );
 }
