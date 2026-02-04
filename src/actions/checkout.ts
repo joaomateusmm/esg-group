@@ -142,7 +142,7 @@ export async function sendOrderConfirmationEmail(
   amount: number,
   currency: string = "GBP",
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  items: any[] = [], // Recebe itens do banco
+  items: any[] = [], // Recebe itens do banco ou adaptados
 ) {
   try {
     const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://esggroup.com";
@@ -151,14 +151,13 @@ export async function sendOrderConfirmationEmail(
 
     const formattedTotal = formatCurrency(amount, currency);
 
-    // Gera o HTML dos produtos PRIMEIRO
     const productsHtml = items
       .map(
         (item) => `
       <div style="border-bottom: 1px solid #eeeeee; padding: 15px 0; display: flex; align-items: center;">
         <img src="${item.image || "https://placehold.co/60"}" width="60" height="60" style="border-radius: 6px; object-fit: cover; margin-right: 15px; background-color: #f9f9f9;" />
         <div style="flex: 1;">
-          <p style="margin: 0; font-size: 14px; font-weight: 600; color: #333;">${item.productName}</p>
+          <p style="margin: 0; font-size: 14px; font-weight: 600; color: #333;">${item.productName || item.name}</p> 
           <p style="margin: 4px 0 0; font-size: 12px; color: #888;">Qtd: ${item.quantity}</p>
         </div>
         <div style="font-size: 14px; font-weight: 600; color: #333;">
@@ -177,12 +176,9 @@ export async function sendOrderConfirmationEmail(
         <style>
           body { font-family: sans-serif; background-color: #f5f5f5; margin: 0; padding: 0; color: #333; }
           .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-          /* GRADIENTE LARANJA (Igual ao Stripe) */
           .header { background: linear-gradient(to right, #ea580c, #f97316); padding: 30px 20px; text-align: center; color: white; }
           .content { padding: 30px 25px; }
-          /* BOTÃO LARANJA */
           .btn { display: inline-block; background-color: #ea580c; color: #ffffff !important; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: bold; margin-top: 20px; }
-          /* CAIXA DE RESUMO LARANJA CLARO */
           .summary-box { background-color: #fff7ed; border: 1px solid #ffedd5; padding: 15px; border-radius: 6px; margin-top: 20px; }
           .footer { background-color: #fafafa; padding: 20px; text-align: center; font-size: 11px; color: #999; }
         </style>
@@ -214,10 +210,16 @@ export async function sendOrderConfirmationEmail(
             </div>
 
             <div class="summary-box">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 14px; font-weight: bold; color: #ea580c;">Valor Total</span>
-                <span style="font-size: 18px; font-weight: bold; color: #ea580c;">${formattedTotal}</span>
-              </div>
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="font-size: 14px; font-weight: bold; color: #ea580c; text-align: left;">
+                    Valor Total
+                  </td>
+                  <td style="font-size: 18px; font-weight: bold; color: #ea580c; text-align: right;">
+                    ${formattedTotal}
+                  </td>
+                </tr>
+              </table>
             </div>
 
             <div style="text-align: center;">
@@ -523,6 +525,9 @@ export async function createOrderCOD(
       .where(eq(coupon.id, activeCouponId));
   }
 
+  // CORREÇÃO: Aqui estamos passando os itens corretamente agora
+  // items tem { name, price, quantity }, mas o template usa { productName, price, quantity }
+  // O template foi ajustado acima para usar item.productName || item.name
   if (newOrder && newOrder.customerEmail) {
     sendOrderConfirmationEmail(
       newOrder.customerEmail,
@@ -530,6 +535,7 @@ export async function createOrderCOD(
       newOrder.id,
       newOrder.amount,
       newOrder.currency || "GBP",
+      items, // Passando a lista de itens do carrinho
     ).catch((err) => console.error("Erro ao enviar email COD:", err));
   }
 
@@ -602,12 +608,14 @@ export async function updateOrderToCOD(
   }
 
   if (customerEmail) {
+    // Aqui usamos existingOrder.items, que vem do banco e tem 'productName'
     sendOrderConfirmationEmail(
       customerEmail,
       customerName || "Cliente",
       existingOrder.id,
       existingOrder.amount,
       existingOrder.currency || "GBP",
+      existingOrder.items,
     ).catch((err) => console.error("Erro ao enviar email UPDATE COD:", err));
   }
 
@@ -731,12 +739,14 @@ export async function createFreeOrder(
   }
 
   if (newOrder && newOrder.customerEmail) {
+    // CORREÇÃO: Passando os itens
     sendOrderConfirmationEmail(
       newOrder.customerEmail,
       newOrder.customerName || "Cliente",
       newOrder.id,
       0,
       newOrder.currency || "GBP",
+      items,
     ).catch((err) => console.error("Erro ao enviar email Grátis:", err));
   }
 
