@@ -88,7 +88,7 @@ async function sendStripeOrderEmail(
           </div>
           <div class="content">
             <p style="font-size: 16px;">Olá, <strong>${name}</strong>!</p>
-            <p style="color: #555; line-height: 1.5;">Seu pagamento foi confirmado com sucesso. Já estamos separando seus itens para envio.</p>
+            <p style="color: #555; line-height: 1.5;">Seu pagamento foi confirmado com sucesso. Já estamos separando seus itens para envio. Você receberá atualizações no seu email sobre o envio.</p>
             
             <div style="margin-top: 25px; margin-bottom: 25px;">
               <h3 style="font-size: 14px; text-transform: uppercase; color: #888; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 0;">Itens Comprados</h3>
@@ -120,7 +120,10 @@ async function sendStripeOrderEmail(
       subject: `Pagamento Confirmado: Pedido #${orderId.slice(0, 8).toUpperCase()}`,
       html: emailHtml,
     });
-  } catch {}
+    console.log(`✅ E-mail enviado para ${email}`);
+  } catch (err) {
+    console.error("❌ Erro email webhook:", err);
+  }
 }
 
 export async function POST(req: Request) {

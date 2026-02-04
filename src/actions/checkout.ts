@@ -151,6 +151,7 @@ export async function sendOrderConfirmationEmail(
 
     const formattedTotal = formatCurrency(amount, currency);
 
+    // Gera o HTML dos produtos PRIMEIRO
     const productsHtml = items
       .map(
         (item) => `
@@ -237,7 +238,7 @@ export async function sendOrderConfirmationEmail(
     const { data, error } = await resend.emails.send({
       from: process.env.EMAIL_FROM || "ESG Group <contato@esggroup.shop>",
       to: [email, ADMIN_EMAIL],
-      subject: `🎉 Pedido #${orderId.slice(0, 8).toUpperCase()} Confirmado!`,
+      subject: `Pedido #${orderId.slice(0, 8).toUpperCase()} Confirmado!`,
       html: emailHtml,
     });
 
