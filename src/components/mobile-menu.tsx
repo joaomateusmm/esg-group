@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Aperture,
   ChevronRight,
   DollarSign,
   LayoutGrid,
@@ -8,7 +9,6 @@ import {
   MessageCircleQuestionMark,
   PackageOpen,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -66,47 +66,53 @@ export function MobileMenu({
     fetchCategories();
   }, []);
 
+  // --- SOLUÇÃO DO SCROLL ---
+  // Esta função impede que o evento de scroll saia do menu e vá para o FloatingScrollbar
+  const stopPropagation = (
+    e: React.UIEvent | React.TouchEvent | React.WheelEvent,
+  ) => {
+    e.stopPropagation();
+  };
+
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button className="h-10 w-10 cursor-pointer bg-neutral-50 p-2 text-neutral-800 shadow-sm duration-300 hover:bg-neutral-100">
-          <Menu className="h-8 w-8" />
+        <Button className="h-10.5 w-10.5 cursor-pointer border border-neutral-200 bg-white text-neutral-800 duration-300 hover:bg-neutral-100">
+          <Menu strokeWidth={2} className="h-12 w-12" />
         </Button>
       </SheetTrigger>
 
       <SheetContent
         side="left"
         className="w-[320px] border-r-0 bg-white p-0 text-neutral-900 sm:w-[380px]"
+        // Adicionamos listeners aqui também para garantir que o Sheet inteiro capture a intenção
+        onWheel={stopPropagation}
+        onTouchMove={stopPropagation}
       >
         {/* Cabeçalho do Menu */}
         <SheetHeader className="border-b border-neutral-100 bg-neutral-50/50 p-6 text-left">
           <SheetTitle className="flex items-center gap-2 text-xl font-bold tracking-tight text-neutral-900">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-neutral-100 p-1 shadow-md">
-              <Image
-                src="/images/logo.png"
-                alt="Logo ESG Group"
-                width={40}
-                height={40}
-                className="h-full w-full object-cover"
-              />
-            </div>
             Menu Principal
           </SheetTitle>
         </SheetHeader>
-
-        {/* Área de Scroll Minimalista */}
         <div
-          className="scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-200 hover:scrollbar-thumb-neutral-300 flex h-[calc(100vh-80px)] flex-col overflow-y-auto pb-10"
+          className="scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-200 hover:scrollbar-thumb-neutral-300 flex h-[calc(100vh-80px)] touch-pan-y flex-col overflow-y-auto overscroll-contain pb-10"
+          onWheel={stopPropagation}
+          onTouchMove={stopPropagation}
+          // Atributos comuns para bibliotecas de scroll suave ignorarem este elemento (ex: Lenis, Locomotive)
+          data-lenis-prevent="true"
+          data-scroll-lock-scrollable
           style={{
-            // Estilos de fallback para garantir scroll fino se classes do tailwind não funcionarem
             scrollbarWidth: "thin",
             scrollbarColor: "#e5e5e5 transparent",
+            WebkitOverflowScrolling: "touch", // Importante para iOS ter scroll suave nativo
           }}
         >
           <div className="flex flex-col px-6 py-6">
             {/* Seção 1: Navegação Básica */}
             <div className="mb-6">
               <h3 className="mb-3 flex items-center gap-2 text-xs font-bold tracking-wider text-neutral-400 uppercase">
+                <Aperture className="h-3 w-3" />
                 Geral
               </h3>
               <Link
@@ -116,12 +122,6 @@ export function MobileMenu({
                 Início
                 <ChevronRight className="h-4 w-4 text-neutral-300 transition-transform group-hover:translate-x-1 group-hover:text-orange-400" />
               </Link>
-            </div>
-            <div className="mb-6">
-              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold tracking-wider text-neutral-400 uppercase">
-                <Menu className="h-3 w-3" />
-                Conta
-              </h3>
               <Link
                 href="/minha-conta"
                 className="group flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-600 transition-colors hover:bg-orange-50 hover:text-orange-700"

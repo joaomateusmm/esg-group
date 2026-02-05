@@ -169,12 +169,12 @@ export function HeroBanners() {
   const getBanner = (pos: string) => BANNERS.find((b) => b.position === pos);
 
   return (
-    <section className="w-full px-4 pt-36 pb-5 md:px-8">
+    <section className="w-full px-4 pt-42 md:pb-5  md:px-8 md:pt-36">
       <div className="mx-auto max-w-[1440px]">
         <div className="grid h-auto w-full grid-cols-1 gap-4 md:h-[600px] md:grid-cols-4">
           {/* COLUNA 1 (ESQUERDA) */}
           <div className="flex h-full flex-col gap-4 md:col-span-1">
-            <div className="h-[200px] md:h-[35%]">
+            <div className="-mb-8 h-[200px] md:-mb-0 md:h-[35%]">
               {getBanner("left-top") && (
                 <BannerCard item={getBanner("left-top")} className="h-full" />
               )}

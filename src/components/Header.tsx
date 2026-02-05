@@ -22,7 +22,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes"; // 1. ADICIONADO: Import do next-themes
+import { useTheme } from "next-themes";
 import { Suspense, useEffect, useRef, useState } from "react";
 
 import { checkAffiliateStatus } from "@/actions/check-affiliate-status";
@@ -40,7 +40,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
   SheetContent,
@@ -104,7 +103,7 @@ function HeaderIconButton({
 // --- CONTEÚDO DO HEADER ---
 export function HeaderContent() {
   const [mounted, setMounted] = useState(false);
-  const { setTheme, theme } = useTheme(); // 2. ADICIONADO: Hook do tema
+  const { setTheme, theme } = useTheme();
 
   // ESTADOS UNIFICADOS
   const [categories, setCategories] = useState<CategoryLink[]>([]);
@@ -128,7 +127,7 @@ export function HeaderContent() {
   const { items: wishlistItems, removeItem: removeWishlistItem } =
     useWishlistStore();
 
-  // 1. CARREGAMENTO DE DADOS INICIAIS (CATEGORIAS E AFILIADO)
+  // 1. CARREGAMENTO DE DADOS INICIAIS
   useEffect(() => {
     setMounted(true);
     const fetchData = async () => {
@@ -230,7 +229,6 @@ export function HeaderContent() {
     });
   };
 
-  // 3. ADICIONADO: Função de alternar tema
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   };
@@ -252,7 +250,7 @@ export function HeaderContent() {
   return (
     <header className="fixed top-0 z-50 w-full flex-col shadow-sm">
       {/* --- BARRA LARANJA (TOP BAR) --- */}
-      <div className="w-full bg-orange-600 px-4 py-3 text-xs font-medium text-white transition-colors duration-300 md:px-8 dark:bg-neutral-950">
+      <div className="w-full bg-orange-600 px-4 py-2 text-xs font-medium text-white transition-colors duration-300 md:px-8 md:py-3 dark:bg-neutral-950">
         <div className="mx-auto flex max-w-[1440px] items-center justify-between">
           <div className="flex items-center gap-4">
             <DropdownMenu>
@@ -324,25 +322,6 @@ export function HeaderContent() {
           </div>
 
           <div className="flex items-center gap-6">
-            {/* <div className="flex cursor-pointer items-center gap-1 duration-300 hover:text-white/80">
-              <button
-                onClick={toggleTheme}
-                className="flex cursor-pointer items-center gap-1 transition-opacity outline-none hover:text-white/80"
-                aria-label="Alternar tema"
-              >
-                {mounted && theme === "dark" ? (
-                  <>
-                    <Moon className="h-3.5 w-3.5" />
-                    <span>Escuro</span>
-                  </>
-                ) : (
-                  <>
-                    <Sun className="h-3.5 w-3.5" />
-                    <span>Claro</span>
-                  </>
-                )}
-              </button>
-            </div> */}
             <div className="hidden h-3 w-[1px] bg-white/30 md:block"></div>
             <Link
               href="/sobre"
@@ -363,16 +342,18 @@ export function HeaderContent() {
       </div>
 
       {/* --- BARRA PRINCIPAL (BRANCA) --- */}
-      <div className="w-full border-b border-neutral-200 bg-white px-4 py-4 shadow-sm md:px-8">
-        <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4 lg:gap-8">
-          <div className="flex items-center justify-center gap-4">
+      <div className="w-full border-b border-neutral-200 bg-white px-4 py-3 shadow-sm md:px-8 md:py-4">
+        {/* ADICIONADO 'relative' AQUI para ser referência do absoluto */}
+        <div className="relative mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-x-4 gap-y-3 lg:gap-8">
+          {/* 1. BLOCO ESQUERDO: Menu Mobile e Logo */}
+          <div className="flex items-center gap-2 py-3 sm:gap-4 md:py-0">
             <MobileMenu categories={categories} isAffiliate={isAffiliate} />
 
             <Link
               href="/"
-              className="group flex items-center justify-center gap-1"
+              className="group absolute left-1/2 hidden -translate-x-1/2 items-center justify-center gap-1 md:static md:flex md:translate-x-0"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg sm:h-10 sm:w-10">
                 <Image
                   src="/images/logo.png"
                   alt="Logo ESG Group"
@@ -381,7 +362,25 @@ export function HeaderContent() {
                   className="h-full w-full object-cover duration-300 group-hover:scale-105 group-active:scale-95"
                 />
               </div>
-              <span className="font-montserrat text-2xl font-bold text-neutral-700 duration-200 group-hover:text-black group-active:scale-95">
+              <span className="font-montserrat text-xl font-bold text-neutral-700 duration-200 group-hover:text-black group-active:scale-95 sm:text-2xl">
+                ESG Group
+              </span>
+            </Link>
+
+            <Link
+              href="/"
+              className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center justify-center rounded-md border border-neutral-200 px-3 py-1 duration-300 group-hover:scale-105 group-active:scale-95 active:scale-95 md:static md:hidden md:translate-x-0"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg sm:h-10 sm:w-10">
+                <Image
+                  src="/images/logo.png"
+                  alt="Logo ESG Group"
+                  width={50}
+                  height={50}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <span className="font-clash-display text-[16px] font-bold text-neutral-700 sm:text-2xl">
                 ESG Group
               </span>
             </Link>
@@ -396,10 +395,12 @@ export function HeaderContent() {
             )}
           </div>
 
-          {/* BARRA DE PESQUISA E CATEGORIAS */}
-          <div className="relative max-w-2xl flex-1" ref={searchRef}>
-            <div className="flex h-11 w-full items-center rounded-full border border-neutral-300 bg-neutral-50 transition-all focus-within:border-orange-600 focus-within:bg-white focus-within:ring-2 focus-within:ring-orange-100/50">
-              {/* --- BOTÃO DE CATEGORIAS (COM DROPDOWN FUNCIONAL) --- */}
+          <div
+            className="relative order-3 w-full max-w-2xl md:order-none md:w-auto md:flex-1"
+            ref={searchRef}
+          >
+            <div className="flex h-10 w-full items-center rounded-full border border-neutral-300 bg-neutral-50 transition-all focus-within:border-orange-600 focus-within:bg-white focus-within:ring-2 focus-within:ring-orange-100/50 sm:h-11">
+              {/* --- BOTÃO DE CATEGORIAS --- */}
               <div
                 className="relative hidden h-full sm:block"
                 ref={categoryRef}
@@ -417,7 +418,6 @@ export function HeaderContent() {
                   />
                 </button>
 
-                {/* --- DROPDOWN LIST --- */}
                 {isCategoriesOpen && (
                   <div className="animate-in fade-in zoom-in-95 absolute top-14 left-0 z-50 min-w-[220px] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xl">
                     <div className="flex flex-col p-2">
@@ -425,21 +425,16 @@ export function HeaderContent() {
                         Categorias:
                       </h1>
                       {categories.length > 0 ? (
-                        categories.map(
-                          (
-                            cat,
-                            index, // Usando index como key se não houver ID
-                          ) => (
-                            <Link
-                              key={index}
-                              href={cat.href || "#"}
-                              onClick={() => setIsCategoriesOpen(false)}
-                              className="flex items-center justify-between rounded-md px-4 py-2.5 text-sm font-medium text-neutral-600 transition-colors hover:bg-orange-50 hover:text-orange-600"
-                            >
-                              {cat.label}
-                            </Link>
-                          ),
-                        )
+                        categories.map((cat, index) => (
+                          <Link
+                            key={index}
+                            href={cat.href || "#"}
+                            onClick={() => setIsCategoriesOpen(false)}
+                            className="flex items-center justify-between rounded-md px-4 py-2.5 text-sm font-medium text-neutral-600 transition-colors hover:bg-orange-50 hover:text-orange-600"
+                          >
+                            {cat.label}
+                          </Link>
+                        ))
                       ) : (
                         <div className="px-4 py-3 text-center text-xs text-neutral-400">
                           Nenhuma categoria encontrada.
@@ -470,7 +465,7 @@ export function HeaderContent() {
 
             {/* --- RESULTADOS DA PESQUISA --- */}
             {showResults && searchQuery.length >= 2 && (
-              <div className="animate-in fade-in zoom-in-95 absolute top-14 right-0 left-0 z-50 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xl duration-200">
+              <div className="animate-in fade-in zoom-in-95 absolute top-12 right-0 left-0 z-50 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xl duration-200 sm:top-14">
                 {searchResults.length > 0 ? (
                   <div className="flex flex-col py-2">
                     {searchResults.map((product) => (
@@ -514,7 +509,8 @@ export function HeaderContent() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-6">
+          {/* 3. BLOCO DIREITO: ÍCONES */}
+          <div className="order-2 flex items-center gap-2 sm:gap-6 md:order-none">
             <Link
               href="/categorias/promocoes"
               className="hidden items-center gap-2 text-neutral-700 duration-100 hover:text-orange-600 active:scale-95 xl:flex"
@@ -582,19 +578,18 @@ export function HeaderContent() {
             {/* CARRINHO */}
             <CartSheet />
 
-            {/* USER/MINHA CONTA - REDESIGN MODERNO */}
+            {/* USER/MINHA CONTA */}
             {session ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="group flex cursor-pointer items-center gap-2 outline-none">
-                    <Avatar className="h-9 w-9 border-2 border-white shadow-sm ring-1 ring-neutral-200 transition-all duration-300 group-hover:ring-orange-200">
+                    <Avatar className="h-10 w-10 border-2 border-white shadow-sm ring-1 ring-neutral-200 transition-all duration-300 group-hover:ring-orange-200 sm:h-9 sm:w-9">
                       <AvatarImage src={session.user.image || ""} />
                       <AvatarFallback className="bg-orange-100 font-bold text-orange-700">
                         {session.user.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    {/* Seta discreta para indicar menu (opcional) */}
-                    <ChevronDown className="h-4 w-4 text-neutral-400 transition-transform duration-300 group-data-[state=open]:rotate-180" />
+                    <ChevronDown className="h-4 w-4 text-neutral-400 transition-transform duration-300 group-data-[state=open]:rotate-180 sm:block" />
                   </button>
                 </DropdownMenuTrigger>
 
@@ -603,7 +598,7 @@ export function HeaderContent() {
                   sideOffset={8}
                   className="z-[150] w-72 rounded-xl border border-neutral-100 bg-white p-2 shadow-xl ring-1 ring-neutral-900/5"
                 >
-                  {/* CABEÇALHO DO PERFIL (Estilo Card) */}
+                  {/* CABEÇALHO DO PERFIL */}
                   <div className="mb-2 flex items-center gap-3 rounded-lg bg-neutral-50 p-3">
                     <Avatar className="h-10 w-10 border border-neutral-200">
                       <AvatarImage src={session.user.image || ""} />
@@ -623,7 +618,6 @@ export function HeaderContent() {
 
                   <DropdownMenuSeparator className="my-1 bg-neutral-100" />
 
-                  {/* GRUPO: LOJA */}
                   <DropdownMenuLabel className="px-3 py-1.5 text-[10px] font-semibold tracking-wider text-neutral-400 uppercase">
                     Minha Loja
                   </DropdownMenuLabel>
@@ -638,7 +632,7 @@ export function HeaderContent() {
 
                   <DropdownMenuItem
                     className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-neutral-600 transition-colors focus:bg-orange-50 focus:text-orange-700"
-                    onClick={() => router.push("/minha-conta/favoritos")} // Rota sugerida
+                    onClick={() => router.push("/minha-conta/favoritos")}
                   >
                     <Heart className="h-4 w-4" />
                     <span>Lista de Desejos</span>
@@ -646,7 +640,7 @@ export function HeaderContent() {
 
                   <DropdownMenuItem
                     className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-neutral-600 transition-colors focus:bg-orange-50 focus:text-orange-700"
-                    onClick={() => router.push("/minha-conta/carrinho")} // Rota sugerida
+                    onClick={() => router.push("/minha-conta/carrinho")}
                   >
                     <ShoppingCart className="h-4 w-4" />
                     <span>Meu Carrinho</span>
@@ -676,7 +670,6 @@ export function HeaderContent() {
 
                   <DropdownMenuSeparator className="my-1 bg-neutral-100" />
 
-                  {/* LOGOUT */}
                   <DropdownMenuItem
                     className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-red-600 transition-colors focus:bg-red-50 focus:text-red-700"
                     onClick={handleSignOut}
@@ -687,7 +680,10 @@ export function HeaderContent() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link className="cursor-pointer" href="/authentication">
+              <Link
+                className="cursor-pointer rounded-md border border-neutral-200 p-2 md:border-none md:p-0"
+                href="/authentication"
+              >
                 <HeaderIconButton icon={UserRound} />
               </Link>
             )}
