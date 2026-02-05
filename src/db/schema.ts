@@ -80,7 +80,7 @@ export const category = pgTable("category", {
     .$onUpdate(() => new Date()),
 });
 
-// --- TABELA DE PRODUTOS (MANTIDA) ---
+// --- TABELA DE PRODUTOS (ATUALIZADA) ---
 
 export const product = pgTable("product", {
   id: text("id")
@@ -105,6 +105,14 @@ export const product = pgTable("product", {
   status: text("status").notNull().default("draft"),
   sales: integer("sales").notNull().default(0),
   affiliateRate: integer("affiliateRate").default(10),
+
+  // --- NOVOS CAMPOS: INFORMAÇÕES ÚTEIS ---
+  condition: text("condition").default("new"), // 'new', 'used', 'refurbished', etc.
+  isAssembled: boolean("isAssembled").default(false), // true = sim, false = não
+  hasWarranty: boolean("hasWarranty").default(false),
+  warrantyDetails: text("warrantyDetails"), // ex: "12 meses"
+  brand: text("brand"), // Se null, é Genérico
+
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
     .notNull()
@@ -129,7 +137,7 @@ export const review = pgTable("review", {
   createdAt: timestamp("createdAt").notNull().defaultNow(),
 });
 
-// --- TABELA DE PEDIDOS (ATUALIZADA COM PRAZO DE ENTREGA) ---
+// --- TABELA DE PEDIDOS (MANTIDA) ---
 
 export const order = pgTable("order", {
   id: text("id")
@@ -138,9 +146,8 @@ export const order = pgTable("order", {
   userId: text("userId")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  amount: integer("amount").notNull(), // Valor TOTAL (Produtos + Frete)
+  amount: integer("amount").notNull(),
 
-  // STATUS FINANCEIRO: pending, paid, failed, refunded
   status: text("status").notNull().default("pending"),
   currency: text("currency").notNull().default("GBP"),
   fulfillmentStatus: text("fulfillmentStatus").notNull().default("idle"),
@@ -151,9 +158,8 @@ export const order = pgTable("order", {
   shippingCost: integer("shippingCost").default(0),
   trackingCode: text("trackingCode"),
 
-  // NOVOS CAMPOS: Previsão de Entrega (Janela de datas)
-  estimatedDeliveryStart: timestamp("estimatedDeliveryStart"), // Data inicial (ex: 10 dias)
-  estimatedDeliveryEnd: timestamp("estimatedDeliveryEnd"), // Data final (ex: 17 dias)
+  estimatedDeliveryStart: timestamp("estimatedDeliveryStart"),
+  estimatedDeliveryEnd: timestamp("estimatedDeliveryEnd"),
 
   paymentMethod: text("paymentMethod").default("card"),
   customerName: text("customerName"),
@@ -251,7 +257,7 @@ export const commission = pgTable("commission", {
     .$onUpdate(() => new Date()),
 });
 
-// --- RELAÇÕES ---
+// --- RELAÇÕES (MANTIDAS) ---
 
 export const userRelations = relations(user, ({ one }) => ({
   affiliateProfile: one(affiliate, {
@@ -284,8 +290,8 @@ export const orderRelations = relations(order, ({ one, many }) => ({
     fields: [order.userId],
     references: [user.id],
   }),
-  items: many(orderItem), // <--- ISSO É O QUE FALTA
-  commission: one(commission), // Opcional, se usar comissões
+  items: many(orderItem),
+  commission: one(commission),
 }));
 
 export const orderItemRelations = relations(orderItem, ({ one }) => ({

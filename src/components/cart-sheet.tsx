@@ -127,9 +127,6 @@ export function CartSheet() {
 
   const { t, language } = useLanguage();
 
-  // Removemos a verificação de sessão aqui, pois o checkout lida com isso
-  // const { data: session } = authClient.useSession();
-
   const {
     items: cartItems,
     removeItem: removeCartItem,
@@ -152,12 +149,15 @@ export function CartSheet() {
   };
 
   const handleCheckout = () => {
-    // Simplesmente redireciona para a página de checkout.
-    // O CheckoutForm lá vai verificar se está logado e mostrar o form se necessário.
-    setIsOpen(false);
+    // 1. Inicia o estado de loading visual
     setIsCheckingOut(true);
+
+    // 2. Navega para o checkout (sem fechar o modal explicitamente)
     router.push("/checkout");
-    setIsCheckingOut(false);
+
+    // Obs: Não definimos setIsOpen(false) nem setIsCheckingOut(false) aqui.
+    // Quando a rota mudar, o componente CartSheet será desmontado ou o layout mudará,
+    // fechando o modal naturalmente. Se o usuário voltar, o estado reseta.
   };
 
   return (
@@ -222,7 +222,7 @@ export function CartSheet() {
             <Button
               onClick={handleCheckout}
               disabled={isCheckingOut}
-              className="h-12 w-full bg-orange-600 text-base font-bold text-white shadow-md transition-all hover:bg-orange-700 hover:shadow-lg active:scale-[0.98] disabled:opacity-70"
+              className="h-12 w-full cursor-pointer bg-emerald-500 text-base font-bold text-white shadow-md duration-300 hover:bg-emerald-600 hover:shadow-lg active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isCheckingOut ? (
                 <>

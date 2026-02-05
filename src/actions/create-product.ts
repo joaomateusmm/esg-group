@@ -10,29 +10,19 @@ import { category, product } from "@/db/schema";
 
 // --- SCHEMA ATUALIZADO ---
 const productSchema = z.object({
-  // 1. CAMPO ID (Personalizado)
-  // Aceita string opcional. Se vier preenchido, será usado como ID primário.
   id: z.string().max(50).optional(),
-
   name: z.string().min(2, "Nome muito curto"),
   description: z.string().optional(),
-
   price: z.number().min(0),
   discountPrice: z.number().optional(),
-
   currency: z.enum(["GBP", "USD", "EUR", "BRL"]).default("GBP"),
-
   images: z.array(z.string()).optional(),
   categories: z.array(z.string()).default([]),
-
   status: z.enum(["active", "inactive", "draft"]).default("active"),
-
   stock: z.number().default(0),
   isStockUnlimited: z.boolean().default(false),
-
   shippingType: z.enum(["calculated", "fixed", "free"]).default("calculated"),
   fixedShippingPrice: z.number().min(0).optional().default(0),
-
   sku: z.string().optional(),
   weight: z.number().min(0).default(0),
   width: z.number().int().min(0).default(0),
@@ -42,20 +32,9 @@ const productSchema = z.object({
 
 export type ProductServerPayload = z.infer<typeof productSchema>;
 
-export async function createProduct(rawData: ProductServerPayload) {
-  // 1. Validar
-  const result = productSchema.safeParse(rawData);
-
-  if (!result.success) {
-    console.error("Erro de validação:", result.error.flatten());
-    throw new Error(
-      `Dados inválidos: ${JSON.stringify(result.error.flatten().fieldErrors)}`,
-    );
-  }
-
-  const data = result.data;
-
-  // --- LÓGICA DE PROMOÇÃO AUTOMÁTICA ---
+// --- HELPER: Lógica de Promoção Automática ---
+// Extraí para uma função auxiliar para reutilizar no create e no update
+async function applyPromoLogic(data: ProductServerPayload) {
   const finalCategories = [...(data.categories || [])];
 
   if (
@@ -92,34 +71,37 @@ export async function createProduct(rawData: ProductServerPayload) {
       console.error("Erro ao gerenciar categoria automática de promoção:", err);
     }
   }
-  // ---------------------------------------
+  return finalCategories;
+}
+
+export async function createProduct(rawData: ProductServerPayload) {
+  const result = productSchema.safeParse(rawData);
+
+  if (!result.success) {
+    console.error("Erro de validação:", result.error.flatten());
+    throw new Error(
+      `Dados inválidos: ${JSON.stringify(result.error.flatten().fieldErrors)}`,
+    );
+  }
+
+  const data = result.data;
+  const finalCategories = await applyPromoLogic(data);
 
   try {
-    // 2. Inserir no Banco
-    // Se data.id for undefined, o banco usará o default (randomUUID).
-    // Se data.id tiver valor, o banco usará esse valor (Custom ID).
     await db.insert(product).values({
-      id: data.id, // ADICIONADO AQUI
-
+      id: data.id,
       name: data.name,
       description: data.description,
-
       price: data.price,
       discountPrice: data.discountPrice,
-
       currency: data.currency,
-
       images: data.images || [],
       categories: finalCategories,
-
       status: data.status,
-
       stock: data.stock,
       isStockUnlimited: data.isStockUnlimited,
-
       shippingType: data.shippingType,
       fixedShippingPrice: data.fixedShippingPrice,
-
       sku: data.sku,
       weight: data.weight,
       width: data.width,
@@ -127,20 +109,19 @@ export async function createProduct(rawData: ProductServerPayload) {
       length: data.length,
     });
 
+    // --- REVALIDAÇÃO CRÍTICA ---
     revalidatePath("/admin/produtos");
-    revalidatePath("/");
+    revalidatePath("/"); // Home da loja
+    revalidatePath("/categorias/[slug]", "page"); // Páginas de categoria
   } catch (error) {
-    // Tratamento de erro específico para ID duplicado
     if (
       typeof error === "object" &&
       error !== null &&
       "code" in error &&
       (error as { code: string }).code === "23505"
     ) {
-      // Código 23505 = Unique constraint violation (Postgres)
       throw new Error("Unique constraint: Já existe um produto com este ID.");
     }
-
     console.error("Erro ao criar produto no banco:", error);
     throw new Error("Erro interno ao salvar produto.");
   }
@@ -148,33 +129,27 @@ export async function createProduct(rawData: ProductServerPayload) {
   redirect("/admin/produtos");
 }
 
-// ... Resto das funções (updateProduct, deleteProduct, etc) mantidas iguais
 export async function updateProduct(id: string, rawData: ProductServerPayload) {
-  // ... (código existente da função updateProduct)
-  // Copie e cole a função updateProduct original aqui, ela não precisa de alteração
-  // pois não vamos permitir mudar o ID depois de criado.
-
-  // Apenas para manter o contexto, aqui está o início dela:
   const result = productSchema.safeParse(rawData);
   if (!result.success) {
     return { success: false, message: "Dados inválidos." };
   }
   const data = result.data;
 
-  // (Logica de promoção...)
+  // Aplicamos a lógica de promoção também na edição
+  const finalCategories = await applyPromoLogic(data);
 
   try {
     await db
       .update(product)
       .set({
         name: data.name,
-        // ... outros campos (SEM ID)
         description: data.description,
         price: data.price,
         discountPrice: data.discountPrice,
         currency: data.currency,
         images: data.images || [],
-        categories: data.categories, // Atenção: deve usar finalCategories se tiver lógica de promo
+        categories: finalCategories, // Usamos as categorias processadas
         status: data.status,
         stock: data.stock,
         isStockUnlimited: data.isStockUnlimited,
@@ -190,7 +165,10 @@ export async function updateProduct(id: string, rawData: ProductServerPayload) {
       .where(eq(product.id, id));
 
     revalidatePath("/admin/produtos");
-    revalidatePath(`/produto/${id}`);
+    revalidatePath("/");
+    revalidatePath(`/produto/${id}`); 
+    revalidatePath("/carrinho");
+
     return { success: true, message: "Produto atualizado com sucesso!" };
   } catch (error) {
     console.error(error);
@@ -198,29 +176,30 @@ export async function updateProduct(id: string, rawData: ProductServerPayload) {
   }
 }
 
-// ... Resto das funções deleteProduct, archiveProduct, deleteProducts (copie do seu arquivo original)
 export async function deleteProduct(id: string) {
-  // ... código original
   try {
     await db.delete(product).where(eq(product.id, id));
+
     revalidatePath("/admin/produtos");
     revalidatePath("/");
+
     return { success: true, code: "DELETED", message: "Produto excluído." };
   } catch {
-    // ... tratamento de erro
     return { success: false, message: "Erro ao excluir." };
   }
 }
 
 export async function archiveProduct(id: string) {
-  // ... código original
   try {
     await db
       .update(product)
       .set({ status: "inactive" })
       .where(eq(product.id, id));
+
     revalidatePath("/admin/produtos");
     revalidatePath("/");
+    revalidatePath(`/produto/${id}`);
+
     return { success: true, message: "Produto inativado." };
   } catch {
     return { success: false, message: "Erro ao inativar." };
@@ -228,11 +207,12 @@ export async function archiveProduct(id: string) {
 }
 
 export async function deleteProducts(ids: string[]) {
-  // ... código original
   try {
     await db.delete(product).where(inArray(product.id, ids));
+
     revalidatePath("/admin/produtos");
     revalidatePath("/");
+
     return { success: true, message: "Produtos excluídos." };
   } catch {
     return { success: false, message: "Erro ao excluir." };

@@ -5,11 +5,13 @@ import { Header } from "@/components/Header";
 import { HeroBanners } from "@/components/hero-banners";
 import ProductCatalog from "@/components/ProductCatalog";
 import Silk from "@/components/Silk";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default function Home() {
   return (
     // REMOVIDO: overflow-x-hidden (Isso causava o travamento do scroll)
-    <div className="font-montserrat relative flex min-h-screen flex-col ">
+    <div className="font-montserrat relative flex min-h-screen flex-col">
       <Header />
 
       <HeroBanners />

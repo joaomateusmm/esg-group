@@ -12,7 +12,6 @@ import {
   Moon,
   Package,
   Search,
-  Settings,
   ShieldQuestionMark,
   ShoppingCart,
   Sun,
@@ -40,17 +39,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { useLanguage } from "@/contexts/language-context";
 import { authClient } from "@/lib/auth-client";
 import { useCartStore } from "@/store/cart-store";
-import { useWishlistStore } from "@/store/wishlist-store";
+
+import { WishlistSheet } from "./WishlistSheet";
 
 // --- INTERFACES ---
 export interface CategoryLink {
@@ -124,8 +117,6 @@ export function HeaderContent() {
   const { data: session } = authClient.useSession();
   const { t, language, setLanguage } = useLanguage();
   const { items: cartItems, removeItem: removeCartItem } = useCartStore();
-  const { items: wishlistItems, removeItem: removeWishlistItem } =
-    useWishlistStore();
 
   // 1. CARREGAMENTO DE DADOS INICIAIS
   useEffect(() => {
@@ -520,60 +511,7 @@ export function HeaderContent() {
             </Link>
 
             {/* FAVORITOS */}
-            <Sheet>
-              <SheetTrigger asChild>
-                <div className="hidden cursor-pointer sm:block">
-                  <HeaderIconButton
-                    icon={Heart}
-                    badgeCount={wishlistItems.length}
-                  />
-                </div>
-              </SheetTrigger>
-              <SheetContent className="bg-white text-neutral-900 sm:max-w-[400px]">
-                <SheetHeader className="border-b border-neutral-100 pb-4">
-                  <SheetTitle>{t.header.wishlist.title}</SheetTitle>
-                </SheetHeader>
-                <div className="mt-4 flex h-full flex-col gap-4 overflow-y-auto">
-                  {wishlistItems.length === 0 && (
-                    <div className="flex h-40 flex-col items-center justify-center text-neutral-500">
-                      <Heart className="mb-2 h-10 w-10 opacity-20" />
-                      <p>{t.header.wishlist.empty}</p>
-                    </div>
-                  )}
-                  {wishlistItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex gap-4 border-b border-neutral-100 pb-4 last:border-0"
-                    >
-                      <div className="relative h-16 w-16 overflow-hidden rounded border border-neutral-200 bg-neutral-100">
-                        {item.image && (
-                          <Image
-                            src={item.image}
-                            alt={item.name}
-                            fill
-                            className="object-cover"
-                          />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <p className="line-clamp-1 text-sm font-medium text-neutral-900">
-                          {item.name}
-                        </p>
-                        <p className="text-sm font-bold text-orange-600">
-                          {formatPrice(item.price)}
-                        </p>
-                        <button
-                          onClick={() => removeWishlistItem(item.id)}
-                          className="mt-1 text-xs font-medium text-red-500 hover:underline"
-                        >
-                          Remover
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </SheetContent>
-            </Sheet>
+            <WishlistSheet />
 
             {/* CARRINHO */}
             <CartSheet />

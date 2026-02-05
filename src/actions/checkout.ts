@@ -16,16 +16,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const resend = new Resend(process.env.RESEND_API_KEY);
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@esggroup.com";
 
-type CartItemInput = {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image?: string;
-  currency?: string;
-};
-
-type ShippingAddressInput = {
+export type ShippingAddressInput = {
   street: string;
   number: string;
   complement?: string;
@@ -33,6 +24,15 @@ type ShippingAddressInput = {
   state: string;
   zipCode: string;
   phone?: string;
+};
+
+type CartItemInput = {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image?: string;
+  currency?: string;
 };
 
 const formatCurrency = (amount: number, currency = "GBP") => {
@@ -51,9 +51,11 @@ function calculateDeliveryDates(): { start: Date; end: Date } {
   return { start, end };
 }
 
+// --- LÓGICA CENTRAL DE CÁLCULO (COM FRETE GRÁTIS LONDRES) ---
 async function calculateOrderTotals(
   items: CartItemInput[],
   couponCode?: string,
+  city?: string, // Parâmetro opcional para verificar Londres
 ) {
   const subtotal = Math.round(
     items.reduce((acc, item) => acc + item.price * item.quantity, 0),
@@ -61,33 +63,45 @@ async function calculateOrderTotals(
 
   let totalShippingCost = 0;
 
-  const productIds = items.map((i) => i.id);
+  // Lógica: Se a cidade for Londres (ou Londres), frete é 0.
+  const isLondon =
+    city?.trim().toLowerCase() === "london" ||
+    city?.trim().toLowerCase() === "londres";
 
-  let productsDb: {
-    id: string;
-    shippingType: string | null;
-    fixedShippingPrice: number | null;
-  }[] = [];
+  if (!isLondon) {
+    // Calcula frete normal se NÃO for Londres
+    const productIds = items.map((i) => i.id);
 
-  if (productIds.length > 0) {
-    productsDb = await db.query.product.findMany({
-      where: inArray(product.id, productIds),
-      columns: {
-        id: true,
-        shippingType: true,
-        fixedShippingPrice: true,
-      },
-    });
-  }
+    let productsDb: {
+      id: string;
+      shippingType: string | null;
+      fixedShippingPrice: number | null;
+    }[] = [];
 
-  for (const item of items) {
-    const prodInfo = productsDb.find((p) => p.id === item.id);
+    if (productIds.length > 0) {
+      productsDb = await db.query.product.findMany({
+        where: inArray(product.id, productIds),
+        columns: {
+          id: true,
+          shippingType: true,
+          fixedShippingPrice: true,
+        },
+      });
+    }
 
-    if (prodInfo) {
-      if (prodInfo.shippingType === "fixed") {
-        totalShippingCost += (prodInfo.fixedShippingPrice || 0) * item.quantity;
+    for (const item of items) {
+      const prodInfo = productsDb.find((p) => p.id === item.id);
+
+      if (prodInfo) {
+        if (prodInfo.shippingType === "fixed") {
+          totalShippingCost +=
+            (prodInfo.fixedShippingPrice || 0) * item.quantity;
+        }
       }
     }
+  } else {
+    // Força zero se for Londres
+    totalShippingCost = 0;
   }
 
   let discountAmount = 0;
@@ -141,7 +155,6 @@ export async function sendOrderConfirmationEmail(
   try {
     const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://esggroup.com";
     const LOGO_URL = `${BASE_URL}/images/logo.png`;
-    // VOLTOU PARA LINK PRIVADO (APENAS LOGADO)
     const ORDER_LINK = `${BASE_URL}/minha-conta/compras/${orderId}`;
 
     const formattedTotal = formatCurrency(amount, currency);
@@ -243,16 +256,14 @@ export async function sendOrderConfirmationEmail(
 }
 
 export async function getCartShippingCost(items: CartItemInput[]) {
+  // Carrinho inicial (sem endereço) usa frete padrão
   const { shippingCost } = await calculateOrderTotals(items);
   return { price: shippingCost };
 }
 
 export async function createCheckoutSession(
   items: CartItemInput[],
-  // Sem guestInfo
   couponCode?: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _returnUrl?: string,
 ) {
   const firstCurrency = items[0]?.currency || "GBP";
 
@@ -281,7 +292,6 @@ export async function createCheckoutSession(
     }
   }
 
-  // --- OBRIGA SESSÃO ---
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     throw new Error("Você precisa estar logado para finalizar a compra.");
@@ -376,7 +386,6 @@ export async function createCheckoutSession(
 
 export async function createOrderCOD(
   items: CartItemInput[],
-  // Sem guestInfo
   couponCode?: string,
   shippingAddress?: ShippingAddressInput,
 ) {
@@ -396,15 +405,15 @@ export async function createOrderCOD(
     }
   }
 
-  // --- OBRIGA SESSÃO ---
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     throw new Error("Você precisa estar logado para finalizar a compra.");
   }
   const userId = session.user.id;
 
+  // Passamos a cidade para validar frete grátis no backend (COD)
   const { finalTotal, discountAmount, activeCouponId, shippingCost } =
-    await calculateOrderTotals(items, couponCode);
+    await calculateOrderTotals(items, couponCode, shippingAddress?.city);
 
   const { start, end } = calculateDeliveryDates();
 
@@ -477,7 +486,6 @@ export async function createOrderCOD(
 
 export async function updateOrderToCOD(
   orderId: string,
-  // Sem guestInfo
   shippingAddress?: ShippingAddressInput,
 ) {
   const existingOrder = await db.query.order.findFirst({
@@ -491,11 +499,37 @@ export async function updateOrderToCOD(
     throw new Error("Pedido inicial não encontrado. Tente novamente.");
   }
 
+  // Recalcular totais com a cidade (para aplicar frete grátis se Londres)
+  const cartItems: CartItemInput[] = existingOrder.items.map((i) => ({
+    id: i.productId,
+    name: i.productName,
+    price: i.price,
+    quantity: i.quantity,
+    image: i.image || undefined,
+    currency: existingOrder.currency || "GBP",
+  }));
+
+  let couponCode = undefined;
+  if (existingOrder.couponId) {
+    const c = await db.query.coupon.findFirst({
+      where: eq(coupon.id, existingOrder.couponId),
+    });
+    couponCode = c?.code;
+  }
+
+  const { finalTotal, shippingCost } = await calculateOrderTotals(
+    cartItems,
+    couponCode,
+    shippingAddress?.city,
+  );
+
   const { start, end } = calculateDeliveryDates();
 
   await db
     .update(order)
     .set({
+      amount: finalTotal,
+      shippingCost: shippingCost,
       paymentMethod: "cod",
       status: "pending",
       fulfillmentStatus: "processing",
@@ -537,7 +571,7 @@ export async function updateOrderToCOD(
       existingOrder.customerEmail,
       existingOrder.customerName || "Cliente",
       existingOrder.id,
-      existingOrder.amount,
+      finalTotal,
       existingOrder.currency || "GBP",
       existingOrder.items,
     ).catch((err) => console.error("Erro ao enviar email UPDATE COD:", err));
@@ -551,7 +585,6 @@ export async function updateOrderToCOD(
 
 export async function createFreeOrder(
   items: CartItemInput[],
-  // Sem guestInfo
   couponCode?: string,
   shippingAddress?: ShippingAddressInput,
 ) {
@@ -571,7 +604,6 @@ export async function createFreeOrder(
     }
   }
 
-  // --- OBRIGA SESSÃO ---
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     throw new Error("Você precisa estar logado para finalizar a compra.");
@@ -579,7 +611,7 @@ export async function createFreeOrder(
   const userId = session.user.id;
 
   const { finalTotal, discountAmount, activeCouponId, shippingCost } =
-    await calculateOrderTotals(items, couponCode);
+    await calculateOrderTotals(items, couponCode, shippingAddress?.city);
 
   if (finalTotal > 0) {
     throw new Error("O valor final não é gratuito. Use o checkout pago.");
@@ -654,6 +686,7 @@ export async function createFreeOrder(
   return { success: true, orderId: newOrder.id };
 }
 
+// --- ATUALIZAÇÃO DO PEDIDO (COM UPDATE NO STRIPE) ---
 export async function updateOrderAddressAction(
   orderId: string,
   shippingAddress: {
@@ -665,12 +698,50 @@ export async function updateOrderAddressAction(
     zipCode: string;
     phone?: string;
   },
-  // Sem guestEmail
 ) {
   try {
+    // 1. Busca o pedido existente
+    const existingOrder = await db.query.order.findFirst({
+      where: eq(order.id, orderId),
+      with: {
+        items: true,
+      },
+    });
+
+    if (!existingOrder) throw new Error("Pedido não encontrado.");
+
+    // 2. Prepara itens para recálculo
+    const cartItems: CartItemInput[] = existingOrder.items.map((i) => ({
+      id: i.productId,
+      name: i.productName,
+      price: i.price,
+      quantity: i.quantity,
+      image: i.image || undefined,
+      currency: existingOrder.currency || "GBP",
+    }));
+
+    // Verifica cupom
+    let couponCode = undefined;
+    if (existingOrder.couponId) {
+      const c = await db.query.coupon.findFirst({
+        where: eq(coupon.id, existingOrder.couponId),
+      });
+      couponCode = c?.code;
+    }
+
+    // 3. RECALCULA TUDO (COM A NOVA CIDADE)
+    const { finalTotal, shippingCost } = await calculateOrderTotals(
+      cartItems,
+      couponCode,
+      shippingAddress.city, // Verifica Londres aqui
+    );
+
+    // 4. Atualiza o pedido no banco com o novo valor
     await db
       .update(order)
       .set({
+        amount: finalTotal,
+        shippingCost: shippingCost,
         shippingAddress: {
           street: shippingAddress.street,
           number: shippingAddress.number,
@@ -678,15 +749,25 @@ export async function updateOrderAddressAction(
           city: shippingAddress.city,
           state: shippingAddress.state,
           zipCode: shippingAddress.zipCode,
-          country: "BR",
+          country: "BR", // Ajuste conforme necessário
         },
+        userPhone: shippingAddress.phone,
+        updatedAt: new Date(),
       })
       .where(eq(order.id, orderId));
 
+    // 5. ATUALIZA O STRIPE PAYMENT INTENT (O PULO DO GATO)
+    // Isso garante que o cartão será cobrado pelo valor NOVO (sem frete se Londres)
+    if (existingOrder.stripePaymentIntentId) {
+      await stripe.paymentIntents.update(existingOrder.stripePaymentIntentId, {
+        amount: finalTotal,
+      });
+    }
+
     return { success: true };
   } catch (error) {
-    console.error("Erro ao atualizar endereço do pedido:", error);
-    return { success: false, error: "Falha ao salvar endereço." };
+    console.error("Erro ao atualizar endereço e valores do pedido:", error);
+    return { success: false, error: "Falha ao atualizar pedido." };
   }
 }
 

@@ -61,7 +61,11 @@ export function CheckoutForm({
 
   const [isLoading, setIsLoading] = useState(false);
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
-  const [shippingCost, setShippingCost] = useState(0);
+
+  // --- ESTADOS DE FRETE ---
+  const [baseShippingCost, setBaseShippingCost] = useState(0); // Valor original da API
+  const [shippingCost, setShippingCost] = useState(0); // Valor aplicado na UI e Pedido
+
   const [message, setMessage] = useState<string | null>(null);
 
   const [couponInput, setCouponInput] = useState("");
@@ -81,12 +85,15 @@ export function CheckoutForm({
       currency: cartCurrency,
     }).format(val / 100);
 
+  // 1. CARREGA O FRETE BASE INICIAL
   useEffect(() => {
     if (items.length > 0) {
       const fetchShipping = async () => {
         setIsCalculatingShipping(true);
         try {
           const result = await getCartShippingCost(items);
+          setBaseShippingCost(result.price);
+          // Inicialmente, assumimos o frete base. A lógica de cidade vai sobrescrever se necessário.
           setShippingCost(result.price);
         } catch (error) {
           console.error("Erro frete:", error);
@@ -97,6 +104,30 @@ export function CheckoutForm({
       fetchShipping();
     }
   }, [items]);
+
+  // 2. MONITOR DE ENDEREÇO (A LÓGICA DE OURO)
+  useEffect(() => {
+    if (addressDetails?.address?.city) {
+      const city = addressDetails.address.city.trim().toLowerCase();
+
+      // Verifica variações comuns de Londres
+      if (city === "london" || city === "londres") {
+        setShippingCost(0);
+      } else {
+        // Se mudou para outra cidade, restaura o frete original
+        setShippingCost(baseShippingCost);
+      }
+    } else {
+      // Se limpou o endereço, volta ao base
+      setShippingCost(baseShippingCost);
+    }
+  }, [addressDetails, baseShippingCost]);
+
+  // --- CÁLCULOS FINAIS ---
+  const subtotal = getSubtotal();
+  // O total agora usa SEMPRE o `shippingCost` que já foi ajustado pelo useEffect acima
+  const total = getTotalPrice() + shippingCost;
+  const discountAmount = Math.max(0, subtotal - getTotalPrice());
 
   const OrderSummaryItems = () => (
     <div className="mb-6 max-h-[400px] overflow-y-auto pr-2">
@@ -170,7 +201,6 @@ export function CheckoutForm({
   const handleAddressChange = async (event: any) => {
     setAddressDetails(event.value);
     setIsAddressComplete(event.complete);
-    // Limpa a mensagem de erro se o endereço for preenchido
     if (event.complete && message?.includes("endereço")) {
       setMessage(null);
     }
@@ -210,7 +240,6 @@ export function CheckoutForm({
 
     if (!isAddressComplete || !addressDetails?.name) {
       setMessage("Por favor, preencha o endereço de entrega completo.");
-      // Scroll para o topo ou para o elemento de endereço se necessário
       return;
     }
 
@@ -218,6 +247,20 @@ export function CheckoutForm({
 
     setIsLoading(true);
     setMessage(null);
+
+    // --- DADOS FINAIS DE ENVIO ---
+    const shippingData = {
+      street: addressDetails.address.line1,
+      number: "N/A",
+      complement: addressDetails.address.line2,
+      city: addressDetails.address.city,
+      state: addressDetails.address.state,
+      zipCode: addressDetails.address.postal_code,
+      phone: addressDetails.phone,
+      // IMPORTANTE: Se o backend aceitar o custo do frete, passamos aqui.
+      // Se não, o backend precisará recalcular com a mesma lógica de "London".
+      cost: shippingCost,
+    };
 
     if (paymentMethod === "card") {
       if (!stripe || !elements) return;
@@ -229,17 +272,10 @@ export function CheckoutForm({
         return;
       }
 
+      // Atualiza endereço no backend antes de confirmar no Stripe
       if (existingOrderId) {
         try {
-          await updateOrderAddressAction(existingOrderId, {
-            street: addressDetails.address.line1,
-            number: "N/A",
-            complement: addressDetails.address.line2,
-            city: addressDetails.address.city,
-            state: addressDetails.address.state,
-            zipCode: addressDetails.address.postal_code,
-            phone: addressDetails.phone,
-          });
+          await updateOrderAddressAction(existingOrderId, shippingData);
         } catch (err) {
           console.error(err);
         }
@@ -268,22 +304,14 @@ export function CheckoutForm({
       if (error) setMessage(error.message || "Ocorreu um erro.");
       setIsLoading(false);
     } else {
+      // --- PAGAMENTO NA ENTREGA (COD) ---
       try {
-        const shippingData = {
-          street: addressDetails.address.line1,
-          number: "N/A",
-          complement: addressDetails.address.line2,
-          city: addressDetails.address.city,
-          state: addressDetails.address.state,
-          zipCode: addressDetails.address.postal_code,
-          phone: addressDetails.phone,
-        };
-
         let result;
 
         if (existingOrderId) {
           result = await updateOrderToCOD(existingOrderId, shippingData);
         } else {
+          // Aqui passamos o shippingData que pode ser usado no backend para validar
           result = await createOrderCOD(items, coupon?.code, shippingData);
         }
 
@@ -299,19 +327,13 @@ export function CheckoutForm({
     }
   };
 
-  const subtotal = getSubtotal();
-  const total = getTotalPrice() + shippingCost;
-  const discountAmount = Math.max(0, subtotal - getTotalPrice());
-
-  // Lógica para determinar se o botão deve estar desabilitado
   const isButtonDisabled =
     isLoading ||
     isCalculatingShipping ||
     !isAddressComplete ||
     (paymentMethod === "card" && (!stripe || !elements));
 
-  // Lógica para gerar a mensagem de ajuda quando o botão está desabilitado
-  let helperMessage = message; // Começa com a mensagem de erro do estado, se houver
+  let helperMessage = message;
 
   if (!helperMessage && isButtonDisabled && !isLoading) {
     if (!isAddressComplete) {
@@ -332,14 +354,14 @@ export function CheckoutForm({
             options={{
               mode: "shipping",
               allowedCountries: [
+                "ES",
+                "GB",
                 "BR",
                 "US",
-                "GB",
+                "DE",
                 "FR",
                 "IT",
                 "PT",
-                "ES",
-                "DE",
               ],
               fields: { phone: "always" },
               validation: { phone: { required: "always" } },
@@ -398,7 +420,9 @@ export function CheckoutForm({
 
       <div>
         <div className="sticky top-36 rounded-xl border border-neutral-200 bg-white p-6 shadow-lg">
-          <h2 className="mb-6 text-xl font-bold text-neutral-900">Resumo</h2>
+          <h2 className="mb-6 text-lg font-bold text-neutral-900">
+            Resumo do pedido
+          </h2>
 
           <OrderSummaryItems />
 
@@ -409,11 +433,21 @@ export function CheckoutForm({
             </div>
             <div className="flex items-center justify-between text-neutral-600">
               <span className="font-semibold">Frete</span>
-              <span className="font-medium text-orange-600">
+              <span
+                className={cn(
+                  "font-medium",
+                  shippingCost === 0 && baseShippingCost > 0
+                    ? "text-emerald-600"
+                    : "text-orange-600",
+                )}
+              >
                 {isCalculatingShipping ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : shippingCost > 0 ? (
                   formatPrice(shippingCost)
+                ) : // Se for 0, e o base era > 0, sabemos que é por causa de Londres
+                baseShippingCost > 0 ? (
+                  "Grátis (Londres)"
                 ) : (
                   "Grátis"
                 )}
@@ -430,7 +464,7 @@ export function CheckoutForm({
 
             <div className="border-t border-neutral-200/70 pt-4">
               {!coupon ? (
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                   <div className="relative flex-1">
                     <Ticket className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-400" />
                     <Input
@@ -444,7 +478,7 @@ export function CheckoutForm({
                   </div>
                   <Button
                     type="button"
-                    className="cursor-pointer bg-emerald-500 shadow-md duration-300 hover:-translate-y-0.5 hover:bg-emerald-500"
+                    className="h-10 cursor-pointer bg-emerald-500 shadow-md duration-300 hover:-translate-y-0.5 hover:bg-emerald-500"
                     onClick={handleApplyCoupon}
                     disabled={!couponInput || isValidatingCoupon}
                   >
@@ -482,7 +516,7 @@ export function CheckoutForm({
           <Button
             disabled={isButtonDisabled}
             type="submit"
-            className="mt-6 h-12 w-full text-md bg-emerald-500 font-bold text-white hover:bg-emerald-600 disabled:bg-neutral-300 disabled:text-neutral-800"
+            className="text-md mt-6 h-12 w-full bg-emerald-500 font-bold text-white hover:bg-emerald-600 disabled:bg-neutral-300 disabled:text-neutral-800"
           >
             {isLoading ? (
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />

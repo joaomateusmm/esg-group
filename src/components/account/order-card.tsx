@@ -8,6 +8,7 @@ import {
   ChevronRight,
   CircleAlert,
   Clock,
+  Copy,
   Eye,
   EyeOff,
   MapPin,
@@ -20,6 +21,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { confirmOrderDelivery } from "@/actions/order-actions";
+import CopyIdButton from "@/components/CopyButton";
 import { ProductReviewForm } from "@/components/product-review-form";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -402,85 +404,99 @@ export function OrderCard({ order }: { order: OrderProps }) {
             </div>
           </div>
 
-          {/* Botões de Ação */}
-          <div className="flex flex-wrap justify-start gap-3 border-t border-dotted border-orange-100/50 pt-2 md:justify-end">
-            {order.status === "pending" &&
-              order.fulfillmentStatus === "idle" && (
+          {/* BARRA INFERIOR: ID + AÇÕES */}
+          <div className="flex flex-col gap-4 border-t border-dotted border-orange-100/50 pt-3 md:flex-row md:items-center md:justify-between">
+            {/* NOVO: ID DO PEDIDO COM COPY (ALINHADO À ESQUERDA) */}
+            <div className="flex items-center justify-center gap-2 text-neutral-800">
+              <span className="text-xs font-medium tracking-wider uppercase">
+                ID:
+              </span>
+              <span className="font-mono text-sm font-bold text-orange-600">
+                #{order.id.slice(0, 8).toUpperCase()}
+              </span>
+              <CopyIdButton id={order.id} />
+            </div>
+
+            {/* BOTÕES DE AÇÃO (ALINHADOS À DIREITA) */}
+            <div className="flex flex-wrap items-center gap-3">
+              {order.status === "pending" &&
+                order.fulfillmentStatus === "idle" && (
+                  <Button
+                    variant="outline"
+                    className="h-9 border-neutral-300 px-4 text-xs font-medium text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900"
+                  >
+                    Cancelar
+                  </Button>
+                )}
+
+              {order.status === "pending" && order.paymentMethod !== "cod" && (
+                <Link href={`/checkout?orderId=${order.id}`}>
+                  {" "}
+                  {/* Link correto para pagar este pedido */}
+                  <Button className="h-9 bg-orange-600 px-5 text-xs font-bold text-white shadow-sm hover:bg-orange-700">
+                    Pagar Agora
+                  </Button>
+                </Link>
+              )}
+
+              {order.fulfillmentStatus === "shipped" && (
                 <Button
-                  variant="outline"
-                  className="border-neutral-300 font-medium text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900"
+                  onClick={handleConfirmDelivery}
+                  className="h-9 bg-orange-600 px-5 text-xs font-medium text-white shadow-sm hover:bg-orange-700"
                 >
-                  Cancelar Pedido
+                  Confirmar Entrega
                 </Button>
               )}
 
-            {order.status === "pending" && order.paymentMethod !== "cod" && (
-              <Link href="/checkout">
-                <Button className="bg-orange-600 px-6 font-bold text-white shadow-sm hover:bg-orange-700">
-                  Pagar Agora
-                </Button>
-              </Link>
-            )}
-
-            {order.fulfillmentStatus === "shipped" && (
-              <Button
-                onClick={handleConfirmDelivery}
-                className="h-9 bg-orange-600 px-6 font-medium text-white shadow-sm hover:bg-orange-700"
-              >
-                Confirmar Recebimento
-              </Button>
-            )}
-
-            {(order.fulfillmentStatus === "delivered" ||
-              order.status === "completed") && (
-              <Button
-                variant="outline"
-                className="border-orange-200 bg-white font-medium text-orange-600 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700"
-              >
-                Comprar Novamente
-              </Button>
-            )}
-
-            <div className="flex gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex cursor-pointer items-center justify-center gap-2.5 rounded-md border border-neutral-100 bg-white px-3 py-2 text-sm font-medium text-neutral-600 shadow-sm duration-300 outline-none hover:-translate-y-0.5 hover:bg-white hover:text-neutral-900">
-                    Mais
-                    <ChevronDown className="h-4 w-4" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="w-48 border-neutral-100 bg-white text-neutral-700 shadow-lg"
+              {(order.fulfillmentStatus === "delivered" ||
+                order.status === "completed") && (
+                <Button
+                  variant="outline"
+                  className="h-9 border-orange-200 bg-white px-4 text-xs font-medium text-orange-600 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700"
                 >
-                  <DropdownMenuLabel>Mais Opções</DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-neutral-100" />
-                  <DropdownMenuItem className="cursor-pointer" asChild>
-                    <Link
-                      href={`/produto/${order.items[0]?.productId || ""}`}
-                      className="flex w-full items-center"
-                    >
-                      Página do Produto
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer" asChild>
-                    <Link href="/suporte" className="flex w-full items-center">
-                      Relatar Problema
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer" asChild>
-                    <Link href="/faq" className="flex w-full items-center">
-                      Dúvidas Frequentes
-                    </Link>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  Comprar Novamente
+                </Button>
+              )}
 
-              <Link href={`/minha-conta/compras/${order.id}`}>
-                <button className="flex cursor-pointer items-center justify-center gap-2.5 rounded-md border border-neutral-100 bg-white px-3 py-2 text-sm font-medium text-neutral-600 shadow-sm duration-300 hover:-translate-y-0.5 hover:bg-white hover:text-neutral-900">
-                  <CircleAlert className="h-4 w-4" /> Detalhes
-                </button>
-              </Link>
+              <div className="flex gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-xs font-medium text-neutral-600 shadow-sm duration-200 hover:border-neutral-300 hover:text-neutral-900">
+                      Mais
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-48 border-neutral-100 bg-white text-neutral-700 shadow-lg"
+                  >
+                    <DropdownMenuLabel>Opções</DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-neutral-100" />
+                    <DropdownMenuItem className="cursor-pointer" asChild>
+                      <Link
+                        href={`/produto/${order.items[0]?.productId || ""}`}
+                        className="flex w-full items-center"
+                      >
+                        Ver Produto
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer" asChild>
+                      <Link
+                        href="/suporte"
+                        className="flex w-full items-center"
+                      >
+                        Relatar Problema
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Link href={`/minha-conta/compras/${order.id}`}>
+                  <button className="flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-xs font-medium text-neutral-600 shadow-sm duration-200 hover:border-neutral-300 hover:text-neutral-900">
+                    <CircleAlert className="h-3.5 w-3.5" /> Detalhes
+                  </button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
