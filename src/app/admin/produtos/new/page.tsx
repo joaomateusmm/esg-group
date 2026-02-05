@@ -9,8 +9,9 @@ import {
   Loader2,
   Package,
   Ruler,
+  Star,
+  Trash,
   Truck,
-  X,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -178,6 +179,21 @@ export default function NewProductPage() {
     mode: "onChange",
   });
 
+  const handleSetMainImage = (indexToPromote: number) => {
+    if (indexToPromote === 0) return; // Já é a capa
+
+    const newImages = [...uploadedImages];
+    const imageToMove = newImages[indexToPromote];
+
+    // Remove a imagem da posição atual
+    newImages.splice(indexToPromote, 1);
+    // Adiciona no início do array
+    newImages.unshift(imageToMove);
+
+    setUploadedImages(newImages);
+    toast.success("Imagem de capa atualizada!");
+  };
+
   const watchPrice = form.watch("price");
   const watchDiscountPrice = form.watch("discountPrice");
   const watchIsStockUnlimited = form.watch("isStockUnlimited");
@@ -207,6 +223,8 @@ export default function NewProductPage() {
       toast.error("O preço promocional deve ser menor que o preço original.");
       return;
     }
+
+    // Função para mover a imagem selecionada para o índice 0
 
     try {
       const formattedData = {
@@ -678,10 +696,11 @@ export default function NewProductPage() {
                     Galeria de Imagens
                   </CardTitle>
                   <CardDescription className="text-neutral-500">
-                    Adicione as imagens do seu produto. Máximo 4MB.
+                    A primeira imagem será usada como capa do produto.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Área de Upload */}
                   <div className="flex w-full flex-col items-center justify-center rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-6">
                     <UploadButton
                       endpoint="imageUploader"
@@ -721,28 +740,64 @@ export default function NewProductPage() {
                       }}
                     />
                   </div>
+
+                  {/* Lista de Imagens */}
                   {uploadedImages.length > 0 && (
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                      {uploadedImages.map((url, index) => (
-                        <div
-                          key={url}
-                          className="group relative aspect-square overflow-hidden rounded-md border border-neutral-200 bg-neutral-50"
-                        >
-                          <Image
-                            src={url}
-                            alt={`Preview ${index}`}
-                            fill
-                            className="object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveImage(index)}
-                            className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600/90 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-700"
+                      {uploadedImages.map((url, index) => {
+                        const isCover = index === 0;
+
+                        return (
+                          <div
+                            key={url}
+                            className={cn(
+                              "group relative aspect-square overflow-hidden rounded-md border bg-neutral-50 transition-all",
+                              isCover
+                                ? "ring-2 ring-orange-500"
+                                : "border-neutral-200 hover:border-orange-300",
+                            )}
                           >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
+                            <Image
+                              src={url}
+                              alt={`Imagem do produto ${index + 1}`}
+                              fill
+                              className="object-cover"
+                            />
+
+                            {/* Badge de CAPA (Visível apenas na primeira imagem) */}
+                            {isCover && (
+                              <div className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded bg-orange-600 px-2 py-1 text-xs font-semibold text-white shadow-sm">
+                                <Star className="h-3 w-3" />
+                                Capa
+                              </div>
+                            )}
+
+                            {/* Botão para DEFINIR COMO CAPA (Visível no hover das outras imagens) */}
+                            {!isCover && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetMainImage(index)}
+                                  className="flex cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-neutral-900 shadow-md duration-300 hover:bg-orange-500"
+                                >
+                                  <Star className="h-4 w-4" />
+                                  Definir Capa
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Botão de Remover */}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(index)}
+                              className="absolute top-2 right-2 z-20 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-red-500 text-white opacity-0 shadow-sm duration-300 group-hover:opacity-100 hover:bg-red-700"
+                              title="Remover imagem"
+                            >
+                              <Trash className="h-3 w-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>

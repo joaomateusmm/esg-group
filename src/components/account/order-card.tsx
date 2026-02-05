@@ -367,13 +367,12 @@ export function OrderCard({ order }: { order: OrderProps }) {
               </div>
             </div>
 
-            {/* LADO DIREITO: TOTAIS E VALORES */}
             <div className="flex flex-col items-end gap-1">
               {/* Frete */}
               <div className="flex items-center gap-2 text-xs">
-                <Truck className="h-3.5 w-3.5 text-neutral-400" />
-                <span className="text-neutral-500">Frete:</span>
-                <span className="font-medium text-neutral-900">
+                <Truck className="h-3.5 w-3.5 text-neutral-800" />
+                <span className="text-neutral-800">Frete:</span>
+                <span className="font-medium text-orange-600">
                   {order.shippingCost
                     ? formatCurrency(order.shippingCost, order.currency)
                     : "Grátis"}
@@ -383,9 +382,9 @@ export function OrderCard({ order }: { order: OrderProps }) {
               {/* Desconto (NOVO) */}
               {order.discountAmount && order.discountAmount > 0 && (
                 <div className="flex items-center gap-2 text-xs">
-                  <Ticket className="h-3.5 w-3.5 text-green-500" />
-                  <span className="text-green-600">Desconto:</span>
-                  <span className="font-medium text-green-700">
+                  <Ticket className="h-3.5 w-3.5 text-neutral-800" />
+                  <span className="text-neutral-800">Desconto:</span>
+                  <span className="font-medium text-orange-600">
                     - {formatCurrency(order.discountAmount, order.currency)}
                   </span>
                 </div>
@@ -397,7 +396,6 @@ export function OrderCard({ order }: { order: OrderProps }) {
                   Total pago:
                 </span>
                 <span className="text-xl font-bold text-orange-600">
-                  {/* Usa diretamente o valor salvo no banco, que já é o final */}
                   {formatCurrency(order.amount, order.currency)}
                 </span>
               </div>

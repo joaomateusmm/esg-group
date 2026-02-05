@@ -4,9 +4,7 @@ import { Loader2, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
 
-import { createCheckoutSession } from "@/actions/checkout";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -16,7 +14,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useLanguage } from "@/contexts/language-context";
-import { authClient } from "@/lib/auth-client";
 import { useCartStore } from "@/store/cart-store";
 
 // --- SUB-COMPONENTS ---
@@ -28,7 +25,7 @@ function CartIconBadge({ count }: { count: number }) {
       <div className="relative">
         <ShoppingCart className="h-5 w-5" strokeWidth={2} />
         {count > 0 && (
-          <div className="-top-1.5 -right-1.5 absolute flex h-4 w-4 items-center justify-center rounded-full bg-orange-600 text-[10px] font-bold text-white shadow-sm">
+          <div className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-orange-600 text-[10px] font-bold text-white shadow-sm">
             {count}
           </div>
         )}
@@ -37,7 +34,7 @@ function CartIconBadge({ count }: { count: number }) {
   );
 }
 
-// 2. Card do Item no Carrinho (Adaptação do ProductCard)
+// 2. Card do Item no Carrinho
 interface CartItemCardProps {
   item: {
     id: string;
@@ -52,10 +49,7 @@ interface CartItemCardProps {
 }
 
 function CartItemCard({ item, onUpdateQuantity, onRemove }: CartItemCardProps) {
-  // Define a moeda do item (ou padrão GBP)
   const itemCurrency = item.currency || "GBP";
-
-  // Formatação de preço específica para este item
   const formattedPrice = new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: itemCurrency,
@@ -132,7 +126,9 @@ export function CartSheet() {
   const [isOpen, setIsOpen] = useState(false);
 
   const { t, language } = useLanguage();
-  const { data: session } = authClient.useSession();
+
+  // Removemos a verificação de sessão aqui, pois o checkout lida com isso
+  // const { data: session } = authClient.useSession();
 
   const {
     items: cartItems,
@@ -155,46 +151,14 @@ export function CartSheet() {
     }).format(val / 100);
   };
 
-  async function handleCheckout() {
-    if (!session) {
-      setIsOpen(false);
-      toast.error(
-        language === "pt"
-          ? "Faça login para continuar."
-          : "Please login to continue.",
-      );
-      router.push("/authentication");
-      return;
-    }
-    try {
-      setIsCheckingOut(true);
-      const checkoutItems = cartItems.map((item) => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        image: item.image,
-        currency: item.currency,
-      }));
-
-      const result = await createCheckoutSession(checkoutItems);
-
-      if (result && result.success) {
-        toast.success(
-          language === "pt" ? "Iniciando pagamento..." : "Starting checkout...",
-        );
-        router.push("/checkout");
-        setIsOpen(false);
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error(
-        language === "pt" ? "Erro ao processar." : "Error processing.",
-      );
-    } finally {
-      setIsCheckingOut(false);
-    }
-  }
+  const handleCheckout = () => {
+    // Simplesmente redireciona para a página de checkout.
+    // O CheckoutForm lá vai verificar se está logado e mostrar o form se necessário.
+    setIsOpen(false);
+    setIsCheckingOut(true);
+    router.push("/checkout");
+    setIsCheckingOut(false);
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>

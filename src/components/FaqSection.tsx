@@ -12,9 +12,9 @@ import {
 const faqData = [
   {
     value: "item-1",
-    question: "Quem é o ESG Group?",
+    question: "Quem é a empresa ESG Group?",
     answer:
-      "Somos uma empresa especializada na venda de móveis de alta qualidade e prestação de serviços residenciais no Reino Unido. Nosso foco é oferecer soluções, conforto e praticidade com o melhor custo-benefício do mercado.",
+      "Somos uma empresa especializada na venda de móveis usados de alta qualidade e prestação de serviços residenciais no Reino Unido e arredores. Nosso foco é oferecer soluções, conforto e praticidade com o melhor custo-benefício do mercado.",
   },
   {
     value: "item-2",

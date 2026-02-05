@@ -61,7 +61,7 @@ export async function POST(req: Request) {
     let customerEmail: string;
     let customerName: string;
 
-    // --- LÓGICA DE USUÁRIO ROBUSTA (CORREÇÃO AQUI) ---
+    // --- LÓGICA DE USUÁRIO ROBUSTA (MANTIDA) ---
     if (session) {
       userId = session.user.id;
       customerEmail = session.user.email;
@@ -78,7 +78,6 @@ export async function POST(req: Request) {
         customerName = guestName || "Visitante";
       } else {
         // CORREÇÃO CRÍTICA: Se não tem e-mail (load inicial), cria um placeholder
-        // para não quebrar a página de checkout. O e-mail será atualizado no submit.
         const tempId = crypto.randomUUID();
         const tempEmail = `pending-${tempId}@temp.esggroup.shop`; // Email temporário único
 
@@ -101,7 +100,12 @@ export async function POST(req: Request) {
     for (const item of items) {
       const prodInfo = productsDb.find((p) => p.id === item.id);
       if (prodInfo) {
-        subtotal += prodInfo.price * item.quantity;
+        // --- CORREÇÃO AQUI: Usa o preço com desconto se houver ---
+        // Antes estava apenas: prodInfo.price
+        const finalPrice = prodInfo.discountPrice || prodInfo.price;
+
+        subtotal += finalPrice * item.quantity;
+
         if (prodInfo.shippingType === "fixed") {
           totalShippingCost +=
             (prodInfo.fixedShippingPrice || 0) * item.quantity;

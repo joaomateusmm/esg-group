@@ -6,7 +6,16 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
-import { CreditCard, Loader2, Lock, Ticket, Truck, X } from "lucide-react";
+import {
+  CreditCard,
+  Info,
+  Loader2,
+  Lock,
+  Ticket,
+  Truck,
+  X,
+} from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -20,7 +29,7 @@ import {
 import { validateCoupon } from "@/actions/coupons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { authClient } from "@/lib/auth-client"; // <--- Importação necessária
+import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/store/cart-store";
 
@@ -37,10 +46,7 @@ export function CheckoutForm({
   const elements = useElements();
   const router = useRouter();
 
-  // --- CORREÇÃO: Verifica sessão no cliente também ---
   const { data: session } = authClient.useSession();
-
-  // Usa o email que vier: ou da prop (servidor) ou da sessão (cliente)
   const finalUserEmail = userEmail || session?.user?.email;
 
   const {
@@ -75,20 +81,6 @@ export function CheckoutForm({
       currency: cartCurrency,
     }).format(val / 100);
 
-  const today = new Date();
-  const deliveryStart = new Date(today);
-  deliveryStart.setDate(today.getDate() + 10);
-  const deliveryEnd = new Date(today);
-  deliveryEnd.setDate(today.getDate() + 17);
-
-  const deliveryDateString = `${deliveryStart.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-  })} a ${deliveryEnd.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-  })}`;
-
   useEffect(() => {
     if (items.length > 0) {
       const fetchShipping = async () => {
@@ -106,36 +98,67 @@ export function CheckoutForm({
     }
   }, [items]);
 
-  // --- BLOQUEIO PARA VISITANTES (Usando finalUserEmail) ---
+  const OrderSummaryItems = () => (
+    <div className="mb-6 max-h-[400px] overflow-y-auto pr-2">
+      <div className="space-y-4">
+        {items.map((item) => (
+          <div key={item.id} className="flex items-start gap-4">
+            <div className="relative h-16 w-16 min-w-[64px] overflow-hidden rounded-md border border-neutral-100 bg-neutral-50">
+              {item.image ? (
+                <Image
+                  src={item.image}
+                  alt={item.name}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xs text-neutral-400">
+                  Sem foto
+                </div>
+              )}
+            </div>
+            <div className="flex flex-1 flex-col justify-between">
+              <div className="flex justify-between gap-2">
+                <span className="line-clamp-2 text-sm leading-snug font-medium text-neutral-900">
+                  {item.name}
+                </span>
+                <span className="text-sm font-semibold whitespace-nowrap text-neutral-900">
+                  {formatPrice(item.price * item.quantity)}
+                </span>
+              </div>
+              <div className="mt-1 flex items-center justify-between text-xs text-neutral-500">
+                <span>Qtd: {item.quantity}</span>
+                <span>Unit: {formatPrice(item.price)}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   if (!finalUserEmail) {
     return (
       <div className="grid gap-8 lg:grid-cols-2">
-        {/* Coluna da Esquerda: Auth Inline */}
         <div className="space-y-6">
           <CheckoutAuth />
         </div>
 
         <div>
-          <div className="pointer-events-none sticky top-36 rounded-xl border border-neutral-200 bg-white p-6 opacity-70 shadow-lg grayscale-[0.5]">
+          <div className="pointer-events-none sticky top-36 rounded-xl border border-neutral-200 bg-white p-6 opacity-80 shadow-lg">
             <h2 className="mb-6 text-xl font-bold text-neutral-900">
               Resumo do Pedido
             </h2>
-            <div className="mb-4 space-y-2">
-              {items.map((item) => (
-                <div key={item.id} className="flex justify-between text-sm">
-                  <span className="w-2/3 truncate">
-                    {item.quantity}x {item.name}
-                  </span>
-                  <span>{formatPrice(item.price * item.quantity)}</span>
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-between border-t border-neutral-200 pt-4 font-bold">
+            <OrderSummaryItems />
+            <div className="flex justify-between border-t border-neutral-200 pt-4 text-lg font-bold">
               <span>Total Estimado</span>
               <span>{formatPrice(getTotalPrice())}</span>
             </div>
-            <div className="mt-4 rounded bg-orange-100 p-3 text-center text-xs font-medium text-orange-800">
-              Complete seu cadastro ao lado para finalizar a compra
+            <div className="mt-6 rounded-lg border border-emerald-100 bg-emerald-50 p-4 text-center">
+              <p className="flex items-center justify-center gap-2 text-sm font-medium text-emerald-800">
+                <Lock className="h-4 w-4" />
+                Complete seu cadastro ao lado para finalizar
+              </p>
             </div>
           </div>
         </div>
@@ -147,6 +170,10 @@ export function CheckoutForm({
   const handleAddressChange = async (event: any) => {
     setAddressDetails(event.value);
     setIsAddressComplete(event.complete);
+    // Limpa a mensagem de erro se o endereço for preenchido
+    if (event.complete && message?.includes("endereço")) {
+      setMessage(null);
+    }
   };
 
   const handleApplyCoupon = async () => {
@@ -183,6 +210,7 @@ export function CheckoutForm({
 
     if (!isAddressComplete || !addressDetails?.name) {
       setMessage("Por favor, preencha o endereço de entrega completo.");
+      // Scroll para o topo ou para o elemento de endereço se necessário
       return;
     }
 
@@ -191,7 +219,6 @@ export function CheckoutForm({
     setIsLoading(true);
     setMessage(null);
 
-    // --- FLUXO 1: CARTÃO (STRIPE) ---
     if (paymentMethod === "card") {
       if (!stripe || !elements) return;
 
@@ -204,19 +231,15 @@ export function CheckoutForm({
 
       if (existingOrderId) {
         try {
-          await updateOrderAddressAction(
-            existingOrderId,
-            {
-              street: addressDetails.address.line1,
-              number: "N/A",
-              complement: addressDetails.address.line2,
-              city: addressDetails.address.city,
-              state: addressDetails.address.state,
-              zipCode: addressDetails.address.postal_code,
-              phone: addressDetails.phone,
-            },
-            // Sem guestEmail, pois estamos garantindo login
-          );
+          await updateOrderAddressAction(existingOrderId, {
+            street: addressDetails.address.line1,
+            number: "N/A",
+            complement: addressDetails.address.line2,
+            city: addressDetails.address.city,
+            state: addressDetails.address.state,
+            zipCode: addressDetails.address.postal_code,
+            phone: addressDetails.phone,
+          });
         } catch (err) {
           console.error(err);
         }
@@ -238,16 +261,13 @@ export function CheckoutForm({
               country: addressDetails.address.country,
             },
           },
-          receipt_email: finalUserEmail, // Passa o email garantido
+          receipt_email: finalUserEmail,
         },
       });
 
       if (error) setMessage(error.message || "Ocorreu um erro.");
       setIsLoading(false);
-    }
-
-    // --- FLUXO 2: COD ---
-    else {
+    } else {
       try {
         const shippingData = {
           street: addressDetails.address.line1,
@@ -264,8 +284,6 @@ export function CheckoutForm({
         if (existingOrderId) {
           result = await updateOrderToCOD(existingOrderId, shippingData);
         } else {
-          // Passamos apenas o necessário, as actions pegam a sessão do servidor
-          // Mas como já validamos finalUserEmail aqui, o servidor deve ter sessão também
           result = await createOrderCOD(items, coupon?.code, shippingData);
         }
 
@@ -284,6 +302,24 @@ export function CheckoutForm({
   const subtotal = getSubtotal();
   const total = getTotalPrice() + shippingCost;
   const discountAmount = Math.max(0, subtotal - getTotalPrice());
+
+  // Lógica para determinar se o botão deve estar desabilitado
+  const isButtonDisabled =
+    isLoading ||
+    isCalculatingShipping ||
+    !isAddressComplete ||
+    (paymentMethod === "card" && (!stripe || !elements));
+
+  // Lógica para gerar a mensagem de ajuda quando o botão está desabilitado
+  let helperMessage = message; // Começa com a mensagem de erro do estado, se houver
+
+  if (!helperMessage && isButtonDisabled && !isLoading) {
+    if (!isAddressComplete) {
+      helperMessage = "Preencha o endereço de entrega completo para continuar.";
+    } else if (isCalculatingShipping) {
+      helperMessage = "Calculando frete...";
+    }
+  }
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-2">
@@ -363,18 +399,8 @@ export function CheckoutForm({
       <div>
         <div className="sticky top-36 rounded-xl border border-neutral-200 bg-white p-6 shadow-lg">
           <h2 className="mb-6 text-xl font-bold text-neutral-900">Resumo</h2>
-          <div className="mb-4 max-h-40 overflow-y-auto pr-2">
-            {items.map((item) => (
-              <div key={item.id} className="mb-2 flex justify-between text-sm">
-                <span className="w-2/3 truncate text-neutral-600">
-                  {item.quantity}x {item.name}
-                </span>
-                <span className="font-medium">
-                  {formatPrice(item.price * item.quantity)}
-                </span>
-              </div>
-            ))}
-          </div>
+
+          <OrderSummaryItems />
 
           <div className="space-y-3 border-t border-neutral-100 pt-4 text-sm">
             <div className="flex justify-between text-neutral-600">
@@ -418,7 +444,7 @@ export function CheckoutForm({
                   </div>
                   <Button
                     type="button"
-                    variant="secondary"
+                    className="cursor-pointer bg-emerald-500 shadow-md duration-300 hover:-translate-y-0.5 hover:bg-emerald-500"
                     onClick={handleApplyCoupon}
                     disabled={!couponInput || isValidatingCoupon}
                   >
@@ -430,9 +456,9 @@ export function CheckoutForm({
                   </Button>
                 </div>
               ) : (
-                <div className="flex justify-between rounded-md bg-neutral-50 p-3">
-                  <span className="text-sm font-bold">
-                    {coupon.code} aplicado
+                <div className="flex justify-between rounded-md bg-neutral-100 p-3 shadow-md">
+                  <span className="flex items-center justify-center gap-2 text-sm font-bold text-neutral-800">
+                    {coupon.code} <Ticket className="h-4 w-4 rotate-45" />
                   </span>
                   <Button
                     type="button"
@@ -454,14 +480,9 @@ export function CheckoutForm({
           </div>
 
           <Button
-            disabled={
-              isLoading ||
-              isCalculatingShipping ||
-              !isAddressComplete ||
-              (paymentMethod === "card" && (!stripe || !elements))
-            }
+            disabled={isButtonDisabled}
             type="submit"
-            className="mt-6 h-12 w-full bg-emerald-500 font-bold text-white hover:bg-emerald-600 disabled:bg-neutral-300"
+            className="mt-6 h-12 w-full text-md bg-emerald-500 font-bold text-white hover:bg-emerald-600 disabled:bg-neutral-300 disabled:text-neutral-800"
           >
             {isLoading ? (
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -474,9 +495,10 @@ export function CheckoutForm({
             )}
           </Button>
 
-          {message && (
-            <div className="mt-4 rounded bg-red-50 p-2 text-center text-sm text-red-500">
-              {message}
+          {helperMessage && (
+            <div className="mt-4 flex items-center justify-center gap-1 text-center text-xs font-medium text-neutral-500">
+              <Info className="h-3.5 w-3.5" />
+              {helperMessage}
             </div>
           )}
         </div>

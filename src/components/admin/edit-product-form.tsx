@@ -162,20 +162,18 @@ export default function EditProductForm({ initialData }: EditProductFormProps) {
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   // --- CORREÇÃO 1: Mapeamento dos dados de categoria ---
+  // --- DEBUG DE DADOS BRUTOS ---
   useEffect(() => {
     async function loadData() {
       try {
         const result = await getAllCategories();
-
-        // CORREÇÃO: O TypeScript reclamava que o retorno tinha {label, href} mas esperávamos {id, name}.
-        // Aqui mapeamos os dados para o formato correto.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const formattedCats: OptionData[] = (result as any[]).map((item) => ({
-          // Tenta usar ID se existir, senão usa label ou href como fallback
-          id: item.id || item.href || item.label,
-          // Tenta usar name se existir, senão usa label
-          name: item.name || item.label,
-        }));
+        const formattedCats: OptionData[] = (result as any[]).map((item) => {
+          return {
+            id: String(item.id || item._id || item.uuid || item.href),
+            name: item.name || item.label,
+          };
+        });
 
         setCategoriesList(formattedCats);
       } catch (error) {
@@ -188,6 +186,7 @@ export default function EditProductForm({ initialData }: EditProductFormProps) {
     loadData();
   }, []);
 
+  // --- CORREÇÃO NO FORMULÁRIO ---
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -214,7 +213,14 @@ export default function EditProductForm({ initialData }: EditProductFormProps) {
       width: initialData.width || 0,
       height: initialData.height || 0,
       length: initialData.length || 0,
-      categories: initialData.categories || [],
+      categories: initialData.categories
+        ? initialData.categories.map((cat) => {
+            const val =
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              typeof cat === "object" && cat !== null ? (cat as any).id : cat;
+            return String(val);
+          })
+        : [],
     },
     mode: "onChange",
   });
@@ -802,41 +808,59 @@ export default function EditProductForm({ initialData }: EditProductFormProps) {
                             <CommandList>
                               <CommandEmpty>Nada encontrado.</CommandEmpty>
                               <CommandGroup>
-                                {categoriesList.map((category) => (
-                                  <CommandItem
-                                    key={category.id}
-                                    value={category.name}
-                                    onSelect={() => {
-                                      const current = field.value || [];
-                                      const isSelected = current.includes(
-                                        category.id,
-                                      );
-                                      form.setValue(
-                                        "categories",
-                                        isSelected
-                                          ? current.filter(
-                                              (id) => id !== category.id,
-                                            )
-                                          : [...current, category.id],
-                                      );
-                                    }}
-                                    className="cursor-pointer text-neutral-900 hover:bg-neutral-100 aria-selected:bg-neutral-100 aria-selected:text-neutral-900"
-                                  >
-                                    <div
-                                      className={cn(
-                                        "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-neutral-300",
-                                        field.value?.includes(category.id)
-                                          ? "border-orange-600 bg-orange-600"
-                                          : "opacity-50",
-                                      )}
+                                {categoriesList.map((category) => {
+                                  // LÓGICA DE COMPARAÇÃO SEGURA
+                                  // Verifica se algum valor no array field.value, convertido para string,
+                                  // é igual ao id da categoria atual (também convertido para string).
+                                  const isSelected = field.value?.some(
+                                    (val: string | number) =>
+                                      String(val) === String(category.id),
+                                  );
+
+                                  return (
+                                    <CommandItem
+                                      key={category.id}
+                                      value={category.name}
+                                      onSelect={() => {
+                                        const current = field.value || [];
+
+                                        // Reutilizamos a lógica segura para saber se já estava selecionado
+                                        if (isSelected) {
+                                          // REMOVER: Filtra removendo o ID que corresponde (em string)
+                                          form.setValue(
+                                            "categories",
+                                            current.filter(
+                                              (id) =>
+                                                String(id) !==
+                                                String(category.id),
+                                            ),
+                                          );
+                                        } else {
+                                          // ADICIONAR
+                                          form.setValue("categories", [
+                                            ...current,
+                                            category.id,
+                                          ]);
+                                        }
+                                      }}
+                                      className="cursor-pointer text-neutral-900 hover:bg-neutral-100 aria-selected:bg-neutral-100 aria-selected:text-neutral-900"
                                     >
-                                      {field.value?.includes(category.id) && (
-                                        <Check className="h-3 w-3 text-white" />
-                                      )}
-                                    </div>
-                                    {category.name}
-                                  </CommandItem>
-                                ))}
+                                      <div
+                                        className={cn(
+                                          "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-neutral-300",
+                                          isSelected // Usamos a variável booleana calculada acima
+                                            ? "border-orange-600 bg-orange-600"
+                                            : "opacity-50",
+                                        )}
+                                      >
+                                        {isSelected && (
+                                          <Check className="h-3 w-3 text-white" />
+                                        )}
+                                      </div>
+                                      {category.name}
+                                    </CommandItem>
+                                  );
+                                })}
                               </CommandGroup>
                             </CommandList>
                           </Command>

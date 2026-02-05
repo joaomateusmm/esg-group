@@ -23,7 +23,7 @@ const defaultTranslations = {
     account: { myAccount: "Conta", orders: "Pedidos", logout: "Sair" },
     cart: {
       title: "Carrinho",
-      empty: "Carrinho Cazio",
+      empty: "Carrinho Vazio",
       total: "Total",
       checkout: "Checkout",
     },

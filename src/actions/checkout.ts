@@ -195,8 +195,7 @@ export async function sendOrderConfirmationEmail(
             <p style="font-size: 16px;">Olá, <strong>${name}</strong>!</p>
             
             <p style="color: #555; line-height: 1.5;">
-              Seu pedido está sendo processado com sucesso. Estamos muito felizes em ter você como cliente!
-              <br>Já estamos preparando tudo para o envio.
+              Seu pedido está sendo processado com sucesso. Estamos muito felizes em ter você como cliente! Já estamos preparando tudo para o envio.
             </p>
             
             <div style="margin-top: 25px; margin-bottom: 25px;">

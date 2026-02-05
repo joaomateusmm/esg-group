@@ -55,8 +55,8 @@ export function CheckoutAuth() {
   return (
     <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
       <div className="mb-6 text-center">
-        <h2 className="text-xl font-bold text-neutral-900">
-          Identifique-se para finalizar
+        <h2 className="text-lg font-bold text-neutral-900">
+          Quase lá, crie ou entre na sua conta para continuar.
         </h2>
         <p className="text-sm text-neutral-500">
           Você precisa de uma conta para acompanhar seu pedido.
@@ -72,7 +72,7 @@ export function CheckoutAuth() {
             "flex-1 rounded-md py-2 text-sm font-medium transition-all",
             mode === "login"
               ? "bg-white text-neutral-900 shadow-sm"
-              : "text-neutral-500 hover:text-neutral-900"
+              : "text-neutral-500 hover:text-neutral-900",
           )}
         >
           Já tenho conta
@@ -84,7 +84,7 @@ export function CheckoutAuth() {
             "flex-1 rounded-md py-2 text-sm font-medium transition-all",
             mode === "register"
               ? "bg-white text-neutral-900 shadow-sm"
-              : "text-neutral-500 hover:text-neutral-900"
+              : "text-neutral-500 hover:text-neutral-900",
           )}
         >
           Criar conta
@@ -119,7 +119,7 @@ function CheckoutLoginForm() {
           onSuccess: () => {
             toast.success("Login realizado!");
             // Refresh recarrega a sessão sem sair da página /checkout
-            router.refresh(); 
+            router.refresh();
           },
           onError: (ctx) => {
             toast.error(ctx.error.message || "Credenciais inválidas.");
@@ -136,9 +136,9 @@ function CheckoutLoginForm() {
   const handleSignInWithGoogle = async () => {
     setIsGoogleLoading(true);
     try {
-      await authClient.signIn.social({ 
+      await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/checkout" // Garante retorno ao checkout
+        callbackURL: "/checkout", // Garante retorno ao checkout
       });
     } catch {
       toast.error("Erro ao conectar com Google.");
@@ -274,9 +274,9 @@ function CheckoutRegisterForm() {
   const handleSignInWithGoogle = async () => {
     setIsGoogleLoading(true);
     try {
-      await authClient.signIn.social({ 
+      await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/checkout" // Garante retorno ao checkout
+        callbackURL: "/checkout", // Garante retorno ao checkout
       });
     } catch {
       toast.error("Erro ao conectar com Google.");
@@ -412,7 +412,7 @@ function CheckoutRegisterForm() {
             isLoading={isGoogleLoading || isLoading}
           />
         </div>
-        
+
         <p className="text-center text-xs text-neutral-400">
           Seus dados estão seguros. Criptografia ponta a ponta.
         </p>
