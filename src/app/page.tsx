@@ -4,6 +4,7 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { HeroBanners } from "@/components/hero-banners";
 import ProductCatalog from "@/components/ProductCatalog";
+import { ServicesSection } from "@/components/services-section";
 import Silk from "@/components/Silk";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -20,6 +21,8 @@ export default function Home() {
       <div className="mt-5" id="catalogo">
         <ProductCatalog />
       </div>
+
+      <ServicesSection />
 
       <FaqSection />
 
