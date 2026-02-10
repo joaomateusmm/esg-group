@@ -94,7 +94,7 @@ export default async function ServicesPage() {
             Junte-se à nossa plataforma e comece a receber pedidos de serviço
             hoje mesmo.
           </p>
-          <Link href="/conta/trabalhe-conosco">
+          <Link href="/minha-conta/trabalhe-conosco">
             <button className="h-12 bg-white px-8 font-bold text-neutral-900 hover:bg-neutral-200">
               Quero ser um Parceiro
             </button>

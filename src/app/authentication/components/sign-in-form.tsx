@@ -35,7 +35,16 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const SignInForm = ({ switchToSignUp }: { switchToSignUp?: () => void }) => {
+interface SignInFormProps {
+  switchToSignUp?: () => void;
+  callbackUrl?: string; // Novo prop para redirecionamento
+}
+
+// Export default e nomeado para facilitar imports
+export default function SignInForm({
+  switchToSignUp,
+  callbackUrl = "/",
+}: SignInFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -55,7 +64,8 @@ const SignInForm = ({ switchToSignUp }: { switchToSignUp?: () => void }) => {
         fetchOptions: {
           onSuccess: () => {
             toast.success("Login realizado com sucesso!");
-            router.push("/");
+            router.push(callbackUrl); // Redireciona para onde foi pedido
+            router.refresh(); // Atualiza a página para pegar a sessão
           },
           onError: (ctx) => {
             toast.error(ctx.error.message || "E-mail ou senha incorretos.");
@@ -63,7 +73,6 @@ const SignInForm = ({ switchToSignUp }: { switchToSignUp?: () => void }) => {
         },
       });
     } catch {
-      // Removido o 'error' não utilizado para satisfazer o ESLint
       toast.error("Ocorreu um erro inesperado.");
     } finally {
       setIsLoading(false);
@@ -73,9 +82,11 @@ const SignInForm = ({ switchToSignUp }: { switchToSignUp?: () => void }) => {
   const handleSignInWithGoogle = async () => {
     setIsGoogleLoading(true);
     try {
-      await authClient.signIn.social({ provider: "google" });
+      await authClient.signIn.social({
+        provider: "google",
+        callbackURL: callbackUrl, // Passa callbackUrl para o provedor social também se suportado
+      });
     } catch {
-      // Removido o 'error' não utilizado
       toast.error("Erro ao conectar com Google.");
     } finally {
       setIsGoogleLoading(false);
@@ -85,12 +96,15 @@ const SignInForm = ({ switchToSignUp }: { switchToSignUp?: () => void }) => {
   return (
     <Card className="w-full border-none bg-white shadow-none">
       <CardHeader className="px-0">
-        <Link
-          href="/"
-          className="mb-4 inline-block text-xs font-medium text-neutral-500 transition-colors hover:text-orange-600"
-        >
-          ⟵ Voltar para Loja
-        </Link>
+        {/* Renderiza o link apenas se NÃO estivermos em um fluxo interno (opcional, mantive fixo por enquanto) */}
+        {callbackUrl === "/" && (
+          <Link
+            href="/"
+            className="mb-4 inline-block text-xs font-medium text-neutral-500 transition-colors hover:text-orange-600"
+          >
+            ⟵ Voltar para Loja
+          </Link>
+        )}
         <CardTitle className="text-3xl font-bold tracking-tight text-neutral-900">
           Bem-vindo de volta
         </CardTitle>
@@ -192,6 +206,7 @@ const SignInForm = ({ switchToSignUp }: { switchToSignUp?: () => void }) => {
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <span className="flex items-center gap-2">
+                  {/* Ícone do Google mantido */}
                   <svg viewBox="0 0 24 24" className="h-5 w-5">
                     <path
                       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -219,6 +234,4 @@ const SignInForm = ({ switchToSignUp }: { switchToSignUp?: () => void }) => {
       </Form>
     </Card>
   );
-};
-
-export default SignInForm;
+}

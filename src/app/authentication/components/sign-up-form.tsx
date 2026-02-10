@@ -47,7 +47,15 @@ const formSchema = z
 
 type FormValues = z.infer<typeof formSchema>;
 
-const SignUpForm = ({ switchToSignIn }: { switchToSignIn?: () => void }) => {
+interface SignUpFormProps {
+  switchToSignIn?: () => void;
+  callbackUrl?: string; // Novo prop
+}
+
+export default function SignUpForm({
+  switchToSignIn,
+  callbackUrl = "/",
+}: SignUpFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -76,7 +84,8 @@ const SignUpForm = ({ switchToSignIn }: { switchToSignIn?: () => void }) => {
         fetchOptions: {
           onSuccess: () => {
             toast.success("Conta criada com sucesso!");
-            router.push("/");
+            router.push(callbackUrl);
+            router.refresh();
           },
           onError: (ctx) => {
             toast.error(ctx.error.message || "Erro ao criar conta.");
@@ -93,7 +102,10 @@ const SignUpForm = ({ switchToSignIn }: { switchToSignIn?: () => void }) => {
   const handleSignInWithGoogle = async () => {
     setIsGoogleLoading(true);
     try {
-      await authClient.signIn.social({ provider: "google" });
+      await authClient.signIn.social({
+        provider: "google",
+        callbackURL: callbackUrl,
+      });
     } catch {
       toast.error("Erro ao conectar com Google.");
     } finally {
@@ -104,12 +116,14 @@ const SignUpForm = ({ switchToSignIn }: { switchToSignIn?: () => void }) => {
   return (
     <Card className="w-full border-none bg-white shadow-none">
       <CardHeader className="px-0">
-        <Link
-          href="/"
-          className="mb-4 inline-block text-xs font-medium text-neutral-500 transition-colors hover:text-orange-600"
-        >
-          ⟵ Voltar para Loja
-        </Link>
+        {callbackUrl === "/" && (
+          <Link
+            href="/"
+            className="mb-4 inline-block text-xs font-medium text-neutral-500 transition-colors hover:text-orange-600"
+          >
+            ⟵ Voltar para Loja
+          </Link>
+        )}
         <CardTitle className="text-3xl font-bold tracking-tight text-neutral-900">
           Crie sua Conta
         </CardTitle>
@@ -292,6 +306,4 @@ const SignUpForm = ({ switchToSignIn }: { switchToSignIn?: () => void }) => {
       </Form>
     </Card>
   );
-};
-
-export default SignUpForm;
+}

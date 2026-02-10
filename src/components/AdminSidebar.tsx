@@ -9,6 +9,7 @@ import {
   Star,
   TicketPercent,
   Truck,
+  UserRoundCog,
   Users,
 } from "lucide-react";
 import Image from "next/image";
@@ -126,6 +127,20 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
               <Link href="/admin/servicos ">
                 <Hammer className="mr-2 h-5 w-5" />
                 <span>Serviços</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          {/* Prestadores */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname.startsWith("/admin/prestadores")}
+              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
+            >
+              <Link href="/admin/prestadores ">
+                <UserRoundCog className="mr-2 h-5 w-5" />
+                <span>Prestadores</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
