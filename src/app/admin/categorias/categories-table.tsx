@@ -59,11 +59,9 @@ export function CategoriesTable({ data }: CategoriesTableProps) {
   return (
     <div className="space-y-4">
       {/* Filtros e Ações */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-end">
         {selectedIds.length > 0 && (
           <Button
-            variant="destructive"
-            size="sm"
             onClick={handleBulkDelete}
             disabled={isPending}
             className="bg-red-600 text-white shadow-sm hover:bg-red-700"

@@ -3,6 +3,7 @@ import {
   boolean,
   integer,
   json,
+  pgEnum,
   pgTable,
   real,
   text,
@@ -302,5 +303,115 @@ export const orderItemRelations = relations(orderItem, ({ one }) => ({
   product: one(product, {
     fields: [orderItem.productId],
     references: [product.id],
+  }),
+}));
+
+export const providerStatusEnum = pgEnum("provider_status", [
+  "pending",
+  "approved",
+  "rejected",
+  "suspended",
+]);
+
+export const serviceOrderStatusEnum = pgEnum("service_order_status", [
+  "pending", // Cliente solicitou
+  "accepted", // Prestador aceitou
+  "in_progress", // Em andamento
+  "completed", // Finalizado
+  "cancelled", // Cancelado
+]);
+
+// --- 1. TABELA DE CATEGORIAS DE SERVIÇO (Criada pelo Admin) ---
+export const serviceCategory = pgTable("serviceCategory", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(), // Nome do serviço
+  slug: text("slug").unique().notNull(), // Para a URL (ex: /servicos/encanador)
+  description: text("description"), // Descrição geral do que esse profissional faz
+  image: text("image"), // Ícone ou foto representativa
+  isActive: boolean("isActive").default(true).notNull(), // Se o serviço está sendo ofertado no momento
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+// --- 2. TABELA DE PRESTADORES DE SERVIÇO (O Usuário se candidatando) ---
+// Linka um User a uma Categoria de Serviço com detalhes profissionais
+export const serviceProvider = pgTable("serviceProvider", {
+  id: text("id").primaryKey(),
+  userId: text("userId")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  categoryId: text("categoryId")
+    .notNull()
+    .references(() => serviceCategory.id),
+
+  // Dados do Profissional
+  bio: text("bio").notNull(), // "Tenho 10 anos de experiência..."
+  experienceYears: integer("experienceYears").notNull().default(0),
+  portfolioUrl: text("portfolioUrl"), // Link externo ou imagens
+  hourlyRate: integer("hourlyRate"), // Preço base por hora (em centavos) - Opcional
+  phone: text("phone"), // Contato direto profissional
+  location: text("location"), // Cidade/Região de atendimento (Londres, etc)
+
+  // Aprovação do Admin
+  status: text("status").default("pending").notNull(), // pending, approved, rejected
+  rejectionReason: text("rejectionReason"), // Se o admin recusar, explica o motivo
+
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+// --- 3. TABELA DE PEDIDOS DE SERVIÇO (O Cliente contratando) ---
+export const serviceOrder = pgTable("serviceOrder", {
+  id: text("id").primaryKey(),
+  customerId: text("customerId")
+    .notNull()
+    .references(() => user.id), // Quem contrata
+  providerId: text("providerId")
+    .notNull()
+    .references(() => serviceProvider.id), // Quem executa
+
+  description: text("description").notNull(), // "Preciso montar um guarda-roupa..."
+  scheduledDate: timestamp("scheduledDate"), // Data desejada
+  address: text("address").notNull(), // Onde será o serviço
+
+  status: text("status").default("pending").notNull(),
+  agreedPrice: integer("agreedPrice"), // Preço combinado (em centavos), pode ser nulo inicialmente
+
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+// --- RELATIONS (Para facilitar as queries no Drizzle) ---
+
+export const serviceCategoryRelations = relations(
+  serviceCategory,
+  ({ many }) => ({
+    providers: many(serviceProvider),
+  }),
+);
+
+export const serviceProviderRelations = relations(
+  serviceProvider,
+  ({ one, many }) => ({
+    user: one(user, {
+      fields: [serviceProvider.userId],
+      references: [user.id],
+    }),
+    category: one(serviceCategory, {
+      fields: [serviceProvider.categoryId],
+      references: [serviceCategory.id],
+    }),
+    orders: many(serviceOrder), // Pedidos recebidos
+  }),
+);
+
+export const serviceOrderRelations = relations(serviceOrder, ({ one }) => ({
+  customer: one(user, {
+    fields: [serviceOrder.customerId],
+    references: [user.id],
+  }),
+  provider: one(serviceProvider, {
+    fields: [serviceOrder.providerId],
+    references: [serviceProvider.id],
   }),
 }));

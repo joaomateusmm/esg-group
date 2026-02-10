@@ -3,6 +3,7 @@
 import {
   ChevronDown,
   Flame,
+  Hammer,
   Heart,
   HeartHandshake,
   LayoutGrid,
@@ -508,6 +509,14 @@ export function HeaderContent() {
             >
               <Flame className="h-5 w-5" />
               <span className="text-sm font-bold">{t.header.bestDeals}</span>
+            </Link>
+
+            <Link
+              href="/servicos"
+              className="hidden items-center gap-2 text-neutral-700 duration-100 hover:text-orange-600 active:scale-95 xl:flex"
+            >
+              <Hammer className="h-5 w-5" />
+              <span className="text-sm font-bold">Serviços</span>
             </Link>
 
             {/* FAVORITOS */}

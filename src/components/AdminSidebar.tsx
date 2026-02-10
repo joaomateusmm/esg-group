@@ -2,6 +2,7 @@
 
 import {
   Blocks,
+  Hammer,
   Home,
   LayoutDashboard,
   Package,
@@ -111,6 +112,20 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
               <Link href="/admin/categorias">
                 <Blocks className="mr-2 h-5 w-5" />
                 <span>Categorias</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          {/* Serviços */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname.startsWith("/admin/servicos")}
+              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
+            >
+              <Link href="/admin/servicos ">
+                <Hammer className="mr-2 h-5 w-5" />
+                <span>Serviços</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

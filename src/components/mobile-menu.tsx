@@ -150,6 +150,13 @@ export function MobileMenu({
                 Carrinho
                 <ChevronRight className="h-4 w-4 text-neutral-300 transition-transform group-hover:translate-x-1 group-hover:text-orange-400" />
               </Link>
+              <Link
+                href="/servicos"
+                className="group flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-600 transition-colors hover:bg-orange-50 hover:text-orange-700"
+              >
+                Serviços
+                <ChevronRight className="h-4 w-4 text-neutral-300 transition-transform group-hover:translate-x-1 group-hover:text-orange-400" />
+              </Link>
             </div>
             <div className="mb-6">
               <h3 className="mb-3 flex items-center gap-2 text-xs font-bold tracking-wider text-neutral-400 uppercase">
