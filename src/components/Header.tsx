@@ -6,6 +6,7 @@ import {
   Hammer,
   Heart,
   HeartHandshake,
+  LayoutDashboard,
   LayoutGrid,
   LifeBuoy, // Para suporte
   Loader2,
@@ -598,6 +599,14 @@ export function HeaderContent() {
                   <DropdownMenuLabel className="px-3 py-1.5 text-[10px] font-semibold tracking-wider text-neutral-400 uppercase">
                     Meu Perfil
                   </DropdownMenuLabel>
+
+                  <DropdownMenuItem
+                    className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-neutral-600 transition-colors focus:bg-orange-50 focus:text-orange-700"
+                    onClick={() => router.push("/painel-prestador")}
+                  >
+                    <LayoutDashboard className="h-4 w-4" />
+                    <span>Painel do Prestador</span>
+                  </DropdownMenuItem>
 
                   <DropdownMenuItem
                     className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-neutral-600 transition-colors focus:bg-orange-50 focus:text-orange-700"

@@ -49,8 +49,8 @@ export function RequestCard({ request }: RequestCardProps) {
 
   return (
     <Card className="overflow-hidden border-neutral-200 bg-white transition-all hover:border-orange-200">
-      <CardHeader className="flex flex-row items-start justify-between space-y-0 bg-neutral-50 pb-4">
-        <div className="flex gap-3">
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 bg-neutral-50 py-2">
+        <div className="flex items-center justify-between gap-3">
           <div className="relative h-12 w-12 overflow-hidden rounded-full border border-neutral-200 bg-white">
             {request.customer.image ? (
               <Image
@@ -73,24 +73,25 @@ export function RequestCard({ request }: RequestCardProps) {
               Solicitado em {new Date(request.createdAt).toLocaleDateString()}
             </p>
           </div>
+          <div className="ml-3">
+            <Badge
+              className={
+                request.status === "pending"
+                  ? "border-yellow-200 bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+                  : request.status === "accepted"
+                    ? "border-blue-200 bg-blue-100 text-blue-800 hover:bg-blue-100"
+                    : request.status === "completed"
+                      ? "border-green-200 bg-green-100 text-green-800 hover:bg-green-100"
+                      : "border-red-200 bg-red-100 text-red-800 hover:bg-red-100"
+              }
+            >
+              {request.status === "pending" && "Pendente"}
+              {request.status === "accepted" && "Em Andamento"}
+              {request.status === "completed" && "Concluído"}
+              {request.status === "rejected" && "Recusado"}
+            </Badge>
+          </div>
         </div>
-
-        <Badge
-          className={
-            request.status === "pending"
-              ? "border-yellow-200 bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
-              : request.status === "accepted"
-                ? "border-blue-200 bg-blue-100 text-blue-800 hover:bg-blue-100"
-                : request.status === "completed"
-                  ? "border-green-200 bg-green-100 text-green-800 hover:bg-green-100"
-                  : "border-red-200 bg-red-100 text-red-800 hover:bg-red-100"
-          }
-        >
-          {request.status === "pending" && "Pendente"}
-          {request.status === "accepted" && "Em Andamento"}
-          {request.status === "completed" && "Concluído"}
-          {request.status === "rejected" && "Recusado"}
-        </Badge>
       </CardHeader>
 
       <CardContent className="space-y-4 pt-6">
@@ -113,16 +114,20 @@ export function RequestCard({ request }: RequestCardProps) {
 
         {/* Informações de Contato (Só mostra se aceito) */}
         {isAccepted && (
-          <div className="animate-in fade-in zoom-in-95 mt-4 rounded-md border border-blue-100 bg-blue-50 p-3">
-            <p className="mb-1 text-xs font-bold text-blue-800">
-              Dados de Contato:
-            </p>
+          <div className="animate-in fade-in zoom-in-95 mt-4 flex items-center justify-between rounded-md border border-blue-100 bg-blue-50 px-5 py-2">
+            <div className="flex flex-col">
+              <p className="mb-1 text-xs font-bold text-blue-800">
+                Dados de Contato:
+              </p>
+              <p className="flex items-center gap-2 text-sm text-blue-700">
+                <Phone className="h-3 w-3" />
+                {showContact ? request.contactPhone : "***********"}
+              </p>
+            </div>
             <div className="flex items-center gap-2 text-sm text-blue-700">
-              <Phone className="h-3 w-3" />
-              {showContact ? request.contactPhone : "***********"}
               <button
                 onClick={() => setShowContact(!showContact)}
-                className="ml-auto text-xs underline"
+                className="ml-auto cursor-pointer text-xs underline"
               >
                 {showContact ? "Ocultar" : "Ver"}
               </button>
@@ -131,23 +136,23 @@ export function RequestCard({ request }: RequestCardProps) {
         )}
       </CardContent>
 
-      <CardFooter className="flex justify-end gap-2 border-t border-neutral-100 bg-neutral-50/50 p-4">
+      <CardFooter className="p- flex justify-center gap-2 border-y border-neutral-100 bg-neutral-50 py-5">
         {isPendingRequest && (
           <>
             <Button
               variant="outline"
-              className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+              className="cursor-pointer border-1 border-red-300 bg-red-500 text-white shadow-md duration-300 hover:border-red-500 hover:bg-red-700 hover:text-white active:scale-95"
               onClick={() => handleStatusChange("reject")}
               disabled={isPending}
             >
-              <X className="mr-2 h-4 w-4" /> Recusar
+              <X className="h-5 w-5" /> Recusar
             </Button>
             <Button
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
+              className="cursor-pointer border-1 border-emerald-300 bg-emerald-500 text-white shadow-md duration-300 hover:border-emerald-500 hover:bg-emerald-600 active:scale-95"
               onClick={() => handleStatusChange("accept")}
               disabled={isPending}
             >
-              <Check className="mr-2 h-4 w-4" /> Aceitar
+              <Check className="h-5 w-5" /> Aceitar
             </Button>
           </>
         )}
