@@ -6,7 +6,6 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 interface ServiceCardProps {
   service: {
@@ -60,7 +59,7 @@ export function ServiceCard({ service, index }: ServiceCardProps) {
         {/* Rodapé do Card */}
         <div className="mt-auto border-t border-neutral-100 pt-4">
           <Link href={`/servicos/${service.slug}`} className="w-full">
-            <Button className="w-full justify-between border border-neutral-200 bg-white text-neutral-900 transition-all duration-300 group-hover:border-orange-600 group-hover:bg-orange-600 group-hover:text-white hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700">
+            <Button className="w-full cursor-pointer justify-between border border-neutral-200 bg-white text-neutral-900 transition-all duration-300 group-hover:border-orange-600 group-hover:bg-orange-600 group-hover:text-white hover:border-orange-600 hover:bg-orange-700 hover:text-white">
               Contratar
               <ArrowRight className="h-4 w-4" />
             </Button>

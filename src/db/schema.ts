@@ -415,3 +415,47 @@ export const serviceOrderRelations = relations(serviceOrder, ({ one }) => ({
     references: [serviceProvider.id],
   }),
 }));
+
+export const serviceRequest = pgTable("service_request", {
+  id: text("id").primaryKey(),
+  customerId: text("customer_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  providerId: text("provider_id")
+    .notNull()
+    .references(() => serviceProvider.id, { onDelete: "cascade" }),
+  categoryId: text("category_id")
+    .notNull()
+    .references(() => serviceCategory.id),
+
+  // Detalhes do Pedido
+  description: text("description").notNull(),
+  address: text("address").notNull(),
+  contactPhone: text("contact_phone").notNull(),
+
+  // Orçamento
+  budgetType: text("budget_type").notNull(), // 'negotiable' ou 'range'
+  budgetValue: text("budget_value"), // Ex: "50-100" ou null se for negotiable
+
+  // Status do Fluxo
+  status: text("status").default("pending").notNull(), // pending, accepted, rejected, completed
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Relacionamentos (Opcional, mas bom para queries futuras)
+export const serviceRequestRelations = relations(serviceRequest, ({ one }) => ({
+  customer: one(user, {
+    fields: [serviceRequest.customerId],
+    references: [user.id],
+  }),
+  provider: one(serviceProvider, {
+    fields: [serviceRequest.providerId],
+    references: [serviceProvider.id],
+  }),
+  category: one(serviceCategory, {
+    fields: [serviceRequest.categoryId],
+    references: [serviceCategory.id],
+  }),
+}));

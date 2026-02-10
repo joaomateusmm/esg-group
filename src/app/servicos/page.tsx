@@ -29,12 +29,12 @@ export default async function ServicesPage() {
       <Header />
 
       {/* Hero Section */}
-      <section className="relative border-b border-neutral-200 bg-white px-4 pt-32 pb-20">
+      <section className="relative border-b border-neutral-200 bg-white px-4 pt-38 pb-20">
         <div className="container mx-auto max-w-6xl text-center">
           <span className="mb-4 inline-block rounded-full bg-orange-100 px-4 py-1.5 text-xs font-semibold tracking-wider text-orange-700 uppercase">
             Soluções Profissionais
           </span>
-          <h1 className="font-clash-display mb-6 text-4xl font-bold tracking-tight text-neutral-900 sm:text-5xl md:text-6xl">
+          <h1 className="font-clash-display mb-6 text-4xl font-medium tracking-tight text-neutral-900 sm:text-5xl md:text-6xl">
             Serviços para transformar <br className="hidden md:block" />
             <span className="text-orange-600">sua casa em um lar.</span>
           </h1>

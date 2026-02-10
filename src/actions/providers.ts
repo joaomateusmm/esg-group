@@ -87,3 +87,34 @@ export async function registerProvider(data: ProviderFormValues) {
     return { success: false, error: "Erro interno ao salvar candidatura." };
   }
 }
+
+export async function resetProviderApplication() {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session) return { success: false, error: "Não autenticado." };
+
+    // Só permite deletar se estiver REJEITADO
+    const provider = await db.query.serviceProvider.findFirst({
+      where: eq(serviceProvider.userId, session.user.id),
+    });
+
+    if (!provider || provider.status !== "rejected") {
+      return { success: false, error: "Ação não permitida." };
+    }
+
+    // Deleta o registro antigo
+    await db.delete(serviceProvider).where(eq(serviceProvider.id, provider.id));
+
+    revalidatePath("/minha-conta/trabalhe-conosco");
+    return {
+      success: true,
+      message: "Agora você pode enviar uma nova candidatura.",
+    };
+  } catch (error) {
+    console.error(error);
+    return { success: false, error: "Erro ao resetar candidatura." };
+  }
+}

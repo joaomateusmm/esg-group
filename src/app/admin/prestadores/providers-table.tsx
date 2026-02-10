@@ -51,7 +51,7 @@ interface ProvidersTableProps {
 export function ProvidersTable({ data }: ProvidersTableProps) {
   const [isPending, startTransition] = useTransition();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [selectedProvider, setSelectedProvider] = useState<any>(null);
+  const [ setSelectedProvider] = useState<any>(null);
 
   // Adicionei 'delete' ao tipo de ação
   const handleAction = (
@@ -249,7 +249,7 @@ export function ProvidersTable({ data }: ProvidersTableProps) {
                             disabled={isPending}
                             className="cursor-pointer text-emerald-600 focus:text-emerald-700"
                           >
-                            <CheckCircle className="mr-2 h-4 w-4" /> Aprovar
+                            <CheckCircle className="h-4 w-4" /> Aprovar
                           </DropdownMenuItem>
                         )}
 
@@ -260,7 +260,7 @@ export function ProvidersTable({ data }: ProvidersTableProps) {
                             disabled={isPending}
                             className="cursor-pointer text-neutral-600 focus:text-orange-700"
                           >
-                            <XCircle className="mr- h-4 w-4" /> Rejeitar
+                            <XCircle className="h-4 w-4" /> Rejeitar
                           </DropdownMenuItem>
                         )}
 
@@ -272,7 +272,7 @@ export function ProvidersTable({ data }: ProvidersTableProps) {
                           disabled={isPending}
                           className="cursor-pointer text-neutral-600 focus:bg-red-50 focus:text-red-700"
                         >
-                          <Trash2 className="mr- h-4 w-4" /> Excluir
+                          <Trash2 className="h-4 w-4" /> Excluir
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

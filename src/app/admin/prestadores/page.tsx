@@ -28,10 +28,10 @@ export default async function AdminProvidersPage() {
   });
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8 p-8 pt-6 pb-20">
+    <div className="mx-auto space-y-8 p-4 pt-6 pb-20">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-clash-display text-3xl font-bold text-neutral-900">
+          <h1 className="font-clash-display text-3xl font-medium text-neutral-900">
             Gestão de Prestadores
           </h1>
           <p className="text-neutral-500">
