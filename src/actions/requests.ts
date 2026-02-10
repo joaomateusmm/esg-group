@@ -90,7 +90,7 @@ export async function createServiceRequest(data: RequestFormValues) {
     if (providerData && providerData.user.email) {
       try {
         await resend.emails.send({
-          from: "ESG Group <onboarding@resend.dev>", // Mude para seu domínio verificado em produção
+          from: process.env.EMAIL_FROM || "ESG Group <contato@esggroup.shop>",
           to: providerData.user.email,
           subject: `Novo Pedido de Serviço: ${session.user.name}`,
           react: NewRequestEmail({
