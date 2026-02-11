@@ -55,33 +55,31 @@ export async function POST(req: Request) {
       headers: await headers(),
     });
 
-    let userId: string;
-    let customerEmail: string;
-    let customerName: string;
+    // Variáveis de controle
+    let userId: string | undefined;
+    let customerEmail: string | undefined;
+    let customerName: string | undefined;
+    let shouldSaveToDb = false; // Flag para controlar se salvamos no banco
 
     if (session) {
       userId = session.user.id;
       customerEmail = session.user.email;
       customerName = session.user.name;
+      shouldSaveToDb = true;
     } else {
       if (guestEmail) {
+        // Se tiver e-mail de convidado, criamos/buscamos o usuário e salvamos o pedido
         userId = await getOrCreateGuestUser(
           guestEmail,
           guestName || "Visitante",
         );
         customerEmail = guestEmail;
         customerName = guestName || "Visitante";
-      } else {
-        const tempId = crypto.randomUUID();
-        const tempEmail = `pending-${tempId}@temp.esggroup.shop`;
-        userId = await getOrCreateGuestUser(tempEmail, "Visitante Pendente");
-        customerEmail = tempEmail;
-        customerName = "Visitante";
+        shouldSaveToDb = true;
       }
     }
 
-    // 3. Verifica endereço existente para cálculo de frete
-    // Se o pedido já existe, verificamos se ele já tem um endereço salvo (ex: Londres)
+    // 3. Verifica endereço existente para cálculo de frete (Apenas se tiver ID de pedido)
     let cityForShipping = undefined;
     if (existingOrderId) {
       const existingOrderData = await db.query.order.findFirst({
@@ -111,7 +109,6 @@ export async function POST(req: Request) {
       cityForShipping?.trim().toLowerCase() === "londres";
 
     if (!isLondon) {
-      // Só calcula frete se não for Londres
       for (const item of items) {
         const prodInfo = productsDb.find((p) => p.id === item.id);
         if (prodInfo) {
@@ -125,7 +122,6 @@ export async function POST(req: Request) {
         }
       }
     } else {
-      // Se for Londres, calcula só o subtotal, frete é 0
       for (const item of items) {
         const prodInfo = productsDb.find((p) => p.id === item.id);
         if (prodInfo) {
@@ -166,98 +162,103 @@ export async function POST(req: Request) {
       subtotal - discountAmount + totalShippingCost,
     );
 
-    // 5. Cria ou Atualiza Pedido
+    // 5. Cria ou Atualiza Pedido (SOMENTE SE TIVER CONTEXTO DE USUÁRIO)
     let orderId = existingOrderId;
 
-    if (existingOrderId) {
-      const currentOrder = await db.query.order.findFirst({
-        where: eq(order.id, existingOrderId),
-      });
+    if (shouldSaveToDb && userId && customerEmail && customerName) {
+      if (existingOrderId) {
+        const currentOrder = await db.query.order.findFirst({
+          where: eq(order.id, existingOrderId),
+        });
 
-      if (currentOrder) {
-        await db
-          .update(order)
-          .set({
-            amount: totalAmount,
-            discountAmount: discountAmount,
-            couponId: activeCouponId,
+        if (currentOrder) {
+          await db
+            .update(order)
+            .set({
+              amount: totalAmount,
+              discountAmount: discountAmount,
+              couponId: activeCouponId,
+              userId: userId,
+              customerEmail: customerEmail,
+              shippingCost: totalShippingCost,
+              updatedAt: new Date(),
+            })
+            .where(eq(order.id, existingOrderId));
+        } else {
+          // Se enviaram um ID que não existe, limpamos para criar um novo
+          orderId = null;
+        }
+      }
+
+      if (!orderId) {
+        const [newOrder] = await db
+          .insert(order)
+          .values({
             userId: userId,
+            amount: totalAmount,
+            status: "pending",
+            currency: "GBP",
+            fulfillmentStatus: "idle",
+            paymentMethod: "card",
+            shippingAddress: {
+              street: "Not provided",
+              number: "N/A",
+              complement: "",
+              city: "",
+              state: "",
+              zipCode: "",
+              country: "BR",
+            },
+            shippingCost: totalShippingCost,
+            customerName: customerName,
             customerEmail: customerEmail,
-            shippingCost: totalShippingCost, // Atualiza o frete (pode ser 0 agora)
-            updatedAt: new Date(),
+            couponId: activeCouponId,
+            discountAmount: discountAmount,
           })
-          .where(eq(order.id, existingOrderId));
-      } else {
-        orderId = null;
+          .returning();
+
+        orderId = newOrder.id;
+
+        await db.insert(orderItem).values(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          items.map((item: any) => ({
+            orderId: newOrder.id,
+            productId: item.id,
+            productName: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            image: item.image,
+          })),
+        );
       }
     }
 
-    if (!orderId) {
-      const [newOrder] = await db
-        .insert(order)
-        .values({
-          userId: userId,
-          amount: totalAmount,
-          status: "pending",
-          currency: "GBP",
-          fulfillmentStatus: "idle",
-          paymentMethod: "card",
-          shippingAddress: {
-            street: "Not provided",
-            number: "N/A",
-            complement: "",
-            city: "",
-            state: "",
-            zipCode: "",
-            country: "BR",
-          },
-          shippingCost: totalShippingCost,
-          customerName: customerName,
-          customerEmail: customerEmail,
-          couponId: activeCouponId,
-          discountAmount: discountAmount,
-        })
-        .returning();
-
-      orderId = newOrder.id;
-
-      await db.insert(orderItem).values(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        items.map((item: any) => ({
-          orderId: newOrder.id,
-          productId: item.id,
-          productName: item.name,
-          price: item.price,
-          quantity: item.quantity,
-          image: item.image,
-        })),
-      );
-    }
-
+    // 6. Criação do PaymentIntent no Stripe (Sempre acontece para renderizar o form)
     const paymentIntent = await stripe.paymentIntents.create({
       amount: totalAmount,
       currency: "gbp",
       automatic_payment_methods: { enabled: true },
       metadata: {
-        orderId: orderId,
-        userId: userId,
+        orderId: orderId || "temp_guest_checkout", // Se não salvamos no banco, marcamos como temp
+        userId: userId || "guest",
       },
-      receipt_email: customerEmail.includes("@temp.esggroup.shop")
-        ? undefined
-        : customerEmail,
+      receipt_email: customerEmail, // Pode ser undefined se for visitante sem email
     });
 
-    await db
-      .update(order)
-      .set({
-        stripePaymentIntentId: paymentIntent.id,
-        stripeClientSecret: paymentIntent.client_secret,
-      })
-      .where(eq(order.id, orderId));
+    // 7. Atualiza o pedido com o ID do Stripe (Apenas se o pedido foi salvo no banco)
+    if (shouldSaveToDb && orderId) {
+      await db
+        .update(order)
+        .set({
+          stripePaymentIntentId: paymentIntent.id,
+          stripeClientSecret: paymentIntent.client_secret,
+        })
+        .where(eq(order.id, orderId));
+    }
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
-      orderId: orderId,
+      orderId: orderId, // Retorna null se for visitante sem email, ou ID se foi salvo
     });
   } catch (error) {
     console.error("Erro interno no create-payment-intent:", error);
