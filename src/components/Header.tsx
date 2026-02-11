@@ -16,6 +16,7 @@ import {
   Search,
   ShieldQuestionMark,
   ShoppingCart,
+  Star,
   Sun,
   User,
   UserRound,
@@ -598,7 +599,7 @@ export function HeaderContent() {
                     className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-neutral-600 transition-colors focus:bg-orange-50 focus:text-orange-700"
                     onClick={() => router.push("/minha-conta/carrinho")}
                   >
-                    <ShoppingCart className="h-4 w-4" />
+                    <Star className="h-4 w-4" />
                     <span>Minhas Avaliações</span>
                   </DropdownMenuItem>
 
