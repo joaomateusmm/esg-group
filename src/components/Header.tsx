@@ -597,7 +597,7 @@ export function HeaderContent() {
 
                   <DropdownMenuItem
                     className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-neutral-600 transition-colors focus:bg-orange-50 focus:text-orange-700"
-                    onClick={() => router.push("/minha-conta/carrinho")}
+                    onClick={() => router.push("/minha-conta/avaliacoes")}
                   >
                     <Star className="h-4 w-4" />
                     <span>Minhas Avaliações</span>
