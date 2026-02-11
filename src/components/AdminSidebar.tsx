@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Bell,
   Blocks,
   Hammer,
   Home,
@@ -59,7 +60,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
       </SidebarHeader>
 
       {/* --- CONTEÚDO (Menu) --- */}
-      <SidebarContent className="px-4 py-6">
+      <SidebarContent className="px-4 py-7">
         <SidebarMenu>
           {/* Dashboard */}
           <SidebarMenuItem>
@@ -80,7 +81,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
             <SidebarMenuButton
               asChild
               isActive={pathname === "/admin/pedidos"}
-              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
+              className="h-10 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
             >
               <Link href="/admin/pedidos">
                 <Truck className="mr-2 h-5 w-5" />
@@ -94,7 +95,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
             <SidebarMenuButton
               asChild
               isActive={pathname.startsWith("/admin/produtos")}
-              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
+              className="h-10 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
             >
               <Link href="/admin/produtos">
                 <Package className="mr-2 h-5 w-5" />
@@ -108,7 +109,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
             <SidebarMenuButton
               asChild
               isActive={pathname.startsWith("/admin/categorias")}
-              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
+              className="h-10 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
             >
               <Link href="/admin/categorias">
                 <Blocks className="mr-2 h-5 w-5" />
@@ -122,7 +123,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
             <SidebarMenuButton
               asChild
               isActive={pathname.startsWith("/admin/servicos")}
-              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
+              className="h-10 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
             >
               <Link href="/admin/servicos ">
                 <Hammer className="mr-2 h-5 w-5" />
@@ -136,11 +137,25 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
             <SidebarMenuButton
               asChild
               isActive={pathname.startsWith("/admin/prestadores")}
-              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
+              className="h-10 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
             >
               <Link href="/admin/prestadores ">
                 <UserRoundCog className="mr-2 h-5 w-5" />
                 <span>Prestadores</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          {/* Solicitações de Serviços */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname.startsWith("/admin/solicitacoes")}
+              className="h-10 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
+            >
+              <Link href="/admin/solicitacoes ">
+                <Bell className="mr-2 h-5 w-5" />
+                <span>Solicitações de Serviços</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -150,7 +165,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
             <SidebarMenuButton
               asChild
               isActive={pathname.startsWith("/admin/afiliados")}
-              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
+              className="h-10 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
             >
               <Link href="/admin/afiliados">
                 <Users className="mr-2 h-5 w-5" />
@@ -164,7 +179,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
             <SidebarMenuButton
               asChild
               isActive={pathname === "/admin/avaliacoes"}
-              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
+              className="h-10 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
             >
               <Link href="/admin/avaliacoes">
                 <Star className="mr-2 h-5 w-5" />
@@ -178,7 +193,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
             <SidebarMenuButton
               asChild
               isActive={pathname.startsWith("/admin/cupons")}
-              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
+              className="h-10 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 data-[active=true]:bg-orange-50 data-[active=true]:text-orange-600 data-[active=true]:shadow-md data-[active=true]:shadow-neutral-200"
             >
               <Link href="/admin/cupons">
                 <TicketPercent className="mr-2 h-5 w-5" />
@@ -194,7 +209,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="h-12 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+              className="h-10 font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
             >
               <Link href="/">
                 <Home className="mr-2 h-5 w-5" />
