@@ -121,7 +121,7 @@ export const product = pgTable("product", {
     .$onUpdate(() => new Date()),
 });
 
-// --- TABELA DE REVIEWS (MANTIDA) ---
+// --- TABELA DE wwwwwwWS (MANTIDA) ---
 
 export const review = pgTable("review", {
   id: text("id")
@@ -136,7 +136,19 @@ export const review = pgTable("review", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow(),
 });
+
+export const reviewRelations = relations(review, ({ one }) => ({
+  product: one(product, {
+    fields: [review.productId],
+    references: [product.id],
+  }),
+  user: one(user, {
+    fields: [review.userId],
+    references: [user.id],
+  }),
+}));
 
 // --- TABELA DE PEDIDOS (MANTIDA) ---
 

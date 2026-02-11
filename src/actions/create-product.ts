@@ -8,32 +8,41 @@ import { z } from "zod";
 import { db } from "@/db";
 import { category, product } from "@/db/schema";
 
-// --- SCHEMA ATUALIZADO ---
+// --- SCHEMA ATUALIZADO COM OS NOVOS CAMPOS ---
 const productSchema = z.object({
   id: z.string().max(50).optional(),
   name: z.string().min(2, "Nome muito curto"),
   description: z.string().optional(),
   price: z.number().min(0),
-  discountPrice: z.number().optional(),
+  discountPrice: z.number().optional().nullable(), // Aceita null/undefined
   currency: z.enum(["GBP", "USD", "EUR", "BRL"]).default("GBP"),
   images: z.array(z.string()).optional(),
   categories: z.array(z.string()).default([]),
   status: z.enum(["active", "inactive", "draft"]).default("active"),
+
   stock: z.number().default(0),
   isStockUnlimited: z.boolean().default(false),
+
   shippingType: z.enum(["calculated", "fixed", "free"]).default("calculated"),
   fixedShippingPrice: z.number().min(0).optional().default(0),
+
   sku: z.string().optional(),
   weight: z.number().min(0).default(0),
   width: z.number().int().min(0).default(0),
   height: z.number().int().min(0).default(0),
   length: z.number().int().min(0).default(0),
+
+  // --- NOVOS CAMPOS ---
+  condition: z.enum(["new", "used", "refurbished"]).default("new").optional(),
+  isAssembled: z.boolean().default(false).optional(),
+  hasWarranty: z.boolean().default(false).optional(),
+  warrantyDetails: z.string().optional().nullable(),
+  brand: z.string().optional().nullable(),
 });
 
 export type ProductServerPayload = z.infer<typeof productSchema>;
 
 // --- HELPER: Lógica de Promoção Automática ---
-// Extraí para uma função auxiliar para reutilizar no create e no update
 async function applyPromoLogic(data: ProductServerPayload) {
   const finalCategories = [...(data.categories || [])];
 
@@ -89,11 +98,11 @@ export async function createProduct(rawData: ProductServerPayload) {
 
   try {
     await db.insert(product).values({
-      id: data.id,
+      id: data.id, // Se undefined, o banco gera UUID
       name: data.name,
       description: data.description,
       price: data.price,
-      discountPrice: data.discountPrice,
+      discountPrice: data.discountPrice, // Pode ser null
       currency: data.currency,
       images: data.images || [],
       categories: finalCategories,
@@ -107,12 +116,18 @@ export async function createProduct(rawData: ProductServerPayload) {
       width: data.width,
       height: data.height,
       length: data.length,
+
+      // --- SALVANDO NOVOS CAMPOS ---
+      condition: data.condition,
+      isAssembled: data.isAssembled,
+      hasWarranty: data.hasWarranty,
+      warrantyDetails: data.warrantyDetails,
+      brand: data.brand,
     });
 
-    // --- REVALIDAÇÃO CRÍTICA ---
     revalidatePath("/admin/produtos");
-    revalidatePath("/"); // Home da loja
-    revalidatePath("/categorias/[slug]", "page"); // Páginas de categoria
+    revalidatePath("/");
+    revalidatePath("/categorias/[slug]", "page");
   } catch (error) {
     if (
       typeof error === "object" &&
@@ -136,7 +151,6 @@ export async function updateProduct(id: string, rawData: ProductServerPayload) {
   }
   const data = result.data;
 
-  // Aplicamos a lógica de promoção também na edição
   const finalCategories = await applyPromoLogic(data);
 
   try {
@@ -149,7 +163,7 @@ export async function updateProduct(id: string, rawData: ProductServerPayload) {
         discountPrice: data.discountPrice,
         currency: data.currency,
         images: data.images || [],
-        categories: finalCategories, // Usamos as categorias processadas
+        categories: finalCategories,
         status: data.status,
         stock: data.stock,
         isStockUnlimited: data.isStockUnlimited,
@@ -160,13 +174,21 @@ export async function updateProduct(id: string, rawData: ProductServerPayload) {
         width: data.width,
         height: data.height,
         length: data.length,
+
+        // --- ATUALIZANDO NOVOS CAMPOS ---
+        condition: data.condition,
+        isAssembled: data.isAssembled,
+        hasWarranty: data.hasWarranty,
+        warrantyDetails: data.warrantyDetails,
+        brand: data.brand,
+
         updatedAt: new Date(),
       })
       .where(eq(product.id, id));
 
     revalidatePath("/admin/produtos");
     revalidatePath("/");
-    revalidatePath(`/produto/${id}`); 
+    revalidatePath(`/produto/${id}`);
     revalidatePath("/carrinho");
 
     return { success: true, message: "Produto atualizado com sucesso!" };

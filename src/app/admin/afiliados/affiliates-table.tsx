@@ -9,13 +9,11 @@ import {
   Loader2,
   MoreHorizontal,
   Search,
-  Undo2, // Ícone para desfazer
+  Undo2,
 } from "lucide-react";
-import Image from "next/image";
 import { useState } from "react";
 import { toast } from "sonner";
 
-// Importe AMBAS as actions aqui
 import { banAffiliateAction, unbanAffiliateAction } from "@/actions/affiliate";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -57,10 +55,11 @@ interface AffiliatesTableProps {
   data: AffiliateData[];
 }
 
+// AJUSTE DE MOEDA PARA LIBRAS (GBP)
 const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat("pt-BR", {
+  return new Intl.NumberFormat("en-GB", {
     style: "currency",
-    currency: "BRL",
+    currency: "GBP",
   }).format(value / 100);
 };
 
@@ -112,33 +111,41 @@ export function AffiliatesTable({ data }: AffiliatesTableProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-neutral-500" />
+            <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-neutral-400" />
             <Input
               placeholder="Filtrar afiliados..."
-              className="mb-4 h-9 w-[250px] border-white/10 bg-white/5 pl-9 text-white placeholder:text-neutral-500 focus-visible:ring-[#D00000]"
+              className="h-9 w-[250px] border-neutral-200 bg-white pl-9 text-neutral-900 placeholder:text-neutral-400 focus-visible:ring-orange-500"
             />
           </div>
         </div>
       </div>
 
-      <Card className="border-black/10 bg-[#ffffff]">
-        <CardHeader>
-          <CardTitle className="text-neutral-800">Lista de Afiliados</CardTitle>
+      <Card className="border-neutral-200 bg-white shadow-sm">
+        <CardHeader className="border-b border-neutral-100 pb-4">
+          <CardTitle className="text-lg font-bold text-neutral-900">
+            Lista de Afiliados
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <Table>
-            <TableHeader>
-              <TableRow className="border-black/10 hover:bg-black/5">
-                <TableHead className="text-neutral-400">Afiliado</TableHead>
-                <TableHead className="text-neutral-400">Código</TableHead>
-                <TableHead className="text-neutral-400">Status</TableHead>
-                <TableHead className="text-right text-neutral-400">
+            <TableHeader className="bg-neutral-50">
+              <TableRow className="border-neutral-100 hover:bg-neutral-50">
+                <TableHead className="font-medium text-neutral-500">
+                  Afiliado
+                </TableHead>
+                <TableHead className="font-medium text-neutral-500">
+                  Código
+                </TableHead>
+                <TableHead className="font-medium text-neutral-500">
+                  Status
+                </TableHead>
+                <TableHead className="text-right font-medium text-neutral-500">
                   Saldo Atual
                 </TableHead>
-                <TableHead className="text-right text-neutral-400">
+                <TableHead className="text-right font-medium text-neutral-500">
                   Total Ganho
                 </TableHead>
-                <TableHead className="text-right text-neutral-400">
+                <TableHead className="text-right font-medium text-neutral-500">
                   Cadastrado em
                 </TableHead>
                 <TableHead className="w-[50px]"></TableHead>
@@ -148,19 +155,19 @@ export function AffiliatesTable({ data }: AffiliatesTableProps) {
               {data.map((affiliate) => (
                 <TableRow
                   key={affiliate.id}
-                  className="border-black/10 hover:bg-black/5"
+                  className="border-neutral-100 hover:bg-neutral-50/50"
                 >
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9 border border-black/10">
+                      <Avatar className="h-9 w-9 border border-neutral-200">
                         <AvatarImage src={affiliate.user?.image || ""} />
-                        <AvatarFallback className="bg-neutral-800 text-xs text-black">
+                        <AvatarFallback className="bg-orange-100 text-xs font-medium text-orange-700">
                           {affiliate.user?.name?.slice(0, 2).toUpperCase() ||
                             "AF"}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-black">
+                        <span className="text-sm font-medium text-neutral-900">
                           {affiliate.user?.name || "Sem nome"}
                         </span>
                         <span className="text-xs text-neutral-500">
@@ -170,34 +177,37 @@ export function AffiliatesTable({ data }: AffiliatesTableProps) {
                     </div>
                   </TableCell>
 
-                  <TableCell className="font-mono text-sm text-neutral-300">
+                  <TableCell className="font-mono text-sm text-neutral-600">
                     {affiliate.code}
                   </TableCell>
 
                   <TableCell>
                     {affiliate.status === "active" ? (
-                      <Badge className="border-green-500/20 bg-green-500/10 text-green-500 hover:bg-green-500/20">
+                      <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100">
                         <CheckCircle2 className="mr-1 h-3 w-3" /> Ativo
                       </Badge>
                     ) : affiliate.status === "banned" ? (
-                      <Badge className="border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500/20">
+                      <Badge
+                        variant="destructive"
+                        className="border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+                      >
                         <Ban className="mr-1 h-3 w-3" /> Banido
                       </Badge>
                     ) : (
                       <Badge
                         variant="outline"
-                        className="border-white/10 text-neutral-400"
+                        className="border-neutral-200 bg-neutral-50 text-neutral-500"
                       >
                         <AlertCircle className="mr-1 h-3 w-3" /> Suspenso
                       </Badge>
                     )}
                   </TableCell>
 
-                  <TableCell className="text-right font-medium text-white">
+                  <TableCell className="text-right font-medium text-neutral-900">
                     {formatCurrency(affiliate.balance)}
                   </TableCell>
 
-                  <TableCell className="text-right font-medium text-green-500">
+                  <TableCell className="text-right font-medium text-emerald-600">
                     {formatCurrency(affiliate.totalEarnings)}
                   </TableCell>
 
@@ -212,11 +222,11 @@ export function AffiliatesTable({ data }: AffiliatesTableProps) {
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
-                          className="h-8 w-8 p-0 text-white hover:bg-white/10"
+                          className="h-8 w-8 p-0 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
                           disabled={isProcessing === affiliate.id}
                         >
                           {isProcessing === affiliate.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-neutral-500" />
+                            <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <>
                               <span className="sr-only">Abrir menu</span>
@@ -227,15 +237,15 @@ export function AffiliatesTable({ data }: AffiliatesTableProps) {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent
                         align="end"
-                        className="border-white/10 bg-[#111] text-white"
+                        className="border-neutral-200 bg-white text-neutral-700 shadow-md"
                       >
                         <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                        <DropdownMenuSeparator className="bg-white/10" />
+                        <DropdownMenuSeparator className="bg-neutral-100" />
 
                         {affiliate.status === "banned" ? (
                           <DropdownMenuItem
                             onClick={() => handleUnban(affiliate.id)}
-                            className="cursor-pointer text-green-500 focus:bg-green-500/10 focus:text-green-500"
+                            className="cursor-pointer text-emerald-600 focus:bg-emerald-50 focus:text-emerald-700"
                           >
                             <Undo2 className="mr-2 h-4 w-4" />
                             Reverter Banimento
@@ -243,7 +253,7 @@ export function AffiliatesTable({ data }: AffiliatesTableProps) {
                         ) : (
                           <DropdownMenuItem
                             onClick={() => handleBan(affiliate.id)}
-                            className="cursor-pointer text-red-500 focus:bg-red-500/10 focus:text-red-500"
+                            className="cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-700"
                           >
                             <Ban className="mr-2 h-4 w-4" />
                             Banir Afiliado
@@ -262,14 +272,6 @@ export function AffiliatesTable({ data }: AffiliatesTableProps) {
                     className="h-96 text-center text-neutral-500"
                   >
                     <div className="flex h-full w-full flex-col items-center justify-center gap-4 py-10">
-                      <Image
-                        src="/images/illustration.svg"
-                        alt="Sem produtos"
-                        width={300}
-                        height={300}
-                        className="opacity-40 grayscale"
-                      />
-
                       <p className="text-lg font-light text-neutral-400">
                         Nenhum afiliado encontrado.
                       </p>

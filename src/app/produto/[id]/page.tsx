@@ -1,5 +1,16 @@
 import { desc, eq, inArray } from "drizzle-orm";
-import { MessageSquare, Ruler, Star, User, Weight } from "lucide-react";
+import {
+  Hammer,
+  Info,
+  MessageSquare,
+  Ruler,
+  ShieldCheck,
+  Star,
+  Tag,
+  User,
+  WandSparkles,
+  Weight,
+} from "lucide-react";
 import { headers } from "next/headers";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -102,6 +113,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
       ? productData.images
       : ["https://placehold.co/600x600/f3f4f6/9ca3af.png?text=Sem+Imagem"];
 
+  // Tradução da condição
+  const conditionMap: Record<string, string> = {
+    new: "Estado de novo",
+    used: "Usado / Ótima condição",
+    refurbished: "Recondicionado",
+  };
+
   return (
     <div className="min-h-screen bg-[#f9f9f9]">
       <Header />
@@ -187,7 +205,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
                         Dimensões (Lar. x Alt. x Com.)
                       </p>
                       <p className="text-sm text-neutral-500">
-                        {/* CORREÇÃO AQUI: Usando (?? 0) para garantir que não é null */}
                         {(productData.width ?? 0) > 0 &&
                         (productData.height ?? 0) > 0 &&
                         (productData.length ?? 0) > 0
@@ -207,7 +224,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
                         Peso
                       </p>
                       <p className="text-sm text-neutral-500">
-                        {/* CORREÇÃO AQUI TAMBÉM */}
                         {(productData.weight ?? 0) > 0
                           ? `${productData.weight} kg`
                           : "Não informado"}
@@ -219,13 +235,89 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </div>
           </div>
 
-          {/* --- COLUNA DIREITA (Sidebar de Compra) --- */}
+          {/* --- COLUNA DIREITA (Sidebar de Compra + Info Útil) --- */}
           <div className="space-y-6 lg:col-span-5">
             <ProductPurchaseCard
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               product={productData as any}
               categoryNames={categoryNames}
             />
+
+            {/* --- NOVO CARD: INFORMAÇÕES ÚTEIS --- */}
+            <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+              <h4 className="mb-4 flex items-center gap-2 text-base font-bold text-neutral-900">
+                <Info className="h-4 w-4 text-orange-600" />
+                Detalhes do Produto
+              </h4>
+              <div className="space-y-3">
+                {/* Condição */}
+                <div className="flex items-center justify-between border-b border-neutral-100 pb-2 text-sm last:border-0 last:pb-0">
+                  <div className="flex items-center gap-2 text-neutral-600">
+                    <WandSparkles className="h-4 w-4 text-neutral-400" />
+                    <span>Condição</span>
+                  </div>
+                  <span className="font-medium text-neutral-800">
+                    {conditionMap[productData.condition || "new"] || "Novo"}
+                  </span>
+                </div>
+
+                {/* Marca */}
+                <div className="flex items-center justify-between border-b border-neutral-100 pb-2 text-sm last:border-0 last:pb-0">
+                  <div className="flex items-center gap-2 text-neutral-600">
+                    <Tag className="h-4 w-4 text-neutral-400" />
+                    <span>Marca</span>
+                  </div>
+                  <span className="font-medium text-neutral-800">
+                    {productData.brand || "Sem Marca"}
+                  </span>
+                </div>
+
+                {/* Montagem Necessária */}
+                <div className="flex items-center justify-between border-b border-neutral-100 pb-2 text-sm last:border-0 last:pb-0">
+                  <div className="flex items-center gap-2 text-neutral-600">
+                    <Hammer className="h-4 w-4 text-neutral-400" />
+                    <span>Vem Montado?</span>
+                  </div>
+                  <span
+                    className={`font-medium ${
+                      productData.isAssembled
+                        ? "text-neutral-800"
+                        : "text-neutral-800"
+                    }`}
+                  >
+                    {productData.isAssembled
+                      ? "Sim. Produto já vem Montado"
+                      : "Não. Produto requer montagem"}
+                  </span>
+                </div>
+
+                {/* Garantia */}
+                <div className="flex items-center justify-between border-b border-neutral-100 pb-2 text-sm last:border-0 last:pb-0">
+                  <div className="flex items-center gap-2 text-neutral-600">
+                    <ShieldCheck className="h-4 w-4 text-neutral-400" />
+                    <span>Garantia</span>
+                  </div>
+                  <div className="text-right">
+                    <span
+                      className={`block font-medium ${
+                        productData.hasWarranty
+                          ? "text-neutral-800"
+                          : "text-neutral-800"
+                      }`}
+                    >
+                      {productData.hasWarranty
+                        ? "Garantia incluida"
+                        : "Sem garantia"}
+                    </span>
+                    {productData.hasWarranty && productData.warrantyDetails && (
+                      <span className="text-xs text-neutral-400">
+                        ({productData.warrantyDetails})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

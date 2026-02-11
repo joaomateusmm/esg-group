@@ -6,10 +6,8 @@ import { headers } from "next/headers";
 import { z } from "zod";
 
 import { db } from "@/db";
-// Adicionei 'product' aos imports para podermos buscar o nome dele
 import { product, review } from "@/db/schema";
 import { auth } from "@/lib/auth";
-// Importe a função de envio para o Discord
 import { sendReviewToDiscord } from "@/lib/discord";
 
 // 1. Definição do Tipo de Retorno (Estado)
@@ -21,15 +19,18 @@ export type ReviewState = {
   };
 } | null;
 
+// Schema refinado
 const createReviewSchema = z.object({
-  productId: z.string().uuid("ID do produto inválido"),
-  rating: z.number().int().min(1).max(5, "A nota deve ser entre 1 e 5"),
+  // CORREÇÃO: Removi o .uuid() para aceitar IDs antigos (ex: "005")
+  productId: z.string().min(1, "ID do produto inválido"),
+  rating: z.coerce.number().int().min(1, "A nota é obrigatória").max(5),
   comment: z
     .string()
     .trim()
     .max(155, "O comentário não pode ter mais de 155 caracteres")
     .optional()
-    .or(z.literal("")),
+    .nullable()
+    .transform((val) => val || ""),
 });
 
 export async function createReviewAction(
@@ -37,7 +38,6 @@ export async function createReviewAction(
   formData: FormData,
 ): Promise<ReviewState> {
   try {
-    // Verificar Autenticação
     const session = await auth.api.getSession({
       headers: await headers(),
     });
@@ -49,39 +49,42 @@ export async function createReviewAction(
       };
     }
 
-    // Transformar FormData em Objeto
+    const rawProductId = formData.get("productId");
+    const rawRating = formData.get("rating");
+    const rawComment = formData.get("comment");
+
     const rawData = {
-      productId: formData.get("productId"),
-      rating: Number(formData.get("rating")),
-      comment: formData.get("comment"),
+      productId: rawProductId,
+      rating: rawRating,
+      comment: rawComment,
     };
 
-    // Validar com Zod
     const validatedFields = createReviewSchema.safeParse(rawData);
 
     if (!validatedFields.success) {
+      console.error(
+        "Erro de validação na Review:",
+        validatedFields.error.flatten().fieldErrors,
+      );
+
       return {
         success: false,
-        message: "Dados inválidos.",
+        message: "Dados inválidos. Verifique a nota e o comentário.",
         errors: validatedFields.error.flatten().fieldErrors,
       };
     }
 
     const { productId, rating, comment } = validatedFields.data;
 
-    // Garante que o comentário seja uma string (se undefined, vira "")
-    const safeComment = comment || "";
-
-    // 1. Inserir no Banco de Dados
+    // Inserir no Banco
     await db.insert(review).values({
       userId: session.user.id,
       productId: productId,
       rating: rating,
-      comment: safeComment, // <--- CORREÇÃO AQUI (Banco)
+      comment: comment,
     });
 
-    // --- NOVA LÓGICA DE DISCORD ---
-    // Buscamos o nome do produto para a mensagem ficar bonita no Discord
+    // Discord
     try {
       const productData = await db.query.product.findFirst({
         where: eq(product.id, productId),
@@ -90,20 +93,16 @@ export async function createReviewAction(
 
       const productName = productData?.name || "Produto da Loja";
 
-      // Enviamos para o webhook (sem travar a resposta se der erro no Discord)
       await sendReviewToDiscord(
         session.user.name,
         productName,
         rating,
-        safeComment, // <--- CORREÇÃO AQUI (Discord)
+        comment,
       );
     } catch (discordError) {
-      // Apenas logamos o erro, não impedimos o sucesso da action
       console.error("Falha ao enviar webhook para o Discord:", discordError);
     }
-    // ------------------------------
 
-    // Revalidar a página
     revalidatePath(`/produto/${productId}`);
 
     return {
@@ -111,10 +110,10 @@ export async function createReviewAction(
       message: "Avaliação enviada com sucesso!",
     };
   } catch (error) {
-    console.error("Erro ao criar avaliação:", error);
+    console.error("Erro CRÍTICO ao criar avaliação:", error);
     return {
       success: false,
-      message: "Ocorreu um erro ao enviar sua avaliação. Tente novamente.",
+      message: "Ocorreu um erro interno. Tente novamente.",
     };
   }
 }
@@ -129,7 +128,6 @@ export async function deleteReviewAction(reviewId: string, productId: string) {
       return { success: false, message: "Não autorizado." };
     }
 
-    // Deleta APENAS se o ID bater E o userId for o mesmo da sessão
     const deleted = await db
       .delete(review)
       .where(and(eq(review.id, reviewId), eq(review.userId, session.user.id)))
@@ -144,6 +142,84 @@ export async function deleteReviewAction(reviewId: string, productId: string) {
     return { success: true, message: "Avaliação removida." };
   } catch (error) {
     console.error("Erro ao deletar review:", error);
+    return { success: false, message: "Erro interno." };
+  }
+}
+
+// ... (mantenha os imports anteriores)
+
+// Schema para atualização (basicamente o mesmo, mas precisa do reviewId)
+const updateReviewSchema = z.object({
+  reviewId: z.string().uuid(),
+  rating: z.coerce.number().int().min(1).max(5),
+  comment: z
+    .string()
+    .trim()
+    .max(155)
+    .optional()
+    .nullable()
+    .transform((val) => val || ""),
+});
+
+export async function updateReviewAction(
+  prevState: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session?.user) {
+      return { success: false, message: "Não autorizado." };
+    }
+
+    const rawData = {
+      reviewId: formData.get("reviewId"),
+      rating: formData.get("rating"),
+      comment: formData.get("comment"),
+    };
+
+    const validated = updateReviewSchema.safeParse(rawData);
+
+    if (!validated.success) {
+      return {
+        success: false,
+        message: "Dados inválidos.",
+        errors: validated.error.flatten().fieldErrors,
+      };
+    }
+
+    const { reviewId, rating, comment } = validated.data;
+
+    // Atualiza APENAS se o review pertencer ao usuário
+    const updated = await db
+      .update(review)
+      .set({
+        rating,
+        comment,
+        updatedAt: new Date(), // Atualiza a data
+      })
+      .where(and(eq(review.id, reviewId), eq(review.userId, session.user.id)))
+      .returning();
+
+    if (!updated.length) {
+      return {
+        success: false,
+        message: "Review não encontrada ou permissão negada.",
+      };
+    }
+
+    // Revalida a página de lista de avaliações e a página do produto original
+    // (Como não temos o productId fácil aqui sem buscar, revalidamos o path da conta)
+    revalidatePath("/minha-conta/avaliacoes");
+
+    // Opcional: Buscar o productId para revalidar a página do produto também
+    // revalidatePath(`/produto/${updated[0].productId}`);
+
+    return { success: true, message: "Avaliação atualizada!" };
+  } catch (error) {
+    console.error("Erro ao atualizar review:", error);
     return { success: false, message: "Erro interno." };
   }
 }

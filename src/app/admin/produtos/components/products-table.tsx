@@ -3,13 +3,13 @@
 import {
   ChevronDown,
   CopyCheck,
+  ExternalLink,
   ImageIcon,
   Search,
   SquareCheck,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-// 1. ADICIONADOS IMPORTS DE NAVEGAÇÃO
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -59,7 +59,6 @@ interface ProductsTableProps {
   allCategories: CategoryData[];
 }
 
-// Função auxiliar para formatar preço com moeda dinâmica
 const formatPrice = (amount: number, currency: string = "GBP") => {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -74,7 +73,6 @@ export function ProductsTable({
   allCategories,
 }: ProductsTableProps) {
   const router = useRouter();
-  // 2. HOOKS PARA LER A URL
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
@@ -82,17 +80,13 @@ export function ProductsTable({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  // 3. FUNÇÃO DE PESQUISA (Atualiza a URL)
   const handleSearch = (term: string) => {
     const params = new URLSearchParams(searchParams);
-
     if (term) {
       params.set("search", term);
     } else {
       params.delete("search");
     }
-
-    // Substitui a URL atual mantendo o scroll na mesma posição
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
@@ -122,7 +116,6 @@ export function ProductsTable({
     startTransition(async () => {
       try {
         const result = await deleteProducts(selectedIds);
-
         if (result.success) {
           setSelectedIds([]);
           setShowDeleteDialog(false);
@@ -144,17 +137,13 @@ export function ProductsTable({
 
   return (
     <>
-      {/* --- FILTROS E BOTÕES --- */}
       <div className="mb-4 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-sm text-neutral-600 shadow-sm duration-300">
           <Search className="mr-1 h-4 w-4 text-neutral-500" />
           <input
-            // 4. INPUT CONECTADO
             placeholder="Pesquisar Produto..."
             type="text"
-            // Pega o valor atual da URL para não perder ao recarregar
             defaultValue={searchParams.get("search")?.toString()}
-            // Atualiza a URL quando o usuário digita
             onChange={(e) => handleSearch(e.target.value)}
             className="w-auto p-1 duration-300 hover:bg-neutral-50 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none active:scale-95"
           />
@@ -169,7 +158,6 @@ export function ProductsTable({
               Excluir ({selectedIds.length})
             </button>
           )}
-
           <button
             onClick={handleSelectPage}
             className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-sm text-neutral-600 shadow-sm duration-300 hover:bg-neutral-50 active:scale-95"
@@ -177,7 +165,6 @@ export function ProductsTable({
             <SquareCheck className="h-4 w-4" />
             Marcar Página
           </button>
-
           <button
             onClick={() => handleSelectAll(true)}
             className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-sm text-neutral-600 shadow-sm duration-300 hover:bg-neutral-50 active:scale-95"
@@ -188,12 +175,11 @@ export function ProductsTable({
         </div>
       </div>
 
-      {/* --- TABELA DE PRODUTOS --- */}
       <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
         <Table>
           <TableHeader className="bg-neutral-50">
             <TableRow className="border-neutral-200 hover:bg-neutral-100">
-              <TableHead className="w-[40px]">
+              <TableHead className="w-[40px] pl-4">
                 <Checkbox
                   className="border-neutral-400 data-[state=checked]:border-orange-600 data-[state=checked]:bg-orange-600"
                   checked={
@@ -204,34 +190,38 @@ export function ProductsTable({
                   onCheckedChange={(checked) => handleSelectAll(!!checked)}
                 />
               </TableHead>
-              <TableHead className="font-semibold text-neutral-600">
+              {/* NOME: Largura maior */}
+              <TableHead className="w-[300px] font-semibold text-neutral-600">
                 Nome
               </TableHead>
-              <TableHead className="font-semibold text-neutral-600">
+              <TableHead className="w-[100px] font-semibold text-neutral-600">
                 Status
               </TableHead>
-              <TableHead className="hidden font-semibold text-neutral-600 md:table-cell">
+              <TableHead className="hidden font-semibold text-neutral-600 md:table-cell md:w-[200px]">
                 Categoria(s)
               </TableHead>
-              <TableHead className="text-right font-semibold text-neutral-600">
+              <TableHead className="w-[120px] text-right font-semibold text-neutral-600">
                 Preço
               </TableHead>
-              <TableHead className="hidden text-right font-semibold text-neutral-600 md:table-cell">
+              <TableHead className="hidden w-[80px] text-right font-semibold text-neutral-600 md:table-cell">
                 Vendas
               </TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="w-[60px] text-center font-semibold text-neutral-600">
+                Ver
+              </TableHead>
+              <TableHead className="w-[60px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={8}
                   className="h-96 text-center text-neutral-500"
                 >
                   <div className="flex h-full w-full flex-col items-center justify-center gap-4 py-10">
                     <Image
-                      src="/images/illustration.svg" // Garanta que essa imagem funciona no claro ou troque
+                      src="/images/illustration.svg"
                       alt="Sem produtos"
                       width={200}
                       height={200}
@@ -254,7 +244,7 @@ export function ProductsTable({
                     className="border-neutral-100 transition-colors hover:bg-neutral-50"
                     data-state={selectedIds.includes(item.id) ? "selected" : ""}
                   >
-                    <TableCell>
+                    <TableCell className="pl-4">
                       <Checkbox
                         className="border-neutral-400 data-[state=checked]:border-orange-600 data-[state=checked]:bg-orange-600"
                         checked={selectedIds.includes(item.id)}
@@ -308,15 +298,14 @@ export function ProductsTable({
                       </Badge>
                     </TableCell>
 
-                    {/* Categoria */}
                     <TableCell className="hidden md:table-cell">
                       <div className="flex flex-wrap gap-1">
                         {item.categories && item.categories.length > 0 ? (
-                          item.categories.map((catId: string) => (
+                          item.categories.slice(0, 2).map((catId: string) => (
                             <Badge
                               key={catId}
                               variant="secondary"
-                              className="border border-neutral-200 bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                              className="border border-neutral-200 bg-neutral-100 whitespace-nowrap text-neutral-600 hover:bg-neutral-200"
                             >
                               {getCategoryName(catId)}
                             </Badge>
@@ -324,16 +313,34 @@ export function ProductsTable({
                         ) : (
                           <span className="text-neutral-400">-</span>
                         )}
+                        {item.categories && item.categories.length > 2 && (
+                          <Badge
+                            variant="outline"
+                            className="border-neutral-200 text-xs"
+                          >
+                            +{item.categories.length - 2}
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
 
-                    {/* PREÇO ATUALIZADO */}
-                    <TableCell className="text-right font-mono font-medium text-neutral-900">
+                    <TableCell className="text-right font-mono font-medium whitespace-nowrap text-neutral-900">
                       {formatPrice(item.price, item.currency)}
                     </TableCell>
 
                     <TableCell className="hidden text-right text-neutral-600 md:table-cell">
                       {item.sales}
+                    </TableCell>
+
+                    <TableCell className="text-center">
+                      <Link
+                        href={`/produto/${item.id}`}
+                        target="_blank"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-orange-600"
+                        title="Ver página do produto"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Link>
                     </TableCell>
 
                     <TableCell>
@@ -416,7 +423,6 @@ export function ProductsTable({
         </div>
       </div>
 
-      {/* --- DIALOG DE EXCLUSÃO EM MASSA --- */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent className="border-neutral-200 bg-white text-neutral-900 shadow-lg sm:max-w-md">
           <AlertDialogHeader>

@@ -13,10 +13,11 @@ import { RevenueChart } from "@/components/admin/revenue-chart";
 import { db } from "@/db";
 import { category, order, product, review, user } from "@/db/schema";
 
+// AJUSTE DE MOEDA PARA LIBRAS (GBP)
 const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat("pt-BR", {
+  return new Intl.NumberFormat("en-GB", {
     style: "currency",
-    currency: "BRL",
+    currency: "GBP",
   }).format(value / 100);
 };
 
@@ -87,7 +88,7 @@ export default async function AdminDashboard() {
   ordersForChart.forEach((o) => {
     const dateKey = new Date(o.createdAt).toISOString().split("T")[0];
 
-    // Receita (convertendo centavos para reais)
+    // Receita (convertendo centavos para libras)
     const currentRev = dailyRevenueMap.get(dateKey) || 0;
     dailyRevenueMap.set(dateKey, currentRev + o.amount / 100);
 
@@ -118,7 +119,7 @@ export default async function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-8 rounded-2xl bg-[#f9f9f9] p-8 shadow-sm">
+    <div className="space-y-8 p-8">
       <div>
         <h1 className="font-clash-display text-3xl font-medium text-neutral-900">
           Dashboard
@@ -131,13 +132,11 @@ export default async function AdminDashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Receita */}
         <div className="relative overflow-hidden rounded-xl border border-neutral-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
-          <div className="absolute -top-4 -right-4 h-24 w-24 rounded-full bg-orange-600/5 blur-2xl" />
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-neutral-500">
-              Receita Total{" "}
-              <span className="text-xs text-neutral-400">(valor real)</span>
+              Receita Total
             </span>
-            <div className="rounded-full bg-orange-50 p-2 text-orange-600">
+            <div className="rounded-full bg-orange-100 p-2 text-orange-600">
               <DollarSign className="h-5 w-5" />
             </div>
           </div>
@@ -145,9 +144,10 @@ export default async function AdminDashboard() {
             <span className="text-3xl font-bold text-neutral-900">
               {formatCurrency(totalRevenue)}
             </span>
-            <span className="rounded bg-green-50 px-1.5 py-0.5 text-xs font-medium text-green-600">
-              +12% este mês
-            </span>
+            {/* Opcional: Badge de crescimento */}
+            {/* <span className="rounded bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-700">
+              +12%
+            </span> */}
           </div>
         </div>
 
@@ -157,7 +157,7 @@ export default async function AdminDashboard() {
             <span className="text-sm font-medium text-neutral-500">
               Vendas Concluídas
             </span>
-            <div className="rounded-full bg-blue-50 p-2 text-blue-600">
+            <div className="rounded-full bg-blue-100 p-2 text-blue-600">
               <Activity className="h-5 w-5" />
             </div>
           </div>
@@ -172,7 +172,7 @@ export default async function AdminDashboard() {
             <span className="text-sm font-medium text-neutral-500">
               Produtos Ativos
             </span>
-            <div className="rounded-full bg-purple-50 p-2 text-purple-600">
+            <div className="rounded-full bg-purple-100 p-2 text-purple-600">
               <Package className="h-5 w-5" />
             </div>
           </div>
@@ -187,7 +187,7 @@ export default async function AdminDashboard() {
             <span className="text-sm font-medium text-neutral-500">
               Contas Criadas
             </span>
-            <div className="rounded-full bg-pink-50 p-2 text-pink-600">
+            <div className="rounded-full bg-pink-100 p-2 text-pink-600">
               <Users className="h-5 w-5" />
             </div>
           </div>
@@ -238,14 +238,14 @@ export default async function AdminDashboard() {
         </div>
       </div>
       {/* --- SEÇÃO 3: GRÁFICOS --- */}
-      <div className="flex w-full flex-col gap-5 md:flex-row">
-        {/* GRÁFICO 1: RECEITA */}
-        <div className="w-full rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-          {/* Nota: Certifique-se de que o componente RevenueChart também esteja 
-             preparado para renderizar em tema claro (eixos pretos/cinza).
-          */}
-          <RevenueChart data={revenueChartData} />
-        </div>
+      <div className="w-full rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+        <h3 className="mb-4 text-lg font-bold text-neutral-900">
+          Receita Diária
+        </h3>
+        {/* O componente RevenueChart deve ser capaz de lidar com o tema claro.
+            Se ele usar Recharts, geralmente o texto se adapta ou precisa de configuração específica de cor.
+        */}
+        <RevenueChart data={revenueChartData} />
       </div>
     </div>
   );

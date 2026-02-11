@@ -6,10 +6,14 @@ import {
   Check,
   ChevronLeft,
   ChevronsUpDown,
+  Hammer, // Novo ícone
+  Info, // Novo ícone
   Loader2,
   Package,
   Ruler,
+  ShieldCheck, // Novo ícone
   Star,
+  Tag, // Novo ícone
   Trash,
   Truck,
 } from "lucide-react";
@@ -73,12 +77,12 @@ import { getCategories } from "./get-categories";
 
 // --- SCHEMA ATUALIZADO ---
 const formSchema = z.object({
-  // 1. CAMPO NOVO: ID PERSONALIZADO (OPCIONAL)
+  // 1. ID PERSONALIZADO
   customId: z
     .string()
     .max(50, "O código não pode ser muito longo")
     .optional()
-    .or(z.literal("")), // Aceita string vazia
+    .or(z.literal("")),
 
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   description: z.string().optional(),
@@ -103,6 +107,13 @@ const formSchema = z.object({
   width: z.number().int().min(0, "Largura obrigatória"),
   height: z.number().int().min(0, "Altura obrigatória"),
   length: z.number().int().min(0, "Comprimento obrigatório"),
+
+  // --- NOVOS CAMPOS ADICIONADOS ---
+  condition: z.enum(["new", "used", "refurbished"]),
+  isAssembled: z.boolean(),
+  hasWarranty: z.boolean(),
+  warrantyDetails: z.string().optional(),
+  brand: z.string().optional(),
 });
 
 type ProductFormValues = z.infer<typeof formSchema>;
@@ -154,7 +165,7 @@ export default function NewProductPage() {
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      customId: "", // Valor inicial vazio
+      customId: "",
       name: "",
       description: "",
       status: "active",
@@ -175,21 +186,23 @@ export default function NewProductPage() {
       price: 0,
       discountPrice: 0,
       categories: [],
+
+      // --- VALORES INICIAIS NOVOS ---
+      condition: "new",
+      isAssembled: false,
+      hasWarranty: false,
+      warrantyDetails: "",
+      brand: "",
     },
     mode: "onChange",
   });
 
   const handleSetMainImage = (indexToPromote: number) => {
-    if (indexToPromote === 0) return; // Já é a capa
-
+    if (indexToPromote === 0) return;
     const newImages = [...uploadedImages];
     const imageToMove = newImages[indexToPromote];
-
-    // Remove a imagem da posição atual
     newImages.splice(indexToPromote, 1);
-    // Adiciona no início do array
     newImages.unshift(imageToMove);
-
     setUploadedImages(newImages);
     toast.success("Imagem de capa atualizada!");
   };
@@ -199,6 +212,7 @@ export default function NewProductPage() {
   const watchIsStockUnlimited = form.watch("isStockUnlimited");
   const watchCurrency = form.watch("currency");
   const watchShippingType = form.watch("shippingType");
+  const watchHasWarranty = form.watch("hasWarranty"); // Observar garantia
 
   const handlePriceChange = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -224,12 +238,8 @@ export default function NewProductPage() {
       return;
     }
 
-    // Função para mover a imagem selecionada para o índice 0
-
     try {
       const formattedData = {
-        // 2. LÓGICA DO ID PERSONALIZADO
-        // Se o usuário digitou algo, enviamos como 'id'. Se não, enviamos undefined (o banco gera).
         id:
           data.customId && data.customId.trim() !== ""
             ? data.customId
@@ -263,6 +273,13 @@ export default function NewProductPage() {
         height: data.height,
         length: data.length,
 
+        // --- DADOS NOVOS ---
+        condition: data.condition,
+        isAssembled: data.isAssembled,
+        hasWarranty: data.hasWarranty,
+        warrantyDetails: data.hasWarranty ? data.warrantyDetails : null,
+        brand: data.brand || "Genérico",
+
         images: uploadedImages,
       } as ProductServerPayload;
 
@@ -271,7 +288,6 @@ export default function NewProductPage() {
       toast.success("Produto criado com sucesso!");
       router.push("/admin/produtos");
     } catch (error) {
-      // Tratamento para ID Duplicado
       if (
         error instanceof Error &&
         error.message.includes("Unique constraint")
@@ -380,7 +396,7 @@ export default function NewProductPage() {
                       </FormItem>
                     )}
                   />
-                  {/* ... Resto dos campos (description, etc.) ... */}
+
                   <FormField
                     control={form.control}
                     name="description"
@@ -404,9 +420,151 @@ export default function NewProductPage() {
                 </CardContent>
               </Card>
 
-              {/* ... Resto do formulário (Frete, Imagens, Organização, Preços) MANTIDO IGUAL ... */}
-              {/* Vou incluir apenas os blocos principais para não estourar o limite de caracteres, 
-                  mas o código abaixo contém todo o resto da estrutura original */}
+              {/* --- NOVO CARD: ESPECIFICAÇÕES E DETALHES --- */}
+              <Card className="border-neutral-200 bg-white shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-neutral-900">
+                    <Info className="h-5 w-5 text-orange-600" /> Especificações
+                    e Detalhes
+                  </CardTitle>
+                  <CardDescription className="text-neutral-500">
+                    Informações úteis para o cliente na página do produto.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {/* Marca */}
+                    <FormField
+                      control={form.control}
+                      name="brand"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2 text-neutral-900">
+                            <Tag className="h-4 w-4 text-neutral-500" /> Marca /
+                            Fabricante
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Ex: Samsung, IKEA, Genérico..."
+                              className="border-neutral-200 bg-white text-neutral-900"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Condição */}
+                    <FormField
+                      control={form.control}
+                      name="condition"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-neutral-900">
+                            Condição do Item
+                          </FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="border-neutral-200 bg-white text-neutral-900">
+                                <SelectValue placeholder="Selecione..." />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="bg-white">
+                              <SelectItem value="new">Novo</SelectItem>
+                              <SelectItem value="used">Usado</SelectItem>
+                              <SelectItem value="refurbished">
+                                Recondicionado
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {/* Montagem */}
+                    <FormField
+                      control={form.control}
+                      name="isAssembled"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-y-0 space-x-3 rounded-md border border-neutral-200 p-4">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              className="border-neutral-400 data-[state=checked]:border-orange-600 data-[state=checked]:bg-orange-600"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="flex items-center gap-2 text-neutral-900">
+                              <Hammer className="h-4 w-4 text-neutral-500" />
+                              Produto vem montado?
+                            </FormLabel>
+                            <FormDescription>
+                              Marque se o produto já vem pronto para uso.
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Garantia Checkbox */}
+                    <FormField
+                      control={form.control}
+                      name="hasWarranty"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-y-0 space-x-3 rounded-md border border-neutral-200 p-4">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              className="border-neutral-400 data-[state=checked]:border-orange-600 data-[state=checked]:bg-orange-600"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="flex items-center gap-2 text-neutral-900">
+                              <ShieldCheck className="h-4 w-4 text-neutral-500" />
+                              Possui Garantia?
+                            </FormLabel>
+                            <FormDescription>
+                              Marque se oferecer garantia para este item.
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Detalhes da Garantia (Condicional) */}
+                  {watchHasWarranty && (
+                    <FormField
+                      control={form.control}
+                      name="warrantyDetails"
+                      render={({ field }) => (
+                        <FormItem className="animate-in fade-in slide-in-from-top-2">
+                          <FormLabel className="text-neutral-900">
+                            Detalhes da Garantia
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Ex: 12 meses pelo fabricante, 3 meses pela loja..."
+                              className="border-neutral-200 bg-white text-neutral-900"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </CardContent>
+              </Card>
 
               {/* --- CONFIGURAÇÃO DE FRETE --- */}
               <Card className="border-neutral-200 bg-white shadow-sm">
@@ -764,7 +922,7 @@ export default function NewProductPage() {
                               className="object-cover"
                             />
 
-                            {/* Badge de CAPA (Visível apenas na primeira imagem) */}
+                            {/* Badge de CAPA */}
                             {isCover && (
                               <div className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded bg-orange-600 px-2 py-1 text-xs font-semibold text-white shadow-sm">
                                 <Star className="h-3 w-3" />
@@ -772,7 +930,7 @@ export default function NewProductPage() {
                               </div>
                             )}
 
-                            {/* Botão para DEFINIR COMO CAPA (Visível no hover das outras imagens) */}
+                            {/* Botão para DEFINIR COMO CAPA */}
                             {!isCover && (
                               <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
                                 <button
@@ -1005,7 +1163,6 @@ export default function NewProductPage() {
                   <CardTitle className="text-neutral-900">Preços</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* 3. CAMPO SELEÇÃO DE MOEDA (UI) */}
                   <FormField
                     control={form.control}
                     name="currency"

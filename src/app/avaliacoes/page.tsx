@@ -47,12 +47,12 @@ export default async function AvaliacoesPage() {
 
       <div className="container mx-auto max-w-6xl px-6 py-32">
         {/* Cabeçalho */}
-        <div className="animate-in fade-in slide-in-from-bottom-4 mb-16 flex w-full flex-col items-start justify-between gap-6 duration-700 md:flex-row md:items-end">
-          <div className="mt-12 flex max-w-2xl flex-col items-start">
-            <h1 className="font-clash-display mb-4 text-left text-3xl font-bold tracking-tight text-neutral-900 sm:text-4xl md:text-5xl lg:text-6xl">
+        <div className="animate-in fade-in slide-in-from-bottom-4 mb-12 flex w-full flex-col items-start justify-between gap-6 duration-700 md:flex-row md:items-end">
+          <div className="mt-8 flex max-w-2xl flex-col items-start">
+            <h1 className="font-clash-display mb-4 text-left text-3xl font-medium tracking-tight text-neutral-800 sm:text-4xl md:text-5xl">
               Mural de Avaliações
             </h1>
-            <p className="text-left text-lg font-medium text-neutral-500">
+            <p className="text-md text-left font-medium text-neutral-500">
               Veja o que a comunidade diz sobre os nossos produtos.
               Transparência e qualidade em primeiro lugar.
             </p>
