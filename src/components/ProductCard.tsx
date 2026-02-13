@@ -1,7 +1,14 @@
 "use client";
 
-import { Heart, Loader2, ShoppingCart, TrendingDown } from "lucide-react";
+import {
+  Hammer,
+  Heart,
+  Loader2,
+  ShoppingCart,
+  TrendingDown,
+} from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
@@ -21,7 +28,8 @@ interface ProductCardProps {
     images: string[] | null;
     stock: number | null;
     isStockUnlimited: boolean;
-    currency?: string; // 1. Campo de moeda opcional
+    currency?: string;
+    sku?: string | null; // Adicionei SKU se quiser usar no futuro
   };
   categoryName: string;
 }
@@ -143,15 +151,27 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
           </div>
         )}
 
-        <div className="absolute right-3 bottom-3 z-20 flex translate-y-4 flex-col gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+        <div className="absolute right-3 bottom-3 z-[90] flex translate-y-4 flex-col gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+          <Link href="/servicos" onClick={(e) => e.stopPropagation()}>
+            <Button
+              size="icon"
+              className="h-9 w-9 cursor-pointer rounded-full bg-blue-500 text-white shadow-sm backdrop-blur-md duration-300 hover:scale-105 hover:bg-blue-600 active:scale-95"
+            >
+              <Hammer className="h-4 w-4" />
+            </Button>
+          </Link>
+
           <Button
             size="icon"
-            onClick={handleFavorite}
+            onClick={(e) => {
+              e.stopPropagation(); // É bom garantir aqui também no favorito
+              handleFavorite(e);
+            }}
             className={cn(
-              "h-9 w-9 rounded-full shadow-sm backdrop-blur-md duration-300 hover:scale-105",
+              "h-9 w-9 cursor-pointer rounded-full shadow-sm backdrop-blur-md duration-300 hover:scale-105",
               isFavorite
                 ? "bg-orange-500 text-white hover:bg-orange-600"
-                : "bg-white text-neutral-600 hover:bg-white hover:text-orange-500",
+                : "bg-white text-orange-500 hover:bg-neutral-100", // Ajustei a cor do texto para ficar visível
             )}
           >
             <Heart className={cn("h-4 w-4", isFavorite && "fill-current")} />
@@ -160,8 +180,11 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
           {!isOutOfStock && (
             <Button
               size="icon"
-              onClick={handleAddToCart}
-              className="h-9 w-9 rounded-full bg-orange-500 text-white shadow-sm backdrop-blur-md duration-300 hover:scale-105 hover:bg-orange-600"
+              onClick={(e) => {
+                e.stopPropagation(); // É bom garantir aqui também no carrinho
+                handleAddToCart(e);
+              }}
+              className="h-9 w-9 cursor-pointer rounded-full bg-orange-500 text-white shadow-sm backdrop-blur-md duration-300 hover:scale-105 hover:bg-orange-600"
             >
               <ShoppingCart className="h-4 w-4" />
             </Button>
@@ -169,13 +192,21 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col border-t border-neutral-100 p-4">
+      <div className="flex flex-1 flex-col border-t border-neutral-100 px-4 py-2">
         <span className="truncate text-[10px] font-bold tracking-wide text-neutral-400 uppercase">
           {categoryName}
         </span>
-        <h3 className="font-clash-display mt-1 line-clamp-2 min-h-[3rem] text-base font-semibold text-neutral-900 transition-colors group-hover:text-orange-700">
+        <h3 className="font-clash-display mt-1 text-base font-semibold text-neutral-900 transition-colors group-hover:text-orange-700">
           {data.name}
         </h3>
+
+        {/* --- ID DO PRODUTO DISCRETO --- */}
+        <p
+          className="mt-0.5 truncate font-mono text-[11px] text-neutral-400"
+          title={`ID: ${data.id}`}
+        >
+          #{data.id.slice(0, 8)}
+        </p>
 
         <div className="mt-auto flex flex-col pt-3">
           {data.discountPrice && !isFree && !isOutOfStock && (

@@ -344,7 +344,7 @@ export async function updateOrderStatus(
               <div class="footer">
                 <p>Este é um e-mail automático, por favor não responda.</p>
                 <p>Pedido realizado em ${new Date().toLocaleDateString("pt-BR")}</p>
-                <p>© ${new Date().getFullYear()} ESG Group. Todos os direitos reservados.</p>
+                <p>© 2022 ESG Group. Todos os direitos reservados.</p>
                 <div class="social-links">
                   <a href="#" class="social-link">Instagram</a> • 
                   <a href="#" class="social-link">Facebook</a> • 

@@ -151,13 +151,11 @@ export function Footer() {
         {/* --- RODAPÉ INFERIOR --- */}
         <div className="flex flex-col items-center justify-between gap-6 pt-10 md:flex-row">
           <div className="text-center text-xs text-neutral-700 md:text-left">
-            <p>
-              © {currentYear} ESG-Group Store. Todos os direitos reservados.
-            </p>
+            <p>Est.2022 ESG-Group Store. Todos os direitos reservados.</p>
           </div>
           <div className="text-center text-xs text-neutral-700 md:text-left">
             <p className="mt-1">
-              CNPJ: XX.XXX.XXX/0001-XX • Desenvolvido por ESG-Group Team
+              United Kingdom (UK) • Desenvolvido por ESG-Group Team
             </p>
           </div>
         </div>
