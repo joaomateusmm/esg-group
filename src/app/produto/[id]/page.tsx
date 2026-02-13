@@ -1,6 +1,7 @@
 import { desc, eq, inArray } from "drizzle-orm";
 import {
   Hammer,
+  Hash,
   Info,
   MessageSquare,
   Ruler,
@@ -250,6 +251,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 Detalhes do Produto
               </h4>
               <div className="space-y-3">
+                {/* ID do Produto (NOVO) */}
+                <div className="flex items-center justify-between border-b border-neutral-100 pb-2 text-sm last:border-0 last:pb-0">
+                  <div className="flex items-center gap-2 text-neutral-600">
+                    <Hash className="h-4 w-4 text-neutral-400" />
+                    <span>ID do Produto</span>
+                  </div>
+                  <span className="pl-4 text-right font-medium break-all text-neutral-800">
+                    {productData.id}
+                  </span>
+                </div>
+
                 {/* Condição */}
                 <div className="flex items-center justify-between border-b border-neutral-100 pb-2 text-sm last:border-0 last:pb-0">
                   <div className="flex items-center gap-2 text-neutral-600">
@@ -306,7 +318,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                       }`}
                     >
                       {productData.hasWarranty
-                        ? "Garantia incluida"
+                        ? "Garantia inclusa"
                         : "Sem garantia"}
                     </span>
                     {productData.hasWarranty && productData.warrantyDetails && (

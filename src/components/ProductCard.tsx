@@ -205,7 +205,7 @@ export function ProductCard({ data, categoryName }: ProductCardProps) {
           className="mt-0.5 truncate font-mono text-[11px] text-neutral-400"
           title={`ID: ${data.id}`}
         >
-          #{data.id.slice(0, 8)}
+          #{data.id.slice(0, 12)}...
         </p>
 
         <div className="mt-auto flex flex-col pt-3">
