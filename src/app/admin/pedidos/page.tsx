@@ -1,8 +1,9 @@
-import { count, desc, eq, ilike, or } from "drizzle-orm";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { count, desc, eq, ilike, inArray, or } from "drizzle-orm";
 
 import { OrdersTable } from "@/components/admin/orders-table";
 import { db } from "@/db";
-import { order, orderItem, product, user } from "@/db/schema";
+import { order, user } from "@/db/schema";
 
 type ShippingAddress = {
   street: string;
@@ -32,74 +33,118 @@ export default async function AdminOrdersPage({
   // offset calculation for pagination
   const offset = limit && page > 1 ? (page - 1) * limit : 0;
 
-  // 1. Build the base query
-  const baseQuery = db
-    .selectDistinctOn([order.id], {
-      id: order.id,
-      status: order.status,
-      fulfillmentStatus: order.fulfillmentStatus,
-      paymentMethod: order.paymentMethod,
-      amount: order.amount,
-      createdAt: order.createdAt,
-      trackingCode: order.trackingCode,
-      shippingAddress: order.shippingAddress,
-      productImages: product.images,
-      productId: product.id,
-      orderCustomerName: order.customerName,
-      orderCustomerEmail: order.customerEmail,
-      orderUserPhone: order.userPhone,
-      userId: order.userId,
-      accountName: user.name,
-      accountEmail: user.email,
-      accountPhone: user.phoneNumber,
-    })
+  // --- PASSO 1: Buscar apenas os IDs dos pedidos (para a paginação e busca funcionarem corretamente) ---
+  const idsQuery = db
+    .select({ id: order.id })
     .from(order)
     .leftJoin(user, eq(order.userId, user.id))
-    .leftJoin(orderItem, eq(order.id, orderItem.orderId))
-    .leftJoin(product, eq(orderItem.productId, product.id))
-    .orderBy(order.id, desc(order.createdAt));
+    .$dynamic();
 
-  // 2. Apply search filter if present
   if (search) {
-    baseQuery.where(
+    idsQuery.where(
       or(
-        // Busca por ID do pedido
         ilike(order.id, `%${search}%`),
-        // Busca por nome do cliente (conta ou checkout)
         ilike(order.customerName, `%${search}%`),
         ilike(user.name, `%${search}%`),
-        // Busca por email
         ilike(order.customerEmail, `%${search}%`),
         ilike(user.email, `%${search}%`),
       ),
     );
   }
 
-  // 3. Execute Query with Pagination
-  const orders = limit
-    ? await baseQuery.limit(limit).offset(offset)
-    : await baseQuery;
+  // Aplica paginação aos IDs
+  const paginatedIdsQuery = limit
+    ? idsQuery.orderBy(desc(order.createdAt)).limit(limit).offset(offset)
+    : idsQuery.orderBy(desc(order.createdAt));
 
-  // Get total count for pagination
-  const [totalResult] = await db.select({ count: count() }).from(order);
+  const idsResult = await paginatedIdsQuery;
+  const orderIds = idsResult.map((r) => r.id);
 
-  const formattedOrders = orders.map((o) => ({
-    id: o.id,
-    status: o.status,
-    fulfillmentStatus: o.fulfillmentStatus,
-    paymentMethod: o.paymentMethod,
-    amount: o.amount,
-    createdAt: o.createdAt,
-    trackingCode: o.trackingCode,
-    shippingAddress: o.shippingAddress as unknown as ShippingAddress,
-    productImage:
-      o.productImages && o.productImages.length > 0 ? o.productImages[0] : null,
-    productId: o.productId || null,
-    userName: o.orderCustomerName || o.accountName || "Usuário Desconhecido",
-    userEmail: o.orderCustomerEmail || o.accountEmail || "Sem Email",
-    userPhone: o.orderUserPhone || o.accountPhone,
-    itemsCount: 0,
-  }));
+  // --- PASSO 2: Buscar os pedidos COMPLETOS (com itens e usuário) usando a API Relacional ---
+  let fullOrders: any[] = [];
+  if (orderIds.length > 0) {
+    fullOrders = await db.query.order.findMany({
+      where: inArray(order.id, orderIds),
+      with: {
+        user: true, // Puxa os dados do usuário cadastrado
+        items: {
+          with: {
+            product: true, // Puxa as dimensões, descrição e fotos do produto
+          },
+        },
+      },
+      orderBy: [desc(order.createdAt)],
+    });
+  }
+
+  // --- PASSO 3: Corrigir o total do contador para respeitar a pesquisa (paginação correta) ---
+  const countQuery = db
+    .select({ count: count() })
+    .from(order)
+    .leftJoin(user, eq(order.userId, user.id))
+    .$dynamic();
+
+  if (search) {
+    countQuery.where(
+      or(
+        ilike(order.id, `%${search}%`),
+        ilike(order.customerName, `%${search}%`),
+        ilike(user.name, `%${search}%`),
+        ilike(order.customerEmail, `%${search}%`),
+        ilike(user.email, `%${search}%`),
+      ),
+    );
+  }
+  const [totalResult] = await countQuery;
+
+  // --- PASSO 4: Formatar os dados para a Tabela e para o Card ---
+  const formattedOrders = fullOrders.map((o) => {
+    // Formata o array de itens para que o OrderCard entenda
+    const formattedItems = o.items.map((item: any) => ({
+      productId: item.productId,
+      productName: item.productName,
+      image: item.image || item.product?.images?.[0] || null,
+      currentImage: item.image || item.product?.images?.[0] || null,
+      quantity: item.quantity,
+      price: item.price,
+      description: item.product?.description || null,
+      dimensions: {
+        weight: item.product?.weight || null,
+        width: item.product?.width || null,
+        height: item.product?.height || null,
+        length: item.product?.length || null,
+      },
+    }));
+
+    return {
+      // Dados Básicos do Pedido
+      id: o.id,
+      status: o.status,
+      fulfillmentStatus: o.fulfillmentStatus,
+      paymentMethod: o.paymentMethod,
+      amount: o.amount,
+      shippingCost: o.shippingCost,
+      discountAmount: o.discountAmount,
+      couponId: o.couponId,
+      currency: o.currency,
+      createdAt: o.createdAt,
+      trackingCode: o.trackingCode,
+      estimatedDeliveryStart: o.estimatedDeliveryStart,
+      estimatedDeliveryEnd: o.estimatedDeliveryEnd,
+      shippingAddress: o.shippingAddress as unknown as ShippingAddress,
+
+      // Dados para a linha da Tabela (Mostra só o primeiro produto como resumo)
+      productImage: formattedItems[0]?.image || null,
+      productId: formattedItems[0]?.productId || null,
+      userName: o.customerName || o.user?.name || "Usuário Desconhecido",
+      userEmail: o.customerEmail || o.user?.email || "Sem Email",
+      userPhone: o.userPhone || o.user?.phoneNumber || null,
+      itemsCount: o.items.length,
+
+      // O mais importante: Os itens repassados ao Modal!
+      items: formattedItems,
+    };
+  });
 
   return (
     <div className="flex-1 space-y-8 px-2 pt-6">

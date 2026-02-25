@@ -9,6 +9,7 @@ import {
   Copy,
   CopyCheck,
   Image as ImageIcon,
+  Info,
   LucideIcon,
   Map,
   MapPin,
@@ -28,10 +29,12 @@ import { toast } from "sonner";
 import {
   deleteOrders,
   getAllOrderIds,
-  updateDeliveryDates, // IMPORTANTE: Importar a action de datas
+  updateDeliveryDates,
   updateOrderStatus,
   updateTrackingCode,
 } from "@/actions/admin-orders";
+// IMPORTANDO O CARD DO CLIENTE PARA REUTILIZAR
+import { OrderCard } from "@/components/account/order-card"; // Ajuste o caminho de importação conforme seu projeto!
 import {
   AlertDialog,
   AlertDialogAction,
@@ -81,12 +84,17 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+// Estendi a interface para incluir o que o OrderCard precisa
 interface OrderData {
   id: string;
   status: string;
   fulfillmentStatus: string;
   paymentMethod: string | null;
   amount: number;
+  shippingCost: number | null;
+  discountAmount?: number | null;
+  couponId?: string | null;
+  currency?: string | null;
   userName: string;
   userEmail: string;
   userPhone?: string | null;
@@ -94,7 +102,6 @@ interface OrderData {
   productId?: string | null;
   createdAt: Date;
   trackingCode?: string | null;
-  // Adicionar campos de data aqui se eles vierem do banco para a tabela
   estimatedDeliveryStart?: Date | null;
   estimatedDeliveryEnd?: Date | null;
   itemsCount: number;
@@ -107,6 +114,9 @@ interface OrderData {
     zipCode: string;
     phone?: string | null;
   };
+  // NOVO: Array de itens necessário para o OrderCard
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  items?: any[];
 }
 
 interface OrdersTableProps {
@@ -186,6 +196,13 @@ const formatPhoneNumber = (phone: string | null | undefined) => {
   return phone;
 };
 
+// --- SOLUÇÃO DO SCROLL ---
+const stopPropagation = (
+  e: React.UIEvent | React.TouchEvent | React.WheelEvent,
+) => {
+  e.stopPropagation();
+};
+
 export function OrdersTable({
   data,
   totalOrders,
@@ -200,6 +217,7 @@ export function OrdersTable({
 
   const [trackingModalOpen, setTrackingModalOpen] = useState(false);
   const [addressModalOpen, setAddressModalOpen] = useState(false);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false); // NOVO ESTADO
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const [currentOrderData, setCurrentOrderData] = useState<OrderData | null>(
@@ -207,7 +225,6 @@ export function OrdersTable({
   );
   const [trackingCodeInput, setTrackingCodeInput] = useState("");
 
-  // ESTADOS PARA AS DATAS DE ENTREGA
   const [startDateInput, setStartDateInput] = useState("");
   const [endDateInput, setEndDateInput] = useState("");
 
@@ -218,12 +235,6 @@ export function OrdersTable({
   useEffect(() => {
     setSelectedIds([]);
   }, [currentPage, limitParam, searchParams]);
-
-  const createPageURL = (pageNumber: number | string) => {
-    const params = new URLSearchParams(searchParams);
-    params.set("page", pageNumber.toString());
-    return `${pathname}?${params.toString()}`;
-  };
 
   // --- SELEÇÃO ---
   const handleSelectPage = (checked: boolean) => {
@@ -312,8 +323,6 @@ export function OrdersTable({
     setCurrentOrderData(order);
     setTrackingCodeInput(order.trackingCode || "");
 
-    // Preenche as datas se existirem, senão deixa vazio (mantendo o atual do banco se não mexer)
-    // Para o input date funcionar, o formato deve ser YYYY-MM-DD
     if (order.estimatedDeliveryStart) {
       setStartDateInput(
         new Date(order.estimatedDeliveryStart).toISOString().split("T")[0],
@@ -338,16 +347,19 @@ export function OrdersTable({
     setAddressModalOpen(true);
   };
 
+  const openDetailsModal = (order: OrderData) => {
+    setCurrentOrderData(order);
+    setDetailsModalOpen(true);
+  };
+
   const saveTracking = async () => {
     if (!currentOrderData) return;
 
-    // 1. Atualiza o código de rastreio
     const resTracking = await updateTrackingCode(
       currentOrderData.id,
       trackingCodeInput,
     );
 
-    // 2. Atualiza as datas de entrega (SE TIVEREM SIDO PREENCHIDAS)
     if (startDateInput && endDateInput) {
       await updateDeliveryDates(
         currentOrderData.id,
@@ -357,7 +369,6 @@ export function OrdersTable({
     }
 
     if (resTracking.success) {
-      // 3. Atualiza status para enviado
       await updateOrderStatus(currentOrderData.id, "shipped", "fulfillment");
 
       toast.success("Pedido atualizado e enviado!");
@@ -372,7 +383,7 @@ export function OrdersTable({
     if (!order?.shippingAddress) return "#";
     const { street, number, city, state, zipCode } = order.shippingAddress;
     const query = `${street}, ${number}, ${city} - ${state}, ${zipCode}`;
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    return `http://googleusercontent.com/maps.google.com/?q=${encodeURIComponent(query)}`;
   };
 
   const copyProductId = (id: string | null | undefined) => {
@@ -479,10 +490,10 @@ export function OrdersTable({
             {data.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={10}
                   className="h-96 text-center text-neutral-500"
                 >
-                  <div className="flex h-full w-full flex-col items-center justify-center gap-4 py-10 md:translate-x-25">
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-4 py-10">
                     <Image
                       src="/images/illustration.svg"
                       alt="Sem produtos"
@@ -697,6 +708,14 @@ export function OrdersTable({
                         >
                           <DropdownMenuLabel>Ações</DropdownMenuLabel>
                           <DropdownMenuSeparator />
+
+                          {/* Botão Ver Detalhes que abre o Modal do OrderCard */}
+                          <DropdownMenuItem
+                            onClick={() => openDetailsModal(order)}
+                          >
+                            <Info className="mr-2 h-4 w-4" /> Ver Detalhes
+                          </DropdownMenuItem>
+
                           <DropdownMenuItem
                             onClick={() => openAddressModal(order)}
                           >
@@ -772,14 +791,13 @@ export function OrdersTable({
         </Table>
       </div>
 
-      {/* MODAL DE RASTREIO E PRAZO DE ENTREGA (ATUALIZADO) */}
+      {/* MODAL DE RASTREIO E PRAZO DE ENTREGA (MANTIDO) */}
       <Dialog open={trackingModalOpen} onOpenChange={setTrackingModalOpen}>
         <DialogContent className="border-neutral-200 bg-white text-neutral-900 sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Prazo de Entrega e Rastreio</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {/* SEÇÃO DE DATAS */}
             <div>
               <h1 className="mb-2 text-sm font-medium text-neutral-700">
                 Datas do prazo de entrega:
@@ -841,6 +859,7 @@ export function OrdersTable({
         </DialogContent>
       </Dialog>
 
+      {/* MODAL DE ENDEREÇO (MANTIDO) */}
       <Dialog open={addressModalOpen} onOpenChange={setAddressModalOpen}>
         <DialogContent className="border-neutral-200 bg-white text-neutral-900 sm:max-w-md">
           <DialogHeader>
@@ -869,6 +888,45 @@ export function OrdersTable({
                 </>
               )}
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* NOVO: MODAL DE VER DETALHES COMPLETOS (USANDO O ORDER CARD) */}
+      <Dialog open={detailsModalOpen} onOpenChange={setDetailsModalOpen}>
+        <DialogContent
+          className="max-h-[90vh] w-full max-w-[95vw] overflow-hidden border-neutral-200 bg-white p-0 text-neutral-900 shadow-xl md:max-w-4xl"
+          onWheel={stopPropagation}
+          onTouchMove={stopPropagation}
+        >
+          <DialogHeader className="border-b border-neutral-100 p-6 pb-4">
+            <DialogTitle className="text-xl font-bold">
+              Detalhes Completos do Pedido
+            </DialogTitle>
+          </DialogHeader>
+
+          <div
+            className="scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-200 hover:scrollbar-thumb-neutral-300 flex-1 overflow-y-auto bg-neutral-50 p-4 sm:p-6"
+            onWheel={stopPropagation}
+            onTouchMove={stopPropagation}
+            data-lenis-prevent="true"
+            data-scroll-lock-scrollable
+            style={{
+              scrollbarWidth: "thin",
+              WebkitOverflowScrolling: "touch",
+            }}
+          >
+            {currentOrderData &&
+            currentOrderData.items &&
+            currentOrderData.items.length > 0 ? (
+              // Passamos os dados do currentOrderData formatados para o OrderCard
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              <OrderCard order={currentOrderData as any} />
+            ) : (
+              <div className="flex h-40 items-center justify-center text-neutral-500">
+                <p>Detalhes dos itens não encontrados para este pedido.</p>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

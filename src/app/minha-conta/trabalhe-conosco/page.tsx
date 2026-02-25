@@ -57,7 +57,7 @@ export default async function TrabalheConoscoPage() {
     <main className="min-h-screen bg-neutral-50">
       <Header />
 
-      <div className="container mx-auto px-4 py-20 md:py-32">
+      <div className="container mx-auto px-4 py-20 md:py-38">
         <div className="mx-auto max-w-2xl">
           <div className="mb-8 text-center">
             <h1 className="font-clash-display text-3xl font-bold text-neutral-900 md:text-4xl">

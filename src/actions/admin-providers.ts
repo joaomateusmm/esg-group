@@ -39,13 +39,17 @@ export async function approveProvider(providerId: string) {
 }
 
 // --- REJEITAR PRESTADOR ---
-export async function rejectProvider(providerId: string) {
+export async function rejectProvider(providerId: string, reason?: string) {
   try {
     await checkAdmin();
 
     await db
       .update(serviceProvider)
-      .set({ status: "rejected", updatedAt: new Date() })
+      .set({
+        status: "rejected",
+        rejectionReason: reason || null, // Salva o motivo
+        updatedAt: new Date(),
+      })
       .where(eq(serviceProvider.id, providerId));
 
     revalidatePath("/admin/prestadores");

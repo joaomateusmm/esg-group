@@ -1,5 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { AlertCircle, Briefcase, Clock, LayoutDashboard } from "lucide-react";
+import { revalidatePath } from "next/cache"; // <-- NOVO IMPORT
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -33,6 +34,24 @@ export default async function ProviderDashboardPage() {
       category: true,
     },
   });
+
+  // --- ACTION PARA SAIR DO SERVIÇO ATUAL ---
+  const handleLeaveService = async () => {
+    "use server";
+    const currentSession = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (currentSession?.user) {
+      // Deleta o perfil de prestador do usuário logado
+      await db
+        .delete(serviceProvider)
+        .where(eq(serviceProvider.userId, currentSession.user.id));
+
+      revalidatePath("/painel-prestador");
+      redirect("/painel-prestador");
+    }
+  };
 
   // 3. Lógica de Redirecionamento e Bloqueio baseada no Status
 
@@ -135,16 +154,46 @@ export default async function ProviderDashboardPage() {
 
       <div className="border-b border-neutral-200 bg-white">
         <div className="container mx-auto px-4 py-8 pt-38">
-          <div className="mb-2 flex items-center gap-3">
-            <LayoutDashboard className="h-6 w-6 text-orange-600" />
-            <h1 className="font-clash-display text-2xl font-bold text-neutral-900">
-              Painel do Prestador
-            </h1>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            {/* Título e Boas-vindas */}
+            <div>
+              <div className="mb-2 flex items-center gap-3">
+                <LayoutDashboard className="h-6 w-6 text-orange-600" />
+                <h1 className="font-clash-display text-2xl font-bold text-neutral-900">
+                  Painel do Prestador
+                </h1>
+              </div>
+              <p className="text-neutral-500">
+                Bem-vindo, {session.user.name}. Gerencie seus serviços de{" "}
+                <span className="font-medium text-neutral-900">
+                  {provider.category.name}
+                </span>
+                .
+              </p>
+            </div>
+
+            {/* Ações do Prestador */}
+            <div className="flex flex-wrap items-center gap-3">
+              <Link href="/minha-conta/trabalhe-conosco">
+                <Button
+                  variant="outline"
+                  className="border-orange-200 text-orange-700 hover:bg-orange-50"
+                >
+                  Prestar Novo Serviço
+                </Button>
+              </Link>
+
+              <form action={handleLeaveService}>
+                <Button
+                  type="submit"
+                  variant="outline"
+                  className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                >
+                  Sair do Serviço atual
+                </Button>
+              </form>
+            </div>
           </div>
-          <p className="text-neutral-500">
-            Bem-vindo, {session.user.name}. Gerencie seus serviços de{" "}
-            {provider.category.name}.
-          </p>
         </div>
       </div>
 
@@ -178,7 +227,7 @@ export default async function ProviderDashboardPage() {
         {/* Em Andamento */}
         {activeRequests.length > 0 && (
           <section>
-            <h2 className="mb-4 text-lg font-bold  text-neutral-900">
+            <h2 className="mb-4 text-lg font-bold text-neutral-900">
               Em Andamento
             </h2>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -189,7 +238,7 @@ export default async function ProviderDashboardPage() {
           </section>
         )}
 
-        {/* Histórico Recente (Últimos 5, por exemplo) */}
+        {/* Histórico Recente */}
         {historyRequests.length > 0 && (
           <section className="opacity-70 transition-opacity hover:opacity-100">
             <h2 className="mb-4 text-lg font-bold text-neutral-900">

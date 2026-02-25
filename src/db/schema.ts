@@ -121,7 +121,7 @@ export const product = pgTable("product", {
     .$onUpdate(() => new Date()),
 });
 
-// --- TABELA DE wwwwwwWS (MANTIDA) ---
+// --- TABELA DE REVIEWS (MANTIDA) ---
 
 export const review = pgTable("review", {
   id: text("id")
@@ -345,7 +345,7 @@ export const serviceCategory = pgTable("serviceCategory", {
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
 
-// --- 2. TABELA DE PRESTADORES DE SERVIÇO (O Usuário se candidatando) ---
+// --- 2. TABELA DE PRESTADORES DE SERVIÇO (ATUALIZADA) ---
 // Linka um User a uma Categoria de Serviço com detalhes profissionais
 export const serviceProvider = pgTable("serviceProvider", {
   id: text("id").primaryKey(),
@@ -362,7 +362,20 @@ export const serviceProvider = pgTable("serviceProvider", {
   portfolioUrl: text("portfolioUrl"), // Link externo ou imagens
   hourlyRate: integer("hourlyRate"), // Preço base por hora (em centavos) - Opcional
   phone: text("phone"), // Contato direto profissional
+
+  // Localização
   location: text("location"), // Cidade/Região de atendimento (Londres, etc)
+  detailedAddress: text("detailedAddress"), // Endereço residencial completo
+
+  // --- NOVOS CAMPOS ---
+  educationLevel: text("educationLevel"), // Nível de escolaridade
+  howDidYouHear: text("howDidYouHear"), // Como conheceu a ESG
+  referralName: text("referralName"), // Quem indicou (opcional)
+  localContacts: text("localContacts"), // Parentes/Conhecidos na região
+
+  // --- FOTOS DO DOCUMENTO (Frente e Verso) ---
+  documentUrlFront: text("documentUrlFront"), // URL da foto da FRENTE
+  documentUrlBack: text("documentUrlBack"), // URL da foto do VERSO
 
   // Aprovação do Admin
   status: text("status").default("pending").notNull(), // pending, approved, rejected
@@ -371,7 +384,6 @@ export const serviceProvider = pgTable("serviceProvider", {
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
-
 // --- 3. TABELA DE PEDIDOS DE SERVIÇO (O Cliente contratando) ---
 export const serviceOrder = pgTable("serviceOrder", {
   id: text("id").primaryKey(),

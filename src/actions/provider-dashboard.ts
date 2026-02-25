@@ -3,92 +3,156 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { z } from "zod";
 
 import { db } from "@/db";
-import { serviceProvider, serviceRequest } from "@/db/schema";
+import { serviceProvider } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
-// Função auxiliar para verificar se é o prestador dono do pedido
-async function checkProviderOwnership(requestId: string) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session) throw new Error("Não autenticado");
-
-  // Busca o ID do prestador ligado a este usuário
-  const provider = await db.query.serviceProvider.findFirst({
-    where: eq(serviceProvider.userId, session.user.id),
-  });
-
-  if (!provider) throw new Error("Conta de prestador não encontrada");
-
-  // Verifica se o pedido pertence a este prestador
-  const request = await db.query.serviceRequest.findFirst({
-    where: and(
-      eq(serviceRequest.id, requestId),
-      eq(serviceRequest.providerId, provider.id),
+// --- SCHEMA DE VALIDAÇÃO (SEM EXPORT) ---
+// Removemos o 'export' aqui para corrigir o erro do Next.js
+const providerSchema = z.object({
+  categoryId: z.string().min(1, "Selecione uma categoria."),
+  bio: z
+    .string()
+    .min(
+      20,
+      "Conte um pouco mais sobre sua experiência (mínimo 20 caracteres).",
     ),
-  });
+  experienceYears: z.number().min(0, "Experiência inválida."),
+  phone: z.string().min(10, "Telefone inválido."),
+  location: z.string().min(3, "Informe sua cidade ou região de atuação."),
 
-  if (!request) throw new Error("Pedido não encontrado ou acesso negado");
+  // --- NOVOS CAMPOS ADICIONADOS AQUI ---
+  detailedAddress: z.string().min(5, "Informe seu endereço completo."),
+  educationLevel: z.string().min(1, "Selecione sua escolaridade."),
+  howDidYouHear: z.string().min(1, "Informe como nos conheceu."),
+  referralName: z.string().optional(),
+  localContacts: z
+    .string()
+    .min(3, "Informe o nome de pelo menos um contato na região."),
+  documentUrlFront: z
+    .string()
+    .min(1, "É necessário enviar a FRENTE do documento."),
+  documentUrlBack: z
+    .string()
+    .min(1, "É necessário enviar o VERSO do documento."),
 
-  return { request, provider };
-}
+  portfolioUrl: z.string().optional(),
+});
 
-// --- ACEITAR PEDIDO ---
-export async function acceptRequest(requestId: string) {
+type ProviderFormValues = z.infer<typeof providerSchema>;
+
+export async function registerProvider(data: ProviderFormValues) {
   try {
-    await checkProviderOwnership(requestId);
+    // 1. Autenticação
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
 
-    await db
-      .update(serviceRequest)
-      .set({ status: "accepted", updatedAt: new Date() })
-      .where(eq(serviceRequest.id, requestId));
+    if (!session) {
+      return { success: false, error: "Você precisa estar logado." };
+    }
 
-    revalidatePath("/painel-prestador");
+    // 2. Validação Zod
+    const parsed = providerSchema.safeParse(data);
+    if (!parsed.success) {
+      return { success: false, error: "Dados inválidos." };
+    }
+
+    // Extraindo TODOS os campos validados
+    const {
+      categoryId,
+      bio,
+      experienceYears,
+      phone,
+      location,
+      detailedAddress,
+      educationLevel,
+      howDidYouHear,
+      referralName,
+      localContacts,
+      documentUrlFront,
+      documentUrlBack,
+      portfolioUrl,
+    } = parsed.data;
+
+    // 3. Verificar se já é prestador NESTA categoria
+    const existing = await db.query.serviceProvider.findFirst({
+      where: and(
+        eq(serviceProvider.userId, session.user.id),
+        eq(serviceProvider.categoryId, categoryId),
+      ),
+    });
+
+    if (existing) {
+      return {
+        success: false,
+        error: "Você já tem um cadastro para esta categoria.",
+      };
+    }
+
+    // 4. Inserir no Banco com os novos campos
+    await db.insert(serviceProvider).values({
+      id: crypto.randomUUID(),
+      userId: session.user.id,
+      categoryId,
+      bio,
+      experienceYears,
+      phone,
+      location,
+      detailedAddress,
+      educationLevel,
+      howDidYouHear,
+      referralName: referralName || null,
+      localContacts,
+      documentUrlFront,
+      documentUrlBack,
+
+      portfolioUrl: portfolioUrl || null,
+      status: "pending", // Começa pendente de aprovação
+    });
+
+    revalidatePath("/admin/prestadores"); // Admin verá o novo cadastro
+    revalidatePath("/conta");
+
     return {
       success: true,
-      message: "Pedido aceito! Entre em contato com o cliente.",
+      message: "Candidatura enviada! Aguarde a aprovação.",
+    };
+  } catch (error) {
+    console.error("Erro ao registrar prestador:", error);
+    return { success: false, error: "Erro interno ao salvar candidatura." };
+  }
+}
+
+export async function resetProviderApplication() {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session) return { success: false, error: "Não autenticado." };
+
+    // Só permite deletar se estiver REJEITADO
+    const provider = await db.query.serviceProvider.findFirst({
+      where: eq(serviceProvider.userId, session.user.id),
+    });
+
+    if (!provider || provider.status !== "rejected") {
+      return { success: false, error: "Ação não permitida." };
+    }
+
+    // Deleta o registro antigo
+    await db.delete(serviceProvider).where(eq(serviceProvider.id, provider.id));
+
+    revalidatePath("/minha-conta/trabalhe-conosco");
+    return {
+      success: true,
+      message: "Agora você pode enviar uma nova candidatura.",
     };
   } catch (error) {
     console.error(error);
-    return { success: false, error: "Erro ao aceitar pedido." };
-  }
-}
-
-// --- RECUSAR PEDIDO ---
-export async function rejectRequest(requestId: string) {
-  try {
-    await checkProviderOwnership(requestId);
-
-    await db
-      .update(serviceRequest)
-      .set({ status: "rejected", updatedAt: new Date() })
-      .where(eq(serviceRequest.id, requestId));
-
-    revalidatePath("/painel-prestador");
-    return { success: true, message: "Pedido recusado." };
-  } catch (error) {
-    console.error(error);
-    return { success: false, error: "Erro ao recusar pedido." };
-  }
-}
-
-// --- FINALIZAR PEDIDO (Opcional, para depois) ---
-export async function completeRequest(requestId: string) {
-  try {
-    await checkProviderOwnership(requestId);
-
-    await db
-      .update(serviceRequest)
-      .set({ status: "completed", updatedAt: new Date() })
-      .where(eq(serviceRequest.id, requestId));
-
-    revalidatePath("/painel-prestador");
-    return { success: true, message: "Serviço marcado como concluído!" };
-  } catch (error) {
-    console.error(error);
-    return { success: false, error: "Erro ao finalizar pedido." };
+    return { success: false, error: "Erro ao resetar candidatura." };
   }
 }

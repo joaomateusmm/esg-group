@@ -10,7 +10,6 @@ import { serviceProvider } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 // --- SCHEMA DE VALIDAÇÃO (SEM EXPORT) ---
-// Removemos o 'export' aqui para corrigir o erro do Next.js
 const providerSchema = z.object({
   categoryId: z.string().min(1, "Selecione uma categoria."),
   bio: z
@@ -23,6 +22,21 @@ const providerSchema = z.object({
   phone: z.string().min(10, "Telefone inválido."),
   location: z.string().min(3, "Informe sua cidade ou região de atuação."),
   portfolioUrl: z.string().optional(),
+
+  // --- NOVOS CAMPOS ADICIONADOS AQUI ---
+  detailedAddress: z.string().min(5, "Informe seu endereço completo."),
+  educationLevel: z.string().min(1, "Selecione sua escolaridade."),
+  howDidYouHear: z.string().min(1, "Informe como nos conheceu."),
+  referralName: z.string().optional(),
+  localContacts: z
+    .string()
+    .min(3, "Informe o nome de pelo menos um contato na região."),
+  documentUrlFront: z
+    .string()
+    .min(1, "É necessário enviar a FRENTE do documento."),
+  documentUrlBack: z
+    .string()
+    .min(1, "É necessário enviar o VERSO do documento."),
 });
 
 type ProviderFormValues = z.infer<typeof providerSchema>;
@@ -41,11 +55,26 @@ export async function registerProvider(data: ProviderFormValues) {
     // 2. Validação Zod
     const parsed = providerSchema.safeParse(data);
     if (!parsed.success) {
+      console.error("Erro de validação Zod:", parsed.error.flatten());
       return { success: false, error: "Dados inválidos." };
     }
 
-    const { categoryId, bio, experienceYears, phone, location, portfolioUrl } =
-      parsed.data;
+    // Extraindo TODOS os campos do parsed.data
+    const {
+      categoryId,
+      bio,
+      experienceYears,
+      phone,
+      location,
+      portfolioUrl,
+      detailedAddress,
+      educationLevel,
+      howDidYouHear,
+      referralName,
+      localContacts,
+      documentUrlFront,
+      documentUrlBack,
+    } = parsed.data;
 
     // 3. Verificar se já é prestador NESTA categoria
     const existing = await db.query.serviceProvider.findFirst({
@@ -62,7 +91,7 @@ export async function registerProvider(data: ProviderFormValues) {
       };
     }
 
-    // 4. Inserir no Banco
+    // 4. Inserir no Banco (COM OS NOVOS CAMPOS)
     await db.insert(serviceProvider).values({
       id: crypto.randomUUID(),
       userId: session.user.id,
@@ -72,11 +101,21 @@ export async function registerProvider(data: ProviderFormValues) {
       phone,
       location,
       portfolioUrl: portfolioUrl || null,
+
+      // Salvando os novos campos no DB
+      detailedAddress,
+      educationLevel,
+      howDidYouHear,
+      referralName: referralName || null,
+      localContacts,
+      documentUrlFront,
+      documentUrlBack,
+
       status: "pending", // Começa pendente de aprovação
     });
 
     revalidatePath("/admin/prestadores"); // Admin verá o novo cadastro
-    revalidatePath("/conta");
+    revalidatePath("/minha-conta");
 
     return {
       success: true,

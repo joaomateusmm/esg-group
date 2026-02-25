@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Send } from "lucide-react";
+import { Loader2, Send, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -29,7 +29,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 
-// Schema local (igual ao da action, mas adaptado pro form)
+// Schema local
 const formSchema = z.object({
   description: z.string().min(10, "Descreva o problema com mais detalhes."),
   address: z.string().min(5, "Endereço obrigatório."),
@@ -50,6 +50,15 @@ interface HireServiceFormProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+// Opções de textos pré-prontos
+const PRESET_DESCRIPTIONS = [
+  "Preciso montar móveis recém comprados (guarda-roupa, cama, etc).",
+  "Preciso de reparos gerais em casa (troca de torneira, chuveiro, etc).",
+  "Preciso de ajuda para pintura de paredes internas.",
+  "Preciso de uma limpeza pesada/pós-obra na minha residência.",
+  "Preciso de instalação de suportes, quadros ou prateleiras na parede.",
+];
 
 export function HireServiceForm({
   provider,
@@ -95,6 +104,13 @@ export function HireServiceForm({
     }
   };
 
+  // Função para preencher a descrição
+  const handlePresetClick = (text: string) => {
+    // Pega o valor atual para não apagar se o usuário já tiver digitado algo,
+    // ou apenas substitui. Aqui vou fazer substituir, mas pode adaptar para concatenar.
+    form.setValue("description", text, { shouldValidate: true });
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-lg border-neutral-200 bg-white text-neutral-900">
@@ -118,7 +134,9 @@ export function HireServiceForm({
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>O que você precisa?</FormLabel>
+                  <FormLabel className="flex items-center justify-between">
+                    <span>O que você precisa?</span>
+                  </FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Ex: Preciso montar um guarda-roupa de 6 portas da IKEA..."
@@ -131,6 +149,26 @@ export function HireServiceForm({
               )}
             />
 
+            {/* BOTOES DE PREENCHIMENTO RÁPIDO */}
+            <div className="space-y-2">
+              <span className="flex items-center gap-1 text-xs font-medium text-neutral-500">
+                Preenchimento rápido:
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {PRESET_DESCRIPTIONS.map((text, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handlePresetClick(text)}
+                    className="cursor-pointer rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs text-orange-700 transition-colors hover:bg-orange-100 hover:text-orange-800 active:scale-95"
+                  >
+                    {/* Exibe uma versão encurtada no botão para não poluir muito */}
+                    {text.length > 35 ? text.substring(0, 35) + "..." : text}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -141,7 +179,7 @@ export function HireServiceForm({
                     <FormControl>
                       <Input
                         placeholder="+44 7000 000000"
-                        className="border-neutral-200 bg-neutral-50"
+                        className="border-neutral-200 bg-neutral-50 focus:border-orange-500"
                         {...field}
                       />
                     </FormControl>
@@ -158,7 +196,7 @@ export function HireServiceForm({
                     <FormControl>
                       <Input
                         placeholder="Rua, Número, CEP"
-                        className="border-neutral-200 bg-neutral-50"
+                        className="border-neutral-200 bg-neutral-50 focus:border-orange-500"
                         {...field}
                       />
                     </FormControl>
@@ -222,7 +260,7 @@ export function HireServiceForm({
                           <Input
                             type="number"
                             placeholder="Min (£)"
-                            className="border-neutral-200 bg-neutral-50"
+                            className="border-neutral-200 bg-neutral-50 focus:border-orange-500"
                             {...field}
                           />
                         </FormControl>
@@ -239,7 +277,7 @@ export function HireServiceForm({
                           <Input
                             type="number"
                             placeholder="Max (£)"
-                            className="border-neutral-200 bg-neutral-50"
+                            className="border-neutral-200 bg-neutral-50 focus:border-orange-500"
                             {...field}
                           />
                         </FormControl>
