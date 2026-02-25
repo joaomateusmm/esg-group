@@ -373,23 +373,32 @@ export function CheckoutForm({
         <div className="rounded-xl border border-neutral-200 bg-white p-6">
           <h2 className="mb-4 text-lg font-bold text-neutral-900">Pagamento</h2>
           <div className="mb-6 flex w-full flex-col gap-3 sm:flex-row">
+            {/* --- BOTÃO CARTÃO (DESATIVADO) --- */}
             <button
               type="button"
-              onClick={() => setPaymentMethod("card")}
+              disabled={true} // Desativa a interação
+              onClick={() => setPaymentMethod("card")} // Lógica mantida (mas inativa)
               className={cn(
-                "flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-5 py-3 font-medium transition-all duration-200",
-                paymentMethod === "card"
-                  ? "bg-orange-50 text-orange-700 shadow-sm ring-1 ring-orange-600"
-                  : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900",
+                "flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-neutral-100 px-5 py-3 font-medium text-neutral-400 opacity-70 transition-all duration-200",
+                // Forcei o estilo visual de desativado, ignorando a seleção atual
               )}
             >
-              <CreditCard className="h-4 w-4" /> Pagar Agora
+              <CreditCard className="h-4 w-4" />
+              <span className="flex flex-col">
+                <span className="text-sm font-normal">Pagar Agora</span>
+                <span className="text-xs font-normal opacity-80">
+                  (Em breve)
+                </span>
+              </span>
             </button>
+
+            {/* --- BOTÃO PAGAR NA ENTREGA (ATIVO) --- */}
             <button
               type="button"
               onClick={() => setPaymentMethod("cod")}
               className={cn(
                 "flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-5 py-3 font-medium transition-all duration-200",
+                // Mantive a lógica visual original para este botão
                 paymentMethod === "cod"
                   ? "bg-orange-50 text-orange-700 shadow-sm ring-1 ring-orange-600"
                   : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900",
