@@ -4,12 +4,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
+// ATUALIZAÇÃO: Adicionado o 'completed' e ajustado o nome do 'delivered'
 const TABS = [
   { id: "all", label: "Tudo" },
   { id: "pending", label: "A Pagar" },
-  { id: "processing", label: "Preparando" }, // Mudado de 'paid' para 'processing'
+  { id: "processing", label: "Preparando" },
   { id: "shipped", label: "A Caminho" },
-  { id: "delivered", label: "Finalizado" },
+  { id: "delivered", label: "Entregue" }, // Antes estava "Finalizado", agora é o status de quando chega na casa
+  { id: "completed", label: "Concluído" }, // NOVO STATUS: Quando o cliente clica em confirmar
   { id: "canceled", label: "Cancelado" },
 ];
 

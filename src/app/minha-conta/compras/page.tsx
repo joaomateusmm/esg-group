@@ -50,7 +50,12 @@ export default async function MyPurchasesPage({
       return o.fulfillmentStatus === "shipped";
     }
     if (currentTab === "delivered") {
-      return o.fulfillmentStatus === "delivered";
+      // CORREÇÃO: "Entregue" (delivered) mostra os pedidos entregues, MAS que ainda NÃO foram concluídos
+      return o.fulfillmentStatus === "delivered" && o.status !== "completed";
+    }
+    if (currentTab === "completed") {
+      // NOVO: Aba "Concluído" (completed) mostra apenas pedidos que o cliente clicou em confirmar
+      return o.status === "completed";
     }
     if (currentTab === "canceled") {
       return (

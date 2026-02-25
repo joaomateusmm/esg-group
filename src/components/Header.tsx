@@ -11,13 +11,11 @@ import {
   LifeBuoy, // Para suporte
   Loader2,
   LogOut,
-  Moon,
   Package,
   Search,
   ShieldQuestionMark,
   ShoppingCart,
   Star,
-  Sun,
   Truck,
   User,
   UserRound,
@@ -100,7 +98,6 @@ function HeaderIconButton({
 // --- CONTEÚDO DO HEADER ---
 export function HeaderContent() {
   const [mounted, setMounted] = useState(false);
-  const { setTheme, theme } = useTheme();
 
   // ESTADOS UNIFICADOS
   const [categories, setCategories] = useState<CategoryLink[]>([]);
@@ -231,10 +228,6 @@ export function HeaderContent() {
     await authClient.signOut({
       fetchOptions: { onSuccess: () => router.refresh() },
     });
-  };
-
-  const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
   };
 
   if (!mounted) return null;

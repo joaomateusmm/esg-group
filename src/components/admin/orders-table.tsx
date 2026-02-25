@@ -4,7 +4,6 @@ import {
   AlertCircle,
   Banknote,
   CheckCircle2,
-  ChevronDown,
   Clock,
   Copy,
   CopyCheck,
@@ -21,7 +20,6 @@ import {
   XCircle,
 } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -205,7 +203,6 @@ const stopPropagation = (
 
 export function OrdersTable({
   data,
-  totalOrders,
   limitParam,
 }: OrdersTableProps) {
   const router = useRouter();
@@ -228,9 +225,25 @@ export function OrdersTable({
   const [startDateInput, setStartDateInput] = useState("");
   const [endDateInput, setEndDateInput] = useState("");
 
+  // Função para gerar o código aleatório
+  const generateTrackingCode = () => {
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const numbers = "0123456789";
+
+    let code = "";
+    // 2 letras iniciais
+    for (let i = 0; i < 2; i++)
+      code += letters.charAt(Math.floor(Math.random() * letters.length));
+    // 9 números
+    for (let i = 0; i < 9; i++)
+      code += numbers.charAt(Math.floor(Math.random() * numbers.length));
+    // Final BR
+    code += "BR";
+
+    return code;
+  };
+
   const currentPage = Number(searchParams.get("page")) || 1;
-  const limit = limitParam === "all" ? totalOrders : Number(limitParam) || 10;
-  const totalPages = Math.ceil(totalOrders / limit);
 
   useEffect(() => {
     setSelectedIds([]);
@@ -355,11 +368,21 @@ export function OrdersTable({
   const saveTracking = async () => {
     if (!currentOrderData) return;
 
+    // LÓGICA NOVA: Se estiver vazio, gera um automático
+    let finalTrackingCode = trackingCodeInput.trim();
+    if (!finalTrackingCode) {
+      finalTrackingCode = generateTrackingCode();
+      // Atualiza o state visualmente para o admin ver o que foi gerado
+      setTrackingCodeInput(finalTrackingCode);
+    }
+
+    // 1. Atualiza o código de rastreio com o código final
     const resTracking = await updateTrackingCode(
       currentOrderData.id,
-      trackingCodeInput,
+      finalTrackingCode,
     );
 
+    // 2. Atualiza as datas de entrega (SE TIVEREM SIDO PREENCHIDAS)
     if (startDateInput && endDateInput) {
       await updateDeliveryDates(
         currentOrderData.id,
@@ -369,9 +392,10 @@ export function OrdersTable({
     }
 
     if (resTracking.success) {
+      // 3. Atualiza status para enviado
       await updateOrderStatus(currentOrderData.id, "shipped", "fulfillment");
 
-      toast.success("Pedido atualizado e enviado!");
+      toast.success(`Pedido enviado! Rastreio: ${finalTrackingCode}`);
       setTrackingModalOpen(false);
       router.refresh();
     } else {
@@ -545,7 +569,7 @@ export function OrdersTable({
                         className="mt-1 h-5 px-1.5 text-[10px] font-normal"
                       >
                         {order.paymentMethod === "cod"
-                          ? "Na Entrega"
+                          ? "$$ Na Entrega"
                           : order.paymentMethod === "free"
                             ? "Grátis"
                             : "Cartão"}
@@ -834,13 +858,14 @@ export function OrdersTable({
                 Código de rastreio:
               </h1>
               <Input
-                placeholder="Ex: AA123456789BR"
+                placeholder="Deixe em branco para gerar automático"
                 value={trackingCodeInput}
                 onChange={(e) => setTrackingCodeInput(e.target.value)}
                 className="border-neutral-200 bg-neutral-50 text-neutral-900 placeholder:text-neutral-400 focus:border-orange-500 focus:ring-orange-500"
               />
               <p className="mt-2 text-xs text-neutral-500">
-                Ao salvar, o status mudará automaticamente para
+                Se deixar o campo vazio, a plataforma criará um código aleatório
+                (Ex: AA123456789BR). Ao salvar, o pedido mudará para
                 &quot;Enviado&quot;.
               </p>
             </div>

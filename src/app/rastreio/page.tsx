@@ -1,7 +1,6 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  Banknote,
   CheckCircle2,
   Clock,
   MapPin,
@@ -10,8 +9,6 @@ import {
   Truck,
 } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { getOrderTracking } from "@/actions/tracking";
 import { Header } from "@/components/Header";

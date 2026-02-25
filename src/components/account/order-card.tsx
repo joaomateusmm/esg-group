@@ -11,14 +11,17 @@ import {
   Copy,
   Eye,
   EyeOff,
+  Loader2,
   MapPin,
   Store,
-  Ticket, // Adicionado ícone de cupom
+  Ticket,
   Truck,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import { confirmOrderDelivery } from "@/actions/order-actions";
 import CopyIdButton from "@/components/CopyButton";
@@ -54,16 +57,15 @@ interface OrderProps {
   id: string;
   status: string;
   fulfillmentStatus: string;
-  amount: number; // Valor Total Pago (Final)
+  amount: number;
   shippingCost: number | null;
-  discountAmount?: number | null; // Valor do desconto aplicado
-  couponId?: string | null; // ID ou Código do cupom (se disponível via join)
+  discountAmount?: number | null;
+  couponId?: string | null;
   createdAt: Date;
   trackingCode?: string | null;
   paymentMethod?: string | null;
   currency?: string | null;
 
-  // NOVOS CAMPOS: Datas de entrega
   estimatedDeliveryStart?: Date | null;
   estimatedDeliveryEnd?: Date | null;
 
@@ -100,6 +102,8 @@ const getStatusLabel = (
 
   if (status === "canceled" || status === "failed") return "CANCELADO";
 
+  if (status === "completed") return "CONCLUÍDO";
+
   if (paymentMethod === "cod") {
     if (fulfillmentStatus === "idle")
       return "PAGAMENTO NA ENTREGA - Processando Pedido";
@@ -116,7 +120,6 @@ const getStatusLabel = (
   return status;
 };
 
-// Helper para formatar o range de datas de entrega
 const getDeliveryRangeLabel = (start?: Date | null, end?: Date | null) => {
   if (!start || !end) return null;
 
@@ -126,8 +129,11 @@ const getDeliveryRangeLabel = (start?: Date | null, end?: Date | null) => {
   return `Data prevista para entrega: ${startStr} - ${endStr}`;
 };
 
-// Helper para obter a descrição baseada no status
-const getDeliveryDescription = (fulfillmentStatus: string) => {
+const getDeliveryDescription = (fulfillmentStatus: string, status: string) => {
+  if (status === "completed") {
+    return "O seu pedido foi recebido e concluído. Obrigado por comprar com a ESG Group!";
+  }
+
   switch (fulfillmentStatus) {
     case "shipped":
       return "O seu pedido está a caminho do destino final.";
@@ -140,10 +146,33 @@ const getDeliveryDescription = (fulfillmentStatus: string) => {
 };
 
 export function OrderCard({ order }: { order: OrderProps }) {
+  const router = useRouter();
   const [showAddress, setShowAddress] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
-  const handleConfirmDelivery = async () => {
-    await confirmOrderDelivery(order.id);
+  const handleConfirmDelivery = () => {
+    startTransition(async () => {
+      try {
+        // Se a sua action não for muito tipada, não tenta ler propriedades inexistentes nela no frontend.
+        // Apenas assume sucesso caso ela não "jogue" um throw Error ou, se retornar um payload que você conheça, você faz as validações
+        // Supondo que a sua action retorne { success: boolean, message?: string }
+        const res = (await confirmOrderDelivery(order.id)) as {
+          success?: boolean;
+          message?: string;
+          error?: string;
+        };
+
+        if (res && res.error) {
+          toast.error(res.error);
+        } else {
+          toast.success("Entrega confirmada com sucesso!");
+          router.refresh();
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error("Ocorreu um erro inesperado.");
+      }
+    });
   };
 
   const getFormattedAddress = () => {
@@ -170,7 +199,6 @@ export function OrderCard({ order }: { order: OrderProps }) {
     (order.fulfillmentStatus === "delivered" || order.status === "completed") &&
     order.items.length > 0;
 
-  // Calcula o texto da data
   let deliveryStart = order.estimatedDeliveryStart;
   let deliveryEnd = order.estimatedDeliveryEnd;
 
@@ -184,17 +212,17 @@ export function OrderCard({ order }: { order: OrderProps }) {
   }
 
   const deliveryRange = getDeliveryRangeLabel(deliveryStart, deliveryEnd);
-  const deliveryDescription = getDeliveryDescription(order.fulfillmentStatus);
+  const deliveryDescription = getDeliveryDescription(
+    order.fulfillmentStatus,
+    order.status,
+  );
 
-  // VERIFICAÇÃO SE É "AGUARDANDO PAGAMENTO" (PENDENTE E NÃO COD)
   const isPendingPayment =
     order.status === "pending" && order.paymentMethod !== "cod";
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
-      {/* COLUNA ESQUERDA: CARD DO PEDIDO */}
       <Card className="flex-1 overflow-hidden border-0 bg-white py-0 shadow-sm ring-1 ring-neutral-900/5 transition-shadow hover:shadow-md">
-        {/* Header do Card */}
         <div className="flex items-center justify-between border-b border-neutral-100 bg-white px-6 py-3">
           <div className="flex items-center justify-center gap-3">
             <span className="rounded bg-orange-600 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-white">
@@ -233,31 +261,34 @@ export function OrderCard({ order }: { order: OrderProps }) {
           </div>
         </div>
 
-        {/* Lista de Itens */}
         <div className="flex flex-col gap-6 px-6">
           <div className="rounded-md bg-orange-50 p-3">
-            {/* LÓGICA DE EXIBIÇÃO DA BOX LARANJA */}
             {isPendingPayment ? (
-              // SE FOR AGUARDANDO PAGAMENTO
               <div className="font-montserrat flex flex-col items-start justify-center gap-1 text-sm font-semibold text-orange-600">
                 <span>Aguardando a confirmação do pagamento</span>
                 <p className="font-montserrat text-[11px] font-normal text-neutral-400"></p>
               </div>
             ) : (
-              // SE FOR OUTRO STATUS (PAGO, COD, ENVIADO, ETC)
               <>
-                {deliveryRange && order.fulfillmentStatus !== "delivered" && (
-                  <div className="font-montserrat flex flex-col items-start justify-center gap-1 text-sm font-semibold text-orange-600">
-                    <span>{deliveryRange}</span>
-                    <p className="font-montserrat text-[11px] font-normal text-neutral-400">
-                      {deliveryDescription}
-                    </p>
-                  </div>
-                )}
+                {deliveryRange &&
+                  order.fulfillmentStatus !== "delivered" &&
+                  order.status !== "completed" && (
+                    <div className="font-montserrat flex flex-col items-start justify-center gap-1 text-sm font-semibold text-orange-600">
+                      <span>{deliveryRange}</span>
+                      <p className="font-montserrat text-[11px] font-normal text-neutral-400">
+                        {deliveryDescription}
+                      </p>
+                    </div>
+                  )}
 
-                {order.fulfillmentStatus === "delivered" && (
+                {(order.fulfillmentStatus === "delivered" ||
+                  order.status === "completed") && (
                   <div className="font-montserrat flex flex-col items-start justify-center gap-1 text-sm font-semibold text-green-600">
-                    <span>Pedido Entregue</span>
+                    <span>
+                      {order.status === "completed"
+                        ? "Pedido Concluído"
+                        : "Pedido Entregue"}
+                    </span>
                     <p className="font-montserrat text-[11px] font-normal text-neutral-400">
                       {deliveryDescription}
                     </p>
@@ -320,7 +351,6 @@ export function OrderCard({ order }: { order: OrderProps }) {
           ))}
         </div>
 
-        {/* Endereço */}
         {order.shippingAddress && (
           <div className="flex items-center justify-between gap-2 border-t border-neutral-100 bg-neutral-50 px-6 py-3 text-xs text-neutral-600">
             <div className="flex items-center gap-2 overflow-hidden">
@@ -346,10 +376,8 @@ export function OrderCard({ order }: { order: OrderProps }) {
           </div>
         )}
 
-        {/* Footer do Card */}
         <div className="border-y border-dashed border-neutral-200 bg-[#fffaf5] px-6 py-4">
           <div className="mb-4 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
-            {/* LADO ESQUERDO: DATA DO PEDIDO E PREVISÃO */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2 text-xs text-neutral-500">
                 <Clock className="h-3.5 w-3.5" />
@@ -370,7 +398,6 @@ export function OrderCard({ order }: { order: OrderProps }) {
             </div>
 
             <div className="flex flex-col items-end gap-1">
-              {/* Frete */}
               <div className="flex items-center gap-2 text-xs">
                 <Truck className="h-3.5 w-3.5 text-neutral-800" />
                 <span className="text-neutral-800">Frete:</span>
@@ -381,7 +408,6 @@ export function OrderCard({ order }: { order: OrderProps }) {
                 </span>
               </div>
 
-              {/* Desconto (NOVO) */}
               {order.discountAmount && order.discountAmount > 0 && (
                 <div className="flex items-center gap-2 text-xs">
                   <Ticket className="h-3.5 w-3.5 text-neutral-800" />
@@ -392,7 +418,6 @@ export function OrderCard({ order }: { order: OrderProps }) {
                 </div>
               )}
 
-              {/* Total Final */}
               <div className="mt-1 flex items-center gap-2 border-t border-dashed border-orange-200 pt-1">
                 <span className="text-sm font-medium text-neutral-600">
                   Total pago:
@@ -404,9 +429,7 @@ export function OrderCard({ order }: { order: OrderProps }) {
             </div>
           </div>
 
-          {/* BARRA INFERIOR: ID + AÇÕES */}
           <div className="flex flex-col gap-4 border-t border-dotted border-orange-100/50 pt-3 md:flex-row md:items-center md:justify-between">
-            {/* NOVO: ID DO PEDIDO COM COPY (ALINHADO À ESQUERDA) */}
             <div className="flex items-center justify-center gap-2 text-neutral-800">
               <span className="text-xs font-medium tracking-wider uppercase">
                 ID:
@@ -417,7 +440,6 @@ export function OrderCard({ order }: { order: OrderProps }) {
               <CopyIdButton id={order.id} />
             </div>
 
-            {/* BOTÕES DE AÇÃO (ALINHADOS À DIREITA) */}
             <div className="flex flex-wrap items-center gap-3">
               {order.status === "pending" &&
                 order.fulfillmentStatus === "idle" && (
@@ -431,28 +453,33 @@ export function OrderCard({ order }: { order: OrderProps }) {
 
               {order.status === "pending" && order.paymentMethod !== "cod" && (
                 <Link href={`/checkout?orderId=${order.id}`}>
-                  {" "}
-                  {/* Link correto para pagar este pedido */}
                   <Button className="h-9 bg-orange-600 px-5 text-xs font-bold text-white shadow-sm hover:bg-orange-700">
                     Pagar Agora
                   </Button>
                 </Link>
               )}
 
-              {order.fulfillmentStatus === "shipped" && (
-                <Button
-                  onClick={handleConfirmDelivery}
-                  className="h-9 bg-orange-600 px-5 text-xs font-medium text-white shadow-sm hover:bg-orange-700"
-                >
-                  Confirmar Entrega
-                </Button>
-              )}
+              {/* LÓGICA ATUALIZADA: Só mostra se a entrega foi feita E o status ainda NÃO é concluído */}
+              {order.fulfillmentStatus === "delivered" &&
+                order.status !== "completed" && (
+                  <Button
+                    onClick={handleConfirmDelivery}
+                    disabled={isPending}
+                    className="h-9 bg-orange-600 px-5 text-sm font-medium text-white shadow-sm hover:bg-orange-700"
+                  >
+                    {isPending && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    {isPending ? "Confirmando..." : "Confirmar Entrega"}
+                  </Button>
+                )}
 
+              {/* Botão "Comprar Novamente" só aparece quando está "completed" ou o fulfillmentStatus for delivered */}
               {(order.fulfillmentStatus === "delivered" ||
                 order.status === "completed") && (
                 <Button
                   variant="outline"
-                  className="h-9 border-orange-200 bg-white px-4 text-xs font-medium text-orange-600 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700"
+                  className="h-9 border-orange-200 bg-white px-4 text-sm font-medium text-orange-600 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700"
                 >
                   Comprar Novamente
                 </Button>

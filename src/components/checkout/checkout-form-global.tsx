@@ -71,7 +71,8 @@ export function CheckoutForm({
   const [couponInput, setCouponInput] = useState("");
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "cod">("card");
+  // CORREÇÃO AQUI: Tipagem correta e valor inicial "cod"
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "cod">("cod");
   const [isAddressComplete, setIsAddressComplete] = useState(false);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -316,7 +317,6 @@ export function CheckoutForm({
         }
 
         if (result.success) {
-          clearCart();
           router.push(`/checkout/sucesso?orderId=${result.orderId}`);
         }
       } catch (error) {

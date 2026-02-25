@@ -24,7 +24,7 @@ const initialState = {
 
 const MAX_CHARS = 155;
 
-export function ProductReviewForm({
+export function OrderReviewForm({
   productId,
   onSuccess,
 }: ProductReviewFormProps) {
@@ -178,7 +178,7 @@ export function ProductReviewForm({
             <Textarea
               id="comment"
               name="comment"
-              placeholder="O que você achou do produto? Conte detalhes..."
+              placeholder="O que você achou da experiência do pedido? Conte detalhes..."
               className={cn(
                 "min-h-[100px] resize-none border-neutral-200 bg-white text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-orange-500 focus:ring-1 focus:ring-orange-500",
                 localError &&
@@ -247,10 +247,10 @@ export function ProductReviewForm({
               </button>
               <button
                 type="button"
-                onClick={() => handleQuickComment("Gostei da loja.")}
+                onClick={() => handleQuickComment("Fácil e rápido, adorei!")}
                 className="cursor-pointer rounded-full bg-orange-100 px-3 py-1.5 text-xs font-medium text-orange-700 transition-colors hover:bg-orange-200 active:scale-95"
               >
-                Produto chegou ótimo, obrigado.
+                Fácil e rápido, adorei!
               </button>
             </div>
           </div>

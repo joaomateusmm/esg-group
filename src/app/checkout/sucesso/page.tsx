@@ -10,20 +10,29 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation"; // Importei useRouter
-import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { getOrderIdByPaymentIntent } from "@/actions/checkout";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { OrderReviewForm } from "@/components/order-review-form";
 import { Button } from "@/components/ui/button";
+// Importações do Modal (shadcn/ui)
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useCartStore } from "@/store/cart-store";
 
 function SuccessContent() {
-  const router = useRouter(); // Hook para redirecionamento
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const clearCart = useCartStore((state) => state.clearCart);
+  const { clearCart, items: cartItems } = useCartStore();
 
   const paymentIntent = searchParams.get("payment_intent");
   const redirectStatus = searchParams.get("redirect_status");
@@ -32,15 +41,46 @@ function SuccessContent() {
   const [finalOrderId, setFinalOrderId] = useState<string | null>(urlOrderId);
   const [loadingId, setLoadingId] = useState(false);
 
+  // Estados do Modal de Avaliação
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [productIdToReview, setProductIdToReview] = useState<string | null>(
+    null,
+  );
+
   // Estado do Timer (Começa em 10 segundos)
   const [countdown, setCountdown] = useState(10);
+
+  // Usamos um ref para garantir que pegamos os itens exatos do momento do carregamento
+  const initialCartItems = useRef(cartItems);
+
+  // Função auxiliar para processar o sucesso e capturar o ID do produto antes de limpar o carrinho
+  const handleSuccessProcess = (orderId: string) => {
+    setFinalOrderId(orderId);
+
+    // 1. Pega o primeiro produto do carrinho ANTES de limpar
+    const items = initialCartItems.current;
+    if (items && items.length > 0) {
+      const productToReview = items[0].id || items[0].id;
+
+      if (productToReview) {
+        setProductIdToReview(productToReview);
+
+        // Abre o modal após 1.5s para a tela de sucesso renderizar antes e chamar atenção
+        setTimeout(() => {
+          setIsReviewModalOpen(true);
+        }, 1500);
+      }
+    }
+
+    // 2. AGORA SIM, com o ID do produto já salvo no Modal, limpamos o carrinho
+    clearCart();
+  };
 
   // Efeito para resolver o ID do pedido
   useEffect(() => {
     const resolveOrderId = async () => {
       if (urlOrderId) {
-        setFinalOrderId(urlOrderId);
-        clearCart();
+        handleSuccessProcess(urlOrderId);
         return;
       }
 
@@ -49,8 +89,7 @@ function SuccessContent() {
         try {
           const id = await getOrderIdByPaymentIntent(paymentIntent);
           if (id) {
-            setFinalOrderId(id);
-            clearCart();
+            handleSuccessProcess(id);
           }
         } catch (error) {
           console.error("Erro ao recuperar ID do pedido", error);
@@ -61,13 +100,13 @@ function SuccessContent() {
     };
 
     resolveOrderId();
-  }, [urlOrderId, paymentIntent, redirectStatus, clearCart]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlOrderId, paymentIntent, redirectStatus]);
 
   // Efeito para o Timer de Redirecionamento
   useEffect(() => {
-    // Só inicia o timer se já tivermos o ID do pedido (para garantir que o usuário viu o sucesso)
-    // ou se o processo de loading já terminou
-    if (loadingId) return;
+    // Só inicia o timer se já tivermos o ID do pedido e o modal NÃO estiver aberto
+    if (loadingId || isReviewModalOpen) return;
 
     const timer = setInterval(() => {
       setCountdown((prev) => {
@@ -81,7 +120,7 @@ function SuccessContent() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [router, loadingId]);
+  }, [router, loadingId, isReviewModalOpen]); // O timer pausa se o isReviewModalOpen for true!
 
   const isCardPayment = !!paymentIntent;
 
@@ -103,7 +142,7 @@ function SuccessContent() {
       {/* --- IMAGEM DE SUCESSO AQUI --- */}
       <div className="animate-in zoom-in mb-6 duration-500">
         <Image
-          src="/images/illustration-sucess.svg" // Corrigi a barra invertida para barra normal (padrão web)
+          src="/images/illustration-sucess.svg"
           alt="Pedido Confirmado"
           width={150}
           height={150}
@@ -177,6 +216,33 @@ function SuccessContent() {
           </Button>
         </Link>
       </div>
+
+      {/* --- MODAL DE AVALIAÇÃO --- */}
+      <Dialog open={isReviewModalOpen} onOpenChange={setIsReviewModalOpen}>
+        <DialogContent
+          className="border-neutral-200 bg-white sm:max-w-md"
+          onInteractOutside={(e) => e.preventDefault()} // <-- CORREÇÃO: Impede o fechamento ao clicar fora!
+        >
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-neutral-900">
+              O que achou da experiência?
+            </DialogTitle>
+            <DialogDescription className="text-neutral-500">
+              Sua opinião nos ajuda a melhorar! Avalie sua experiência de fazer
+              os pedidos.
+            </DialogDescription>
+          </DialogHeader>
+
+          {productIdToReview && (
+            <div className="mt-2">
+              <OrderReviewForm
+                productId={productIdToReview}
+                onSuccess={() => setIsReviewModalOpen(false)}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
