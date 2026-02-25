@@ -18,6 +18,7 @@ import {
   ShoppingCart,
   Star,
   Sun,
+  Truck,
   User,
   UserRound,
 } from "lucide-react";
@@ -120,6 +121,15 @@ export function HeaderContent() {
   const { data: session } = authClient.useSession();
   const { t, language, setLanguage } = useLanguage();
   const { items: cartItems, removeItem: removeCartItem } = useCartStore();
+
+  const handleTrackingSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const code = formData.get("code")?.toString().trim();
+    if (code) {
+      router.push(`/rastreio?code=${code}`);
+    }
+  };
 
   // 1. CARREGAMENTO DE DADOS INICIAIS
   useEffect(() => {
@@ -390,7 +400,7 @@ export function HeaderContent() {
           </div>
 
           <div
-            className="relative order-3 w-full max-w-2xl md:order-none md:w-auto md:flex-1"
+            className="relative order-3 w-full max-w-[33rem] md:order-none md:w-auto md:flex-1"
             ref={searchRef}
           >
             <div className="flex h-10 w-full items-center rounded-full border border-neutral-300 bg-neutral-50 transition-all focus-within:border-orange-600 focus-within:bg-white focus-within:ring-2 focus-within:ring-orange-100/50 sm:h-11">
@@ -445,7 +455,7 @@ export function HeaderContent() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="O que você procura hoje?"
-                className="h-full w-full bg-transparent px-4 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
+                className="h-full w-full bg-transparent pl-4 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
               />
 
               <button className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-transparent text-neutral-500 transition-colors hover:bg-neutral-200 hover:text-orange-600">
@@ -505,21 +515,78 @@ export function HeaderContent() {
 
           {/* 3. BLOCO DIREITO: ÍCONES */}
           <div className="order-2 flex items-center gap-2 sm:gap-6 md:order-none">
-            <Link
-              href="/categorias/promocoes"
-              className="hidden items-center gap-2 text-neutral-700 duration-100 hover:text-orange-600 active:scale-95 xl:flex"
-            >
-              <Flame className="h-5 w-5" />
-              <span className="text-sm font-bold">{t.header.bestDeals}</span>
-            </Link>
+            <div className="flex flex-row gap-9">
+              <div className="group relative hidden xl:block">
+                {/* O padding 'py-2' garante que o mouse não perca o hover ao descer pro card */}
+                <Link
+                  href="/rastreio"
+                  className="flex h-full items-center gap-2 py-2 text-neutral-700 duration-100 hover:text-orange-600 active:scale-95"
+                >
+                  <Truck className="h-5 w-5" />
+                  <span className="text-sm font-bold">Rastreio</span>
+                </Link>
 
-            <Link
-              href="/servicos"
-              className="hidden items-center gap-2 text-neutral-700 duration-100 hover:text-orange-600 active:scale-95 xl:flex"
-            >
-              <Hammer className="h-5 w-5" />
-              <span className="text-sm font-bold">Serviços</span>
-            </Link>
+                {/* Dropdown Invisível por padrão, revelado no Hover */}
+                <div className="invisible absolute top-full right-1/2 z-[100] flex w-72 translate-x-1/2 flex-col pt-1 opacity-0 transition-all duration-200 group-hover:visible group-hover:translate-y-1 group-hover:opacity-100">
+                  <div className="flex flex-col rounded-xl border border-neutral-100 bg-white p-5 shadow-xl ring-1 ring-black/5">
+                    <h4 className="mb-4 text-sm font-bold text-orange-700">
+                      Acompanhe a entrega do pedido
+                    </h4>
+                    <form
+                      onSubmit={handleTrackingSubmit}
+                      className="flex flex-col gap-3"
+                    >
+                      <div className="relative flex items-center">
+                        <input
+                          type="text"
+                          name="code"
+                          placeholder="Código de rastreio.."
+                          className="h-10 w-full rounded-md border border-neutral-200 bg-neutral-50 pr-10 pl-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none"
+                          required
+                        />
+                        <button
+                          type="submit"
+                          className="absolute right-1 flex h-8 w-8 items-center justify-center rounded-sm text-neutral-400 transition-colors hover:text-orange-600"
+                          title="Buscar"
+                        >
+                          <Search className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <button
+                        type="submit"
+                        className="mt-1 flex h-10 w-full cursor-pointer items-center justify-center rounded-md bg-orange-600 text-sm font-bold text-white shadow-sm duration-300 hover:bg-orange-700 active:scale-95"
+                      >
+                        Rastrear Pedido
+                      </button>
+                    </form>
+                    <p className="mt-3 text-xs text-neutral-500">
+                      Não sabe o seu código?{" "}
+                      <Link
+                        href="/minha-conta/compras"
+                        className="underline duration-200 hover:text-orange-500"
+                      >
+                        clique aqui
+                      </Link>
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <Link
+                href="/categorias/promocoes"
+                className="hidden items-center gap-2 text-neutral-700 duration-100 hover:text-orange-600 active:scale-95 xl:flex"
+              >
+                <Flame className="h-5 w-5" />
+                <span className="text-sm font-bold">{t.header.bestDeals}</span>
+              </Link>
+
+              <Link
+                href="/servicos"
+                className="hidden items-center gap-2 text-neutral-700 duration-100 hover:text-orange-600 active:scale-95 xl:flex"
+              >
+                <Hammer className="h-5 w-5" />
+                <span className="text-sm font-bold">Serviços</span>
+              </Link>
+            </div>
 
             {/* FAVORITOS */}
             <WishlistSheet />

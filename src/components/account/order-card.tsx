@@ -219,7 +219,7 @@ export function OrderCard({ order }: { order: OrderProps }) {
             {order.trackingCode && (
               <div className="hidden items-center gap-1.5 border-r border-neutral-200 pr-4 text-xs font-medium text-neutral-600 sm:flex">
                 <Truck className="h-3.5 w-3.5" />
-                <span className="opacity-70">Rastreio:</span>{" "}
+                <span className="opacity-70">Seu Código de Rastreio:</span>{" "}
                 {order.trackingCode}
               </div>
             )}

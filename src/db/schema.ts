@@ -160,20 +160,16 @@ export const order = pgTable("order", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   amount: integer("amount").notNull(),
-
   status: text("status").notNull().default("pending"),
   currency: text("currency").notNull().default("GBP"),
   fulfillmentStatus: text("fulfillmentStatus").notNull().default("idle"),
-
   stripePaymentIntentId: text("stripePaymentIntentId"),
   stripeClientSecret: text("stripeClientSecret"),
   shippingAddress: json("shippingAddress"),
   shippingCost: integer("shippingCost").default(0),
   trackingCode: text("trackingCode"),
-
   estimatedDeliveryStart: timestamp("estimatedDeliveryStart"),
   estimatedDeliveryEnd: timestamp("estimatedDeliveryEnd"),
-
   paymentMethod: text("paymentMethod").default("card"),
   customerName: text("customerName"),
   customerEmail: text("customerEmail"),
