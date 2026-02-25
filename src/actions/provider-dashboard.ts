@@ -1,158 +1,75 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { z } from "zod";
 
 import { db } from "@/db";
-import { serviceProvider } from "@/db/schema";
+import { serviceRequest } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
-// --- SCHEMA DE VALIDAÇÃO (SEM EXPORT) ---
-// Removemos o 'export' aqui para corrigir o erro do Next.js
-const providerSchema = z.object({
-  categoryId: z.string().min(1, "Selecione uma categoria."),
-  bio: z
-    .string()
-    .min(
-      20,
-      "Conte um pouco mais sobre sua experiência (mínimo 20 caracteres).",
-    ),
-  experienceYears: z.number().min(0, "Experiência inválida."),
-  phone: z.string().min(10, "Telefone inválido."),
-  location: z.string().min(3, "Informe sua cidade ou região de atuação."),
+// --- VERIFICAÇÃO DE AUTENTICAÇÃO ---
+async function checkProviderAuth() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-  // --- NOVOS CAMPOS ADICIONADOS AQUI ---
-  detailedAddress: z.string().min(5, "Informe seu endereço completo."),
-  educationLevel: z.string().min(1, "Selecione sua escolaridade."),
-  howDidYouHear: z.string().min(1, "Informe como nos conheceu."),
-  referralName: z.string().optional(),
-  localContacts: z
-    .string()
-    .min(3, "Informe o nome de pelo menos um contato na região."),
-  documentUrlFront: z
-    .string()
-    .min(1, "É necessário enviar a FRENTE do documento."),
-  documentUrlBack: z
-    .string()
-    .min(1, "É necessário enviar o VERSO do documento."),
+  if (!session) {
+    throw new Error("Não autenticado");
+  }
+  return session;
+}
 
-  portfolioUrl: z.string().optional(),
-});
-
-type ProviderFormValues = z.infer<typeof providerSchema>;
-
-export async function registerProvider(data: ProviderFormValues) {
+// --- ACEITAR SOLICITAÇÃO ---
+export async function acceptRequest(requestId: string) {
   try {
-    // 1. Autenticação
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+    await checkProviderAuth();
 
-    if (!session) {
-      return { success: false, error: "Você precisa estar logado." };
-    }
+    await db
+      .update(serviceRequest)
+      .set({ status: "accepted", updatedAt: new Date() })
+      .where(eq(serviceRequest.id, requestId));
 
-    // 2. Validação Zod
-    const parsed = providerSchema.safeParse(data);
-    if (!parsed.success) {
-      return { success: false, error: "Dados inválidos." };
-    }
-
-    // Extraindo TODOS os campos validados
-    const {
-      categoryId,
-      bio,
-      experienceYears,
-      phone,
-      location,
-      detailedAddress,
-      educationLevel,
-      howDidYouHear,
-      referralName,
-      localContacts,
-      documentUrlFront,
-      documentUrlBack,
-      portfolioUrl,
-    } = parsed.data;
-
-    // 3. Verificar se já é prestador NESTA categoria
-    const existing = await db.query.serviceProvider.findFirst({
-      where: and(
-        eq(serviceProvider.userId, session.user.id),
-        eq(serviceProvider.categoryId, categoryId),
-      ),
-    });
-
-    if (existing) {
-      return {
-        success: false,
-        error: "Você já tem um cadastro para esta categoria.",
-      };
-    }
-
-    // 4. Inserir no Banco com os novos campos
-    await db.insert(serviceProvider).values({
-      id: crypto.randomUUID(),
-      userId: session.user.id,
-      categoryId,
-      bio,
-      experienceYears,
-      phone,
-      location,
-      detailedAddress,
-      educationLevel,
-      howDidYouHear,
-      referralName: referralName || null,
-      localContacts,
-      documentUrlFront,
-      documentUrlBack,
-
-      portfolioUrl: portfolioUrl || null,
-      status: "pending", // Começa pendente de aprovação
-    });
-
-    revalidatePath("/admin/prestadores"); // Admin verá o novo cadastro
-    revalidatePath("/conta");
-
-    return {
-      success: true,
-      message: "Candidatura enviada! Aguarde a aprovação.",
-    };
+    revalidatePath("/painel-prestador");
+    return { success: true, message: "Solicitação aceita com sucesso!" };
   } catch (error) {
-    console.error("Erro ao registrar prestador:", error);
-    return { success: false, error: "Erro interno ao salvar candidatura." };
+    console.error(error);
+    return { success: false, error: "Erro ao aceitar solicitação." };
   }
 }
 
-export async function resetProviderApplication() {
+// --- REJEITAR SOLICITAÇÃO ---
+export async function rejectRequest(requestId: string) {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+    await checkProviderAuth();
 
-    if (!session) return { success: false, error: "Não autenticado." };
+    await db
+      .update(serviceRequest)
+      .set({ status: "rejected", updatedAt: new Date() })
+      .where(eq(serviceRequest.id, requestId));
 
-    // Só permite deletar se estiver REJEITADO
-    const provider = await db.query.serviceProvider.findFirst({
-      where: eq(serviceProvider.userId, session.user.id),
-    });
-
-    if (!provider || provider.status !== "rejected") {
-      return { success: false, error: "Ação não permitida." };
-    }
-
-    // Deleta o registro antigo
-    await db.delete(serviceProvider).where(eq(serviceProvider.id, provider.id));
-
-    revalidatePath("/minha-conta/trabalhe-conosco");
-    return {
-      success: true,
-      message: "Agora você pode enviar uma nova candidatura.",
-    };
+    revalidatePath("/painel-prestador");
+    return { success: true, message: "Solicitação recusada." };
   } catch (error) {
     console.error(error);
-    return { success: false, error: "Erro ao resetar candidatura." };
+    return { success: false, error: "Erro ao recusar solicitação." };
+  }
+}
+
+// --- CONCLUIR SERVIÇO ---
+export async function completeRequest(requestId: string) {
+  try {
+    await checkProviderAuth();
+
+    await db
+      .update(serviceRequest)
+      .set({ status: "completed", updatedAt: new Date() })
+      .where(eq(serviceRequest.id, requestId));
+
+    revalidatePath("/painel-prestador");
+    return { success: true, message: "Serviço marcado como concluído!" };
+  } catch (error) {
+    console.error(error);
+    return { success: false, error: "Erro ao concluir serviço." };
   }
 }
