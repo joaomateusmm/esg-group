@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
 import { db } from "@/db";
-import { serviceRequest } from "@/db/schema";
+import { serviceOrder } from "@/db/schema"; // CORREÇÃO AQUI: Importando serviceOrder
 import { auth } from "@/lib/auth";
 
 // --- VERIFICAÇÃO DE AUTENTICAÇÃO ---
@@ -20,39 +20,39 @@ async function checkProviderAuth() {
   return session;
 }
 
-// --- ACEITAR SOLICITAÇÃO ---
+// --- ACEITAR SOLICITAÇÃO (MUDOU PARA IN_PROGRESS POIS O WEBHOOK JÁ "ACEITA") ---
 export async function acceptRequest(requestId: string) {
   try {
     await checkProviderAuth();
 
     await db
-      .update(serviceRequest)
-      .set({ status: "accepted", updatedAt: new Date() })
-      .where(eq(serviceRequest.id, requestId));
+      .update(serviceOrder)
+      .set({ status: "in_progress", updatedAt: new Date() })
+      .where(eq(serviceOrder.id, requestId));
 
     revalidatePath("/painel-prestador");
-    return { success: true, message: "Solicitação aceita com sucesso!" };
+    return { success: true, message: "Serviço marcado como em andamento!" };
   } catch (error) {
     console.error(error);
     return { success: false, error: "Erro ao aceitar solicitação." };
   }
 }
 
-// --- REJEITAR SOLICITAÇÃO ---
+// --- REJEITAR / CANCELAR SOLICITAÇÃO ---
 export async function rejectRequest(requestId: string) {
   try {
     await checkProviderAuth();
 
     await db
-      .update(serviceRequest)
-      .set({ status: "rejected", updatedAt: new Date() })
-      .where(eq(serviceRequest.id, requestId));
+      .update(serviceOrder)
+      .set({ status: "canceled", updatedAt: new Date() }) // Mudei pra canceled para bater com o novo schema
+      .where(eq(serviceOrder.id, requestId));
 
     revalidatePath("/painel-prestador");
-    return { success: true, message: "Solicitação recusada." };
+    return { success: true, message: "Solicitação cancelada." };
   } catch (error) {
     console.error(error);
-    return { success: false, error: "Erro ao recusar solicitação." };
+    return { success: false, error: "Erro ao cancelar solicitação." };
   }
 }
 
@@ -62,9 +62,9 @@ export async function completeRequest(requestId: string) {
     await checkProviderAuth();
 
     await db
-      .update(serviceRequest)
+      .update(serviceOrder)
       .set({ status: "completed", updatedAt: new Date() })
-      .where(eq(serviceRequest.id, requestId));
+      .where(eq(serviceOrder.id, requestId));
 
     revalidatePath("/painel-prestador");
     return { success: true, message: "Serviço marcado como concluído!" };

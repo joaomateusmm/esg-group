@@ -51,6 +51,9 @@ const localProviderSchema = z
     experienceYears: z.number().min(0, "Experiência inválida."),
     phone: z.string().min(10, "Telefone inválido."),
 
+    // NOVO: Campo de Preço do Serviço
+    servicePrice: z.number().min(5, "O preço mínimo deve ser £5"),
+
     // Localização detalhada
     location: z.string().min(3, "Informe sua cidade ou região base."),
     detailedAddress: z.string().min(5, "Informe seu endereço completo."),
@@ -91,8 +94,9 @@ const localProviderSchema = z
 
 type ProviderFormValues = z.infer<typeof localProviderSchema>;
 
+// ATUALIZAÇÃO AQUI: Adicionado a propriedade 'disabled' na interface
 interface ProviderFormProps {
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; disabled?: boolean }[];
 }
 
 export function ProviderForm({ categories }: ProviderFormProps) {
@@ -107,6 +111,7 @@ export function ProviderForm({ categories }: ProviderFormProps) {
       categoryId: "",
       bio: "",
       experienceYears: 0,
+      servicePrice: 0, // Inicia zerado
       phone: "",
       location: "",
       detailedAddress: "",
@@ -191,7 +196,7 @@ export function ProviderForm({ categories }: ProviderFormProps) {
                 Dados Profissionais
               </h3>
 
-              <div className="grid gap-6 md:grid-cols-2">
+              <div className="grid gap-6 md:grid-cols-1">
                 <FormField
                   control={form.control}
                   name="categoryId"
@@ -211,7 +216,17 @@ export function ProviderForm({ categories }: ProviderFormProps) {
                         </FormControl>
                         <SelectContent className="border-neutral-200 bg-white text-neutral-900">
                           {categories.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.id}>
+                            <SelectItem
+                              key={cat.id}
+                              value={cat.id}
+                              disabled={cat.disabled}
+                              // Ajuda extra na classe para garantir o visual de desativado no Shadcn UI
+                              className={
+                                cat.disabled
+                                  ? "cursor-not-allowed opacity-50"
+                                  : ""
+                              }
+                            >
                               {cat.name}
                             </SelectItem>
                           ))}
@@ -222,32 +237,65 @@ export function ProviderForm({ categories }: ProviderFormProps) {
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="experienceYears"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-neutral-900">
-                        Anos de Experiência na área
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Ex: 3"
-                          type="number"
-                          min={0}
-                          className="border-neutral-200 bg-white text-neutral-900 focus:border-orange-500 focus:ring-orange-500"
-                          {...field}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            field.onChange(val === "" ? 0 : Number(val));
-                          }}
-                          value={field.value === 0 ? "" : field.value}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid gap-6 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="experienceYears"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-neutral-900">
+                          Anos de Experiência na área
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Ex: 3"
+                            type="number"
+                            min={0}
+                            className="border-neutral-200 bg-white text-neutral-900 focus:border-orange-500 focus:ring-orange-500"
+                            {...field}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              field.onChange(val === "" ? 0 : Number(val));
+                            }}
+                            value={field.value === 0 ? "" : field.value}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* NOVO CAMPO: PREÇO DO SERVIÇO */}
+                  <FormField
+                    control={form.control}
+                    name="servicePrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-neutral-900">
+                          Preço do Serviço (£)
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Ex: 50"
+                            type="number"
+                            min={0}
+                            className="border-neutral-200 bg-white text-neutral-900 focus:border-orange-500 focus:ring-orange-500"
+                            {...field}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              field.onChange(val === "" ? 0 : Number(val));
+                            }}
+                            value={field.value === 0 ? "" : field.value}
+                          />
+                        </FormControl>
+                        <FormDescription className="text-[10px]">
+                          Valor que será cobrado do cliente na plataforma.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
 
               <FormField

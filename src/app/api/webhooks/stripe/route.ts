@@ -6,7 +6,7 @@ import Stripe from "stripe";
 
 import { decreaseProductStock } from "@/actions/stock";
 import { db } from "@/db";
-import { order } from "@/db/schema";
+import { order, serviceOrder } from "@/db/schema"; // <-- Adicionei o serviceOrder aqui
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-02-24.acacia" as unknown as Stripe.LatestApiVersion,
@@ -240,6 +240,38 @@ export async function POST(req: Request) {
   ) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const obj = event.data.object as any;
+
+    // ========================================================
+    // --- NOVO: LÓGICA DE SERVIÇOS (PRESTADORES) ---
+    // ========================================================
+    if (obj.metadata?.type === "service_order") {
+      console.log(
+        `⚡ WEBHOOK: Processando Pagamento de SERVIÇO. Intent ID: ${obj.id}`,
+      );
+
+      try {
+        await db
+          .update(serviceOrder)
+          .set({
+            paymentStatus: "succeeded",
+            status: "accepted", // Ao pagar, o serviço já fica como 'aceito' para o prestador fazer
+          })
+          .where(eq(serviceOrder.stripePaymentIntentId, obj.id));
+
+        console.log("✅ WEBHOOK: Serviço atualizado para pago e aceito.");
+
+        // DICA: No futuro, você pode enviar um e-mail para o Prestador aqui usando a Resend.
+
+        return NextResponse.json({ received: true });
+      } catch (err) {
+        console.error("❌ WEBHOOK: Erro ao atualizar ServiceOrder:", err);
+        return new NextResponse("Erro no DB de Servico", { status: 500 });
+      }
+    }
+
+    // ========================================================
+    // --- LÓGICA EXISTENTE DE PRODUTOS DA LOJA ---
+    // ========================================================
     const orderId = obj.metadata?.orderId;
 
     if (orderId) {

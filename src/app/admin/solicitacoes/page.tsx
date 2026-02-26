@@ -1,39 +1,40 @@
 import { desc } from "drizzle-orm";
 
 import { db } from "@/db";
-import { serviceRequest } from "@/db/schema";
+import { serviceOrder } from "@/db/schema"; // <-- CORREÇÃO: Importando serviceOrder
 
 import { RequestsTable } from "./requests-table";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminRequestsPage() {
-  // Busca TODAS as solicitações
-  const allRequests = await db.query.serviceRequest.findMany({
+  // Busca TODAS as solicitações na nova tabela serviceOrder
+  const allRequests = await db.query.serviceOrder.findMany({
     with: {
       customer: {
-        // Quem pediu
-        columns: {
-          name: true,
-          email: true,
-          image: true,
-        },
+        // ADICIONADO 'id' AQUI
+        columns: { id: true, name: true, email: true, image: true },
       },
       provider: {
-        // Para quem foi pedido
+        // ADICIONADO 'id' e 'phone' AQUI
+        columns: {
+          id: true,
+          phone: true,
+          documentUrlFront: true,
+          documentUrlBack: true,
+        },
         with: {
           user: {
-            // Precisamos do nome do usuário do prestador
-            columns: { name: true },
+            // ADICIONADO 'id' e 'email' AQUI
+            columns: { id: true, name: true, email: true, image: true },
           },
         },
       },
       category: {
-        // Qual serviço
         columns: { name: true },
       },
     },
-    orderBy: [desc(serviceRequest.createdAt)],
+    orderBy: [desc(serviceOrder.createdAt)],
   });
 
   return (

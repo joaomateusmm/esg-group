@@ -341,62 +341,58 @@ export const serviceCategory = pgTable("serviceCategory", {
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
 
-// --- 2. TABELA DE PRESTADORES DE SERVIÇO (ATUALIZADA) ---
-// Linka um User a uma Categoria de Serviço com detalhes profissionais
+// --- 2. TABELA DE PRESTADORES DE SERVIÇO ---
 export const serviceProvider = pgTable("serviceProvider", {
-  id: text("id").primaryKey(),
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
   userId: text("userId")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   categoryId: text("categoryId")
     .notNull()
     .references(() => serviceCategory.id),
-
-  // Dados do Profissional
-  bio: text("bio").notNull(), // "Tenho 10 anos de experiência..."
+  bio: text("bio").notNull(),
   experienceYears: integer("experienceYears").notNull().default(0),
-  portfolioUrl: text("portfolioUrl"), // Link externo ou imagens
-  hourlyRate: integer("hourlyRate"), // Preço base por hora (em centavos) - Opcional
-  phone: text("phone"), // Contato direto profissional
-
-  // Localização
-  location: text("location"), // Cidade/Região de atendimento (Londres, etc)
-  detailedAddress: text("detailedAddress"), // Endereço residencial completo
-
-  // --- NOVOS CAMPOS ---
-  educationLevel: text("educationLevel"), // Nível de escolaridade
-  howDidYouHear: text("howDidYouHear"), // Como conheceu a ESG
-  referralName: text("referralName"), // Quem indicou (opcional)
-  localContacts: text("localContacts"), // Parentes/Conhecidos na região
-
-  // --- FOTOS DO DOCUMENTO (Frente e Verso) ---
-  documentUrlFront: text("documentUrlFront"), // URL da foto da FRENTE
-  documentUrlBack: text("documentUrlBack"), // URL da foto do VERSO
-
-  // Aprovação do Admin
+  portfolioUrl: text("portfolioUrl"),
+  servicePrice: integer("servicePrice").notNull(),
+  phone: text("phone"),
+  location: text("location"),
+  detailedAddress: text("detailedAddress"),
+  educationLevel: text("educationLevel"),
+  howDidYouHear: text("howDidYouHear"),
+  referralName: text("referralName"),
+  localContacts: text("localContacts"),
+  documentUrlFront: text("documentUrlFront"),
+  documentUrlBack: text("documentUrlBack"),
   status: text("status").default("pending").notNull(), // pending, approved, rejected
-  rejectionReason: text("rejectionReason"), // Se o admin recusar, explica o motivo
-
+  rejectionReason: text("rejectionReason"),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
+
 // --- 3. TABELA DE PEDIDOS DE SERVIÇO (O Cliente contratando) ---
 export const serviceOrder = pgTable("serviceOrder", {
-  id: text("id").primaryKey(),
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
   customerId: text("customerId")
     .notNull()
-    .references(() => user.id), // Quem contrata
+    .references(() => user.id),
   providerId: text("providerId")
     .notNull()
-    .references(() => serviceProvider.id), // Quem executa
-
-  description: text("description").notNull(), // "Preciso montar um guarda-roupa..."
-  scheduledDate: timestamp("scheduledDate"), // Data desejada
-  address: text("address").notNull(), // Onde será o serviço
-
-  status: text("status").default("pending").notNull(),
-  agreedPrice: integer("agreedPrice"), // Preço combinado (em centavos), pode ser nulo inicialmente
-
+    .references(() => serviceProvider.id),
+  categoryId: text("categoryId")
+    .notNull()
+    .references(() => serviceCategory.id), // Para sabermos qual serviço exato foi comprado
+  description: text("description").notNull(),
+  scheduledDate: timestamp("scheduledDate"),
+  address: text("address").notNull(),
+  contactPhone: text("contactPhone").notNull(),
+  amount: integer("amount").notNull(), // Valor cobrado no momento do checkout (em centavos)
+  stripePaymentIntentId: text("stripePaymentIntentId").unique(), // ID da transação na Stripe
+  paymentStatus: text("paymentStatus").default("pending").notNull(), // pending, succeeded, failed, refunded
+  status: text("status").default("pending").notNull(), // pending, accepted, in_progress, completed, canceled
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
@@ -421,7 +417,7 @@ export const serviceProviderRelations = relations(
       fields: [serviceProvider.categoryId],
       references: [serviceCategory.id],
     }),
-    orders: many(serviceOrder), // Pedidos recebidos
+    orders: many(serviceOrder),
   }),
 );
 
@@ -434,48 +430,8 @@ export const serviceOrderRelations = relations(serviceOrder, ({ one }) => ({
     fields: [serviceOrder.providerId],
     references: [serviceProvider.id],
   }),
-}));
-
-export const serviceRequest = pgTable("service_request", {
-  id: text("id").primaryKey(),
-  customerId: text("customer_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  providerId: text("provider_id")
-    .notNull()
-    .references(() => serviceProvider.id, { onDelete: "cascade" }),
-  categoryId: text("category_id")
-    .notNull()
-    .references(() => serviceCategory.id),
-
-  // Detalhes do Pedido
-  description: text("description").notNull(),
-  address: text("address").notNull(),
-  contactPhone: text("contact_phone").notNull(),
-
-  // Orçamento
-  budgetType: text("budget_type").notNull(), // 'negotiable' ou 'range'
-  budgetValue: text("budget_value"), // Ex: "50-100" ou null se for negotiable
-
-  // Status do Fluxo
-  status: text("status").default("pending").notNull(), // pending, accepted, rejected, completed
-
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Relacionamentos (Opcional, mas bom para queries futuras)
-export const serviceRequestRelations = relations(serviceRequest, ({ one }) => ({
-  customer: one(user, {
-    fields: [serviceRequest.customerId],
-    references: [user.id],
-  }),
-  provider: one(serviceProvider, {
-    fields: [serviceRequest.providerId],
-    references: [serviceProvider.id],
-  }),
   category: one(serviceCategory, {
-    fields: [serviceRequest.categoryId],
+    fields: [serviceOrder.categoryId],
     references: [serviceCategory.id],
   }),
 }));

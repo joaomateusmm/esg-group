@@ -19,6 +19,10 @@ const providerSchema = z.object({
       "Conte um pouco mais sobre sua experiência (mínimo 20 caracteres).",
     ),
   experienceYears: z.number().min(0, "Experiência inválida."),
+
+  // NOVO CAMPO: Adicionado na validação do backend
+  servicePrice: z.number().min(5, "O preço mínimo deve ser £5"),
+
   phone: z.string().min(10, "Telefone inválido."),
   location: z.string().min(3, "Informe sua cidade ou região de atuação."),
   portfolioUrl: z.string().optional(),
@@ -59,11 +63,12 @@ export async function registerProvider(data: ProviderFormValues) {
       return { success: false, error: "Dados inválidos." };
     }
 
-    // Extraindo TODOS os campos do parsed.data
+    // Extraindo TODOS os campos do parsed.data, incluindo o novo servicePrice
     const {
       categoryId,
       bio,
       experienceYears,
+      servicePrice, // <-- EXTRAÍDO AQUI
       phone,
       location,
       portfolioUrl,
@@ -98,6 +103,11 @@ export async function registerProvider(data: ProviderFormValues) {
       categoryId,
       bio,
       experienceYears,
+
+      // INSERIDO AQUI: Multiplicamos por 100 para salvar em centavos!
+      // Exemplo: se ele digitou 50 no form, salva 5000 no banco.
+      servicePrice: Math.round(servicePrice * 100),
+
       phone,
       location,
       portfolioUrl: portfolioUrl || null,

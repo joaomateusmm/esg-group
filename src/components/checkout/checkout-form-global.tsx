@@ -56,7 +56,6 @@ export function CheckoutForm({
     coupon,
     applyCoupon,
     removeCoupon,
-    clearCart,
   } = useCartStore();
 
   const [isLoading, setIsLoading] = useState(false);

@@ -23,7 +23,6 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
 import { Suspense, useEffect, useRef, useState } from "react";
 
 import { checkAffiliateStatus } from "@/actions/check-affiliate-status";

@@ -8,8 +8,8 @@ import {
 } from "lucide-react";
 import { headers } from "next/headers";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
+// Removi o import não utilizado do 'redirect'
 // Imports dos componentes de Auth
 import SignInForm from "@/app/authentication/components/sign-in-form";
 import SignUpForm from "@/app/authentication/components/sign-up-form";
@@ -23,7 +23,7 @@ import { serviceCategory, serviceProvider } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 import { ProviderForm } from "./provider-form";
-import { RetryButton } from "./retry-button"; // IMPORTAR O NOVO BOTÃO
+import { RetryButton } from "./retry-button";
 
 export default async function TrabalheConoscoPage() {
   const session = await auth.api.getSession({
@@ -38,20 +38,43 @@ export default async function TrabalheConoscoPage() {
     },
   });
 
-  let existingProvider = null;
+  // CORREÇÃO DOS ERROS DE TYPE ANY:
+  // Fazendo dessa forma, o TypeScript entende perfeitamente o tipo dos dados
+  // retornados pelo banco ou assume uma array vazia tipada.
+  const myApplications = session
+    ? await db.query.serviceProvider.findMany({
+        where: eq(serviceProvider.userId, session.user.id),
+        with: {
+          category: true,
+        },
+      })
+    : [];
 
-  if (session) {
-    existingProvider = await db.query.serviceProvider.findFirst({
-      where: eq(serviceProvider.userId, session.user.id),
-      with: {
-        category: true,
-      },
-    });
+  // Identifica categorias que ele AINDA PODE se inscrever (pendentes e aprovadas)
+  const appliedCategoryIds = myApplications
+    .filter((app) => app.status === "approved" || app.status === "pending")
+    .map((app) => app.categoryId);
 
-    if (existingProvider?.status === "approved") {
-      redirect("/painel-prestador");
-    }
-  }
+  // A MÁGICA ACONTECE AQUI: Em vez de excluir da lista, passamos todas, mas
+  // marcamos as já solicitadas com um texto e a tag disabled.
+  const categoriesWithStatus = categories.map((cat) => ({
+    id: cat.id,
+    name: appliedCategoryIds.includes(cat.id)
+      ? `${cat.name} (Já cadastrado)`
+      : cat.name,
+    disabled: appliedCategoryIds.includes(cat.id),
+  }));
+
+  // Verifica se existe ao menos uma categoria não bloqueada
+  const hasAvailableCategories = categoriesWithStatus.some(
+    (cat) => !cat.disabled,
+  );
+
+  // Para a exibição visual de "Você tem uma solicitação pendente" ou "rejeitada"
+  // caso queira manter a UI de aviso. Mostra o aviso mais relevante.
+  const hasPending = myApplications.find((app) => app.status === "pending");
+  const hasRejected = myApplications.find((app) => app.status === "rejected");
+  const hasApproved = myApplications.some((app) => app.status === "approved");
 
   return (
     <main className="min-h-screen bg-neutral-50">
@@ -101,58 +124,67 @@ export default async function TrabalheConoscoPage() {
             </Card>
           ) : (
             <>
-              {existingProvider?.status === "pending" && (
-                <Card className="border-yellow-200 bg-yellow-50 shadow-sm">
-                  <CardContent className="flex flex-col items-center justify-center p-10 text-center">
-                    <div className="mb-4 rounded-full bg-yellow-100 p-4 text-yellow-600">
-                      <Clock className="h-12 w-12" />
+              {/* Se o cara já tem ALGUMA aprovação, damos um "Atalho" para o Painel para ele saber */}
+              {hasApproved && (
+                <div className="mb-8 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                  <div>
+                    <h3 className="font-bold text-emerald-900">
+                      Você já é um parceiro aprovado!
+                    </h3>
+                    <p className="text-sm text-emerald-700">
+                      Caso queira se cadastrar em outro serviço, preencha os
+                      dados novamente e aguarde a aprovação.
+                    </p>
+                  </div>
+                  <Link href="/painel-prestador">
+                    <Button className="bg-emerald-600 text-white hover:bg-emerald-700">
+                      Ir para o Painel
+                    </Button>
+                  </Link>
+                </div>
+              )}
+
+              {/* AVISOS DE PENDÊNCIA / REJEIÇÃO RECENTES */}
+              {hasPending && (
+                <Card className="mb-8 border-yellow-200 bg-yellow-50 shadow-sm">
+                  <CardContent className="flex flex-col items-center justify-center p-8 text-center">
+                    <div className="mb-4 rounded-full bg-yellow-100 p-3 text-yellow-600">
+                      <Clock className="h-8 w-8" />
                     </div>
-                    <h2 className="mb-2 text-2xl font-bold text-yellow-900">
+                    <h2 className="mb-2 text-xl font-bold text-yellow-900">
                       Análise em Andamento
                     </h2>
-                    <p className="max-w-md text-yellow-800">
-                      Você já enviou uma solicitação para atuar como{" "}
-                      <strong>{existingProvider.category.name}</strong>. Nossa
-                      equipe está analisando seu perfil.
+                    <p className="max-w-md text-sm text-yellow-800">
+                      Você enviou uma solicitação para atuar como{" "}
+                      <strong>{hasPending.category?.name}</strong>. Nossa equipe
+                      está analisando seu perfil.
                     </p>
-                    <div className="mt-6 flex w-full flex-col gap-2 sm:w-auto">
-                      <Link href="/minha-conta">
-                        <Button
-                          variant="outline"
-                          className="w-full border-yellow-200 bg-white text-yellow-900 hover:bg-yellow-100"
-                        >
-                          Voltar para Minha Conta
-                        </Button>
-                      </Link>
-                    </div>
                   </CardContent>
                 </Card>
               )}
 
-              {/* SEÇÃO REJEITADA COM BOTÃO DE REFAZER */}
-              {existingProvider?.status === "rejected" && (
-                <Card className="border-red-200 bg-red-50 shadow-sm">
-                  <CardContent className="flex flex-col items-center justify-center p-10 text-center">
-                    <div className="mb-4 rounded-full bg-red-100 p-4 text-red-600">
-                      <AlertCircle className="h-12 w-12" />
+              {hasRejected && (
+                <Card className="mb-8 border-red-200 bg-red-50 shadow-sm">
+                  <CardContent className="flex flex-col items-center justify-center p-8 text-center">
+                    <div className="mb-4 rounded-full bg-red-100 p-3 text-red-600">
+                      <AlertCircle className="h-8 w-8" />
                     </div>
-                    <h2 className="mb-2 text-2xl font-bold text-red-900">
+                    <h2 className="mb-2 text-xl font-bold text-red-900">
                       Candidatura Não Aprovada
                     </h2>
-                    <p className="mb-6 max-w-md text-red-800">
-                      Infelizmente, sua solicitação para atuar como{" "}
-                      {existingProvider.category.name} não foi aprovada neste
-                      momento.
+                    <p className="mb-4 max-w-md text-sm text-red-800">
+                      Sua solicitação para atuar como{" "}
+                      <strong>{hasRejected.category?.name}</strong> não foi
+                      aprovada neste momento.
                     </p>
-
-                    <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-                      <RetryButton /> {/* Botão Novo */}
+                    <div className="flex gap-2">
+                      <RetryButton />
                       <Link href="/suporte">
                         <Button
                           variant="outline"
-                          className="w-full border-red-200 bg-white text-red-700 hover:bg-red-100"
+                          className="border-red-200 text-red-700 hover:bg-red-100"
                         >
-                          Falar com Suporte
+                          Suporte
                         </Button>
                       </Link>
                     </div>
@@ -160,9 +192,13 @@ export default async function TrabalheConoscoPage() {
                 </Card>
               )}
 
-              {!existingProvider && (
+              {/* SÓ MOSTRA O FORM SE HOUVER CATEGORIAS DISPONÍVEIS */}
+              {hasAvailableCategories ? (
                 <>
-                  <ProviderForm categories={categories} />
+                  <h2 className="mb-4 text-center text-xl font-bold text-neutral-800">
+                    Cadastrar nova especialidade
+                  </h2>
+                  <ProviderForm categories={categoriesWithStatus} />
 
                   <div className="mt-8 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
                     <h3 className="mb-6 border-b border-neutral-100 pb-2 text-lg font-bold text-neutral-900">
@@ -179,8 +215,8 @@ export default async function TrabalheConoscoPage() {
                             1. Cadastro
                           </h4>
                           <p className="text-sm leading-relaxed text-neutral-500">
-                            Preencha o formulário acima com seus dados pessoais
-                            e profissionais.
+                            Preencha o formulário com a nova especialidade que
+                            deseja atender.
                           </p>
                         </div>
                       </div>
@@ -193,8 +229,8 @@ export default async function TrabalheConoscoPage() {
                             2. Análise
                           </h4>
                           <p className="text-sm leading-relaxed text-neutral-500">
-                            Nossa equipe administrativa analisará seu perfil e
-                            experiência.
+                            Nossa equipe analisará seu perfil e experiência para
+                            esta nova área.
                           </p>
                         </div>
                       </div>
@@ -208,19 +244,22 @@ export default async function TrabalheConoscoPage() {
                           </h4>
                           <p className="text-sm leading-relaxed text-neutral-500">
                             Assim que aprovado, você terá acesso ao Painel do
-                            Prestador para aceitar serviços.
+                            Prestador para aceitar serviços. A aprovação pode
+                            levar de 2 a 3 dias úteis.
                           </p>
                         </div>
                       </div>
                     </div>
-
-                    <div className="mt-6 flex items-center justify-center gap-2 rounded-md bg-neutral-50 p-3 text-xs text-neutral-500">
-                      <Clock className="h-3 w-3" />
-                      Tempo médio de análise:{" "}
-                      <strong>24 a 48 horas úteis</strong>.
-                    </div>
                   </div>
                 </>
+              ) : (
+                <div className="rounded-lg border border-neutral-200 bg-white p-12 text-center text-neutral-500 shadow-sm">
+                  <Briefcase className="mx-auto mb-4 h-12 w-12 text-neutral-300" />
+                  <p>
+                    Você já se candidatou (ou foi aprovado) para todas as
+                    categorias disponíveis no momento.
+                  </p>
+                </div>
               )}
             </>
           )}

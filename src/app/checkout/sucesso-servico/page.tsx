@@ -1,0 +1,180 @@
+"use client";
+
+import { Briefcase, CheckCircle2, Copy, Home, Loader2 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { toast } from "sonner";
+
+import { getServiceOrderIdByPaymentIntent } from "@/actions/service-checkout";
+import { Footer } from "@/components/Footer";
+import { Header } from "@/components/Header";
+import { Button } from "@/components/ui/button";
+
+function ServiceSuccessContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const paymentIntent = searchParams.get("payment_intent");
+  const redirectStatus = searchParams.get("redirect_status");
+
+  const [finalOrderId, setFinalOrderId] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState(false);
+  const [countdown, setCountdown] = useState(15); // 15 segundos para dar tempo de ler
+
+  // Efeito para resolver o ID do pedido de serviço
+  useEffect(() => {
+    const resolveOrderId = async () => {
+      if (paymentIntent && redirectStatus === "succeeded") {
+        setLoadingId(true);
+        try {
+          const id = await getServiceOrderIdByPaymentIntent(paymentIntent);
+          if (id) {
+            setFinalOrderId(id);
+          }
+        } catch (error) {
+          console.error("Erro ao recuperar ID do pedido de serviço", error);
+        } finally {
+          setLoadingId(false);
+        }
+      }
+    };
+
+    resolveOrderId();
+  }, [paymentIntent, redirectStatus]);
+
+  // Efeito para o Timer de Redirecionamento
+  useEffect(() => {
+    if (loadingId) return;
+
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          // Redireciona para o painel do cliente (ajuste a URL conforme sua estrutura, ex: /minha-conta/servicos)
+          router.push("/minha-conta");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [router, loadingId]);
+
+  const handleCopyOrder = () => {
+    if (finalOrderId) {
+      navigator.clipboard.writeText(finalOrderId.slice(0, 8).toUpperCase());
+      toast.success("Código copiado!");
+    }
+  };
+
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center px-4 pt-22 text-center">
+      {/* Mensagem discreta do Timer */}
+      <div className="animate-fade-in mb-4 text-xs font-medium text-neutral-400">
+        Redirecionando para sua conta em{" "}
+        <span className="font-bold text-orange-600">{countdown}s</span>...
+      </div>
+
+      <div className="animate-in zoom-in mb-6 duration-500">
+        <Image
+          src="/images/illustration-sucess.svg" // Mesma imagem de sucesso que você já usa
+          alt="Serviço Confirmado"
+          width={150}
+          height={150}
+          className="h-55 w-auto object-contain duration-500 hover:scale-105"
+          priority
+        />
+      </div>
+
+      <h1 className="text-3xl font-bold text-neutral-900 md:text-4xl">
+        Serviço Contratado!
+      </h1>
+
+      <p className="my-5 max-w-md text-neutral-500">
+        Obrigado! Seu pagamento foi processado com segurança. O prestador já foi
+        notificado e em breve entrará em contato para alinhar os detalhes.
+      </p>
+
+      <div className="mb-8 w-full max-w-sm space-y-3 rounded-lg border border-neutral-200 bg-white p-5 text-sm shadow-sm">
+        <div className="flex flex-col gap-1 border-b border-neutral-100 pb-4">
+          <span className="text-xs font-bold tracking-wider text-neutral-400 uppercase">
+            Número da Solicitação
+          </span>
+
+          <div className="flex items-center justify-center gap-2">
+            {loadingId ? (
+              <Loader2 className="h-5 w-5 animate-spin text-orange-600" />
+            ) : finalOrderId ? (
+              <>
+                <span className="font-mono text-2xl font-bold tracking-tight text-neutral-900">
+                  #{finalOrderId.slice(0, 8).toUpperCase()}
+                </span>
+                <button
+                  onClick={handleCopyOrder}
+                  className="rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+                  title="Copiar código"
+                >
+                  <Copy className="h-4 w-4" />
+                </button>
+              </>
+            ) : (
+              <span className="text-neutral-400 italic">Processando ID...</span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-center gap-2 pt-2 font-medium text-green-600">
+          <CheckCircle2 className="h-4 w-4" /> Pagamento via Stripe Aprovado
+        </div>
+      </div>
+
+      <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+        <Link href="/minha-conta" className="w-full sm:w-auto">
+          <Button
+            variant="outline"
+            className="h-12 w-full gap-2 border-neutral-300 px-8 sm:w-auto"
+          >
+            <Briefcase className="h-4 w-4" /> Minha Conta
+          </Button>
+        </Link>
+        <Link href="/" className="w-full sm:w-auto">
+          <Button className="h-12 w-full gap-2 bg-orange-600 px-8 font-bold text-white hover:bg-orange-700 sm:w-auto">
+            <Home className="h-4 w-4" /> Voltar para a Início
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+export default function ServiceSuccessPage() {
+  return (
+    <div className="flex min-h-screen flex-col bg-neutral-50 text-neutral-900">
+      <Suspense fallback={<div className="h-20 w-full bg-neutral-50" />}>
+        <Header />
+      </Suspense>
+
+      <main className="flex flex-1 flex-col items-center justify-center py-20">
+        <Suspense
+          fallback={
+            <div className="flex flex-col items-center justify-center gap-4">
+              <Loader2 className="h-10 w-10 animate-spin text-orange-600" />
+              <p className="text-neutral-500">
+                Processando informações do serviço...
+              </p>
+            </div>
+          }
+        >
+          <ServiceSuccessContent />
+        </Suspense>
+      </main>
+
+      <Suspense fallback={<div className="h-20 w-full bg-neutral-50" />}>
+        <Footer />
+      </Suspense>
+    </div>
+  );
+}

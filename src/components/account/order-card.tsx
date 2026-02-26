@@ -8,7 +8,6 @@ import {
   ChevronRight,
   CircleAlert,
   Clock,
-  Copy,
   Eye,
   EyeOff,
   Loader2,

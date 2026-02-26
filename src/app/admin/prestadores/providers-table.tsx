@@ -218,9 +218,6 @@ export function ProvidersTable({ data }: ProvidersTableProps) {
                             <Eye className="h-4 w-4" />
                           </Button>
                         </DialogTrigger>
-                        {/* - max-w-4xl (MUITO MAIOR que o padrão)
-                           - p-0 (Tirei o padding do Content pra colocar a div scrollável dentro preenchendo tudo)
-                        */}
                         <DialogContent
                           className="flex max-h-[90vh] w-full max-w-[95vw] flex-col overflow-hidden border-neutral-200 bg-white p-0 text-neutral-900 shadow-xl md:max-w-3xl lg:max-w-4xl"
                           onWheel={stopPropagation}

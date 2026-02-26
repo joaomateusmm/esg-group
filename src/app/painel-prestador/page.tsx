@@ -1,6 +1,7 @@
-import { desc, eq } from "drizzle-orm";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { desc, eq, inArray } from "drizzle-orm";
 import { AlertCircle, Briefcase, Clock, LayoutDashboard } from "lucide-react";
-import { revalidatePath } from "next/cache"; // <-- NOVO IMPORT
+import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -10,7 +11,7 @@ import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { db } from "@/db";
-import { serviceProvider, serviceRequest } from "@/db/schema";
+import { serviceOrder, serviceProvider } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 import { RequestCard } from "./request-card";
@@ -27,15 +28,15 @@ export default async function ProviderDashboardPage() {
     redirect("/login?callbackUrl=/painel-prestador");
   }
 
-  // 2. Busca o Perfil de Prestador
-  const provider = await db.query.serviceProvider.findFirst({
+  // 2. Busca TODOS os perfis de prestador desse usuário (pode ter vários agora)
+  const providers = await db.query.serviceProvider.findMany({
     where: eq(serviceProvider.userId, session.user.id),
     with: {
       category: true,
     },
   });
 
-  // --- ACTION PARA SAIR DO SERVIÇO ATUAL ---
+  // --- ACTION PARA SAIR DE TODOS OS SERVIÇOS (RESETA O PRESTADOR) ---
   const handleLeaveService = async () => {
     "use server";
     const currentSession = await auth.api.getSession({
@@ -43,7 +44,6 @@ export default async function ProviderDashboardPage() {
     });
 
     if (currentSession?.user) {
-      // Deleta o perfil de prestador do usuário logado
       await db
         .delete(serviceProvider)
         .where(eq(serviceProvider.userId, currentSession.user.id));
@@ -56,7 +56,7 @@ export default async function ProviderDashboardPage() {
   // 3. Lógica de Redirecionamento e Bloqueio baseada no Status
 
   // Caso 1: Não é prestador
-  if (!provider) {
+  if (providers.length === 0) {
     return (
       <main className="min-h-screen bg-neutral-50">
         <Header />
@@ -80,72 +80,94 @@ export default async function ProviderDashboardPage() {
     );
   }
 
-  // Caso 2: Pendente
-  if (provider.status === "pending") {
-    return (
-      <main className="min-h-screen bg-neutral-50">
-        <Header />
-        <div className="container flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
-          <div className="mb-4 rounded-full bg-yellow-100 p-4">
-            <Clock className="h-10 w-10 text-yellow-600" />
+  // Identifica se há ALGO aprovado. Se não houver nada aprovado, mostra tela de pendente ou rejeitado.
+  const hasApproved = providers.some((p) => p.status === "approved");
+  const firstPending = providers.find((p) => p.status === "pending");
+  const firstRejected = providers.find((p) => p.status === "rejected");
+
+  if (!hasApproved) {
+    // Caso 2: Se tem algo pendente (e nada aprovado ainda)
+    if (firstPending) {
+      return (
+        <main className="min-h-screen bg-neutral-50">
+          <Header />
+          <div className="container flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
+            <div className="mb-4 rounded-full bg-yellow-100 p-4">
+              <Clock className="h-10 w-10 text-yellow-600" />
+            </div>
+            <h1 className="mb-2 text-2xl font-bold text-neutral-900">
+              Análise em Andamento
+            </h1>
+            <p className="mb-6 max-w-md text-neutral-500">
+              Olá, <strong>{session.user.name}</strong>. Sua candidatura para{" "}
+              <strong>{firstPending.category.name}</strong> foi recebida e está
+              sendo analisada pela nossa equipe.
+            </p>
+            <div className="rounded-md border border-neutral-200 bg-white p-4 shadow-sm">
+              <p className="text-sm text-neutral-600">
+                Tempo médio: 24 a 48 horas.
+              </p>
+            </div>
           </div>
-          <h1 className="mb-2 text-2xl font-bold text-neutral-900">
-            Análise em Andamento
-          </h1>
-          <p className="mb-6 max-w-md text-neutral-500">
-            Olá, <strong>{session.user.name}</strong>. Sua candidatura para{" "}
-            <strong>{provider.category.name}</strong> foi recebida e está sendo
-            analisada pela nossa equipe.
-          </p>
-          <div className="rounded-md border border-neutral-200 bg-white p-4 shadow-sm">
-            <p className="text-sm text-neutral-600">
-              Tempo médio: 24 a 48 horas.
+          <Footer />
+        </main>
+      );
+    }
+
+    // Caso 3: Rejeitado (e não tem nada pendente nem aprovado)
+    if (firstRejected) {
+      return (
+        <main className="min-h-screen bg-neutral-50">
+          <Header />
+          <div className="container flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
+            <div className="mb-4 rounded-full bg-red-100 p-4">
+              <AlertCircle className="h-10 w-10 text-red-600" />
+            </div>
+            <h1 className="mb-2 text-2xl font-bold text-neutral-900">
+              Candidatura Não Aprovada
+            </h1>
+            <p className="mb-6 max-w-md text-neutral-500">
+              Infelizmente seu perfil não atendeu aos nossos critérios neste
+              momento. Entre em contato com o suporte para mais detalhes.
             </p>
           </div>
-        </div>
-        <Footer />
-      </main>
-    );
-  }
-
-  // Caso 3: Rejeitado
-  if (provider.status === "rejected") {
-    return (
-      <main className="min-h-screen bg-neutral-50">
-        <Header />
-        <div className="container flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
-          <div className="mb-4 rounded-full bg-red-100 p-4">
-            <AlertCircle className="h-10 w-10 text-red-600" />
-          </div>
-          <h1 className="mb-2 text-2xl font-bold text-neutral-900">
-            Candidatura Não Aprovada
-          </h1>
-          <p className="mb-6 max-w-md text-neutral-500">
-            Infelizmente seu perfil não atendeu aos nossos critérios neste
-            momento. Entre em contato com o suporte para mais detalhes.
-          </p>
-        </div>
-        <Footer />
-      </main>
-    );
+          <Footer />
+        </main>
+      );
+    }
   }
 
   // Caso 4: APROVADO (Dashboard Real)
+
+  // PEGA O NOME DE TODAS AS CATEGORIAS APROVADAS (Corrigido para exibir claramente)
+  const approvedCategoriesNames = providers
+    .filter((p) => p.status === "approved")
+    .map((p) => p.category.name)
+    .join(", ");
+
+  // Pega todos os IDs de prestador desse usuário para buscar os pedidos associados
+  const providerIds = providers.map((p) => p.id);
+
   // Busca pedidos para este prestador
-  const requests = await db.query.serviceRequest.findMany({
-    where: eq(serviceRequest.providerId, provider.id),
+  const requests = await db.query.serviceOrder.findMany({
+    where: inArray(serviceOrder.providerId, providerIds),
     with: {
       customer: {
         columns: { name: true, image: true, email: true },
       },
+      category: {
+        columns: { name: true }, // PRECISA DISSO AQUI PARA O CARD
+      },
     },
-    orderBy: [desc(serviceRequest.createdAt)],
+    orderBy: [desc(serviceOrder.createdAt)],
   });
 
-  const pendingRequests = requests.filter((r) => r.status === "pending");
-  const activeRequests = requests.filter((r) => r.status === "accepted");
-  const historyRequests = requests.filter((r) =>
-    ["completed", "rejected"].includes(r.status),
+  const pendingRequests = requests.filter((r: any) => r.status === "pending");
+  const activeRequests = requests.filter(
+    (r: any) => r.status === "in_progress" || r.status === "accepted",
+  );
+  const historyRequests = requests.filter((r: any) =>
+    ["completed", "canceled"].includes(r.status),
   );
 
   return (
@@ -165,8 +187,8 @@ export default async function ProviderDashboardPage() {
               </div>
               <p className="text-neutral-500">
                 Bem-vindo, {session.user.name}. Gerencie seus serviços de{" "}
-                <span className="font-medium text-neutral-900">
-                  {provider.category.name}
+                <span className="font-medium text-orange-700">
+                  {approvedCategoriesNames}
                 </span>
                 .
               </p>
@@ -189,7 +211,7 @@ export default async function ProviderDashboardPage() {
                   variant="outline"
                   className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
                 >
-                  Sair do Serviço atual
+                  Sair dos Serviços Atuais
                 </Button>
               </form>
             </div>
@@ -210,7 +232,7 @@ export default async function ProviderDashboardPage() {
           </h2>
           {pendingRequests.length > 0 ? (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {pendingRequests.map((req) => (
+              {pendingRequests.map((req: any) => (
                 <RequestCard key={req.id} request={req} />
               ))}
             </div>
@@ -231,7 +253,7 @@ export default async function ProviderDashboardPage() {
               Em Andamento
             </h2>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {activeRequests.map((req) => (
+              {activeRequests.map((req: any) => (
                 <RequestCard key={req.id} request={req} />
               ))}
             </div>
@@ -245,7 +267,7 @@ export default async function ProviderDashboardPage() {
               Histórico Recente
             </h2>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {historyRequests.slice(0, 6).map((req) => (
+              {historyRequests.slice(0, 6).map((req: any) => (
                 <RequestCard key={req.id} request={req} />
               ))}
             </div>
