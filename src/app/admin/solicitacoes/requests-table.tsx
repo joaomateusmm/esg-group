@@ -55,8 +55,9 @@ interface RequestsTableProps {
 export function RequestsTable({ data }: RequestsTableProps) {
   const [isPending, startTransition] = useTransition();
 
+  // CORREÇÃO: Adicionado 'selectedRequest' para o destructuring do array funcionar corretamente
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [setSelectedRequest] = useState<any>(null);
+  const [selectedRequest, setSelectedRequest] = useState<any>(null);
 
   const handleDelete = (id: string) => {
     if (
