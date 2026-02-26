@@ -17,8 +17,6 @@ interface NewRequestEmailProps {
   providerName: string;
   customerName: string;
   description: string;
-  budgetType: string;
-  budgetValue?: string | null;
   address: string;
   dashboardUrl: string;
 }
@@ -27,12 +25,10 @@ export const NewRequestEmail = ({
   providerName,
   customerName,
   description,
-  budgetType,
-  budgetValue,
   address,
   dashboardUrl,
 }: NewRequestEmailProps) => {
-  const previewText = `Novo pedido de orçamento de ${customerName}`;
+  const previewText = `Nova solicitação de serviço de ${customerName}`;
 
   return (
     <Html>
@@ -48,7 +44,7 @@ export const NewRequestEmail = ({
               Olá, <strong>{providerName}</strong>!
             </Text>
             <Text className="text-[14px] leading-[24px] text-black">
-              Você recebeu uma nova solicitação de orçamento através do{" "}
+              Você recebeu uma nova solicitação através do{" "}
               <strong>ESG Group</strong>.
             </Text>
 
@@ -56,25 +52,20 @@ export const NewRequestEmail = ({
               <Text className="m-0 font-bold text-gray-800">Cliente:</Text>
               <Text className="m-0 mb-2 text-gray-600">{customerName}</Text>
 
-              <Text className="m-0 font-bold text-gray-800">Descrição:</Text>
+              <Text className="m-0 font-bold text-gray-800">
+                Descrição do Serviço:
+              </Text>
               <Text className="m-0 mb-2 text-gray-600 italic">
                 &quot;{description}&quot;
               </Text>
 
-              <Text className="m-0 font-bold text-gray-800">Local:</Text>
+              <Text className="m-0 font-bold text-gray-800">Localização:</Text>
               <Text className="m-0 mb-2 text-gray-600">{address}</Text>
-
-              <Text className="m-0 font-bold text-gray-800">
-                Orçamento Proposto:
-              </Text>
-              <Text className="m-0 font-semibold text-orange-600">
-                {budgetType === "range" ? `£ ${budgetValue}` : "A Combinar"}
-              </Text>
             </Section>
 
             <Text className="text-[14px] leading-[24px] text-black">
-              Acesse seu painel para aceitar ou recusar este pedido e ver os
-              dados de contato do cliente.
+              Acesse seu painel agora para visualizar os detalhes completos e
+              responder ao cliente.
             </Text>
 
             <Section className="mt-[32px] mb-[32px] text-center">
@@ -82,12 +73,13 @@ export const NewRequestEmail = ({
                 className="rounded bg-[#ea580c] px-5 py-3 text-center text-[12px] font-semibold text-white no-underline"
                 href={dashboardUrl}
               >
-                Acessar Painel do Prestador
+                Ver Solicitação no Painel
               </Button>
             </Section>
+
             <Hr className="mx-0 my-[26px] border border-solid border-[#eaeaea]" />
             <Text className="text-[12px] leading-[24px] text-[#666666]">
-              Se você não esperava este e-mail, pode ignorá-lo.
+              ESG Group - Conectando serviços com sustentabilidade.
             </Text>
           </Container>
         </Body>

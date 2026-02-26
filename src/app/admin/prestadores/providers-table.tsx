@@ -8,6 +8,7 @@ import {
   Megaphone,
   MoreHorizontal,
   Phone,
+  Search, // <-- Ícone de busca adicionado
   Trash2,
   Users,
   XCircle,
@@ -63,6 +64,9 @@ export function ProvidersTable({ data }: ProvidersTableProps) {
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [providerToReject, setProviderToReject] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+
+  // Estado para o campo de busca
+  const [searchTerm, setSearchTerm] = useState("");
 
   const handleAction = (action: "approve" | "delete", id: string) => {
     if (
@@ -160,33 +164,59 @@ export function ProvidersTable({ data }: ProvidersTableProps) {
     e.stopPropagation();
   };
 
+  // Filtra os dados com base no que foi digitado no Search (ID, Nome ou Email)
+  const filteredData = data.filter((item) => {
+    const search = searchTerm.toLowerCase();
+    const name = item.user?.name?.toLowerCase() || "";
+    const email = item.user?.email?.toLowerCase() || "";
+    const id = item.id?.toLowerCase() || "";
+
+    return (
+      name.includes(search) || email.includes(search) || id.includes(search)
+    );
+  });
+
   return (
     <>
+      {/* Search Input acima da tabela */}
+      <div className="relative mb-4 max-w-md">
+        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+          <Search className="h-4 w-4 text-neutral-400" />
+        </div>
+        <input
+          type="text"
+          placeholder="Buscar por Nome, Email ou ID..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="flex h-10 w-full rounded-md border border-neutral-300 bg-white py-2 pr-3 pl-10 text-sm shadow-sm transition-shadow placeholder:text-neutral-400 focus:border-transparent focus:ring-2 focus:ring-orange-500 focus:outline-none"
+        />
+      </div>
+
       <div className="rounded-md border border-neutral-200 bg-white shadow-sm">
         <Table>
           <TableHeader className="bg-neutral-50">
             <TableRow>
-              <TableHead>Prestador</TableHead>
+              <TableHead className="pl-6">Prestador</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead>Experiência</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+              <TableHead className="pr-6 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.length === 0 ? (
+            {filteredData.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={5}
                   className="h-24 text-center text-neutral-500"
                 >
-                  Nenhuma solicitação encontrada.
+                  Nenhum prestador encontrado com esses termos.
                 </TableCell>
               </TableRow>
             ) : (
-              data.map((item) => (
+              filteredData.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell>
+                  <TableCell className="pl-6">
                     <div className="flex flex-col">
                       <span className="font-medium text-neutral-900">
                         {item.user?.name || "Sem Nome"}
@@ -204,7 +234,7 @@ export function ProvidersTable({ data }: ProvidersTableProps) {
                   </TableCell>
                   <TableCell>{item.experienceYears} anos</TableCell>
                   <TableCell>{getStatusBadge(item.status)}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="pr-6 text-right">
                     <div className="flex items-center justify-end gap-2">
                       {/* Modal de Ver Detalhes */}
                       <Dialog>

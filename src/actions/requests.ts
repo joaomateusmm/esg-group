@@ -1,29 +1,25 @@
 "use server";
 
-import { eq } from "drizzle-orm"; // Importar eq
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { Resend } from "resend"; // Importar Resend
+import { Resend } from "resend";
 import { z } from "zod";
 
-import NewRequestEmail from "@/components/emails/new-request-email"; // Importar o template
+import NewRequestEmail from "@/components/emails/new-request-email";
 import { db } from "@/db";
-import { serviceProvider, serviceRequest } from "@/db/schema"; // Importar serviceProvider
+// IMPORT CORRIGIDO: Agora batendo com seu schema.ts (serviceProvider e serviceOrder)
+import { serviceOrder, serviceProvider } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
-// Instância do Resend
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Schema de Validação do Pedido
 const requestSchema = z.object({
   providerId: z.string().min(1),
   categoryId: z.string().min(1),
   description: z.string().min(10, "Descreva o problema com mais detalhes."),
   address: z.string().min(5, "Endereço obrigatório."),
   contactPhone: z.string().min(8, "Telefone obrigatório."),
-  budgetType: z.enum(["negotiable", "range"]),
-  minBudget: z.string().optional(),
-  maxBudget: z.string().optional(),
 });
 
 export type RequestFormValues = z.infer<typeof requestSchema>;
@@ -43,28 +39,23 @@ export async function createServiceRequest(data: RequestFormValues) {
       return { success: false, error: "Dados inválidos." };
     }
 
-    const {
-      providerId,
-      categoryId,
-      description,
-      address,
-      contactPhone,
-      budgetType,
-      minBudget,
-      maxBudget,
-    } = parsed.data;
+    const { providerId, categoryId, description, address, contactPhone } =
+      parsed.data;
 
-    // Formata o valor do orçamento
-    let budgetValue = null;
-    if (budgetType === "range") {
-      if (!minBudget || !maxBudget) {
-        return { success: false, error: "Defina o valor mínimo e máximo." };
-      }
-      budgetValue = `${minBudget} - ${maxBudget}`;
+    // 1. Buscar dados do Prestador (para pegar o e-mail e o preço base)
+    const providerData = await db.query.serviceProvider.findFirst({
+      where: eq(serviceProvider.id, providerId),
+      with: {
+        user: true,
+      },
+    });
+
+    if (!providerData) {
+      return { success: false, error: "Prestador não encontrado." };
     }
 
-    // 1. Salvar no Banco
-    await db.insert(serviceRequest).values({
+    // 2. Salvar no Banco (Tabela serviceOrder)
+    await db.insert(serviceOrder).values({
       id: crypto.randomUUID(),
       customerId: session.user.id,
       providerId,
@@ -72,40 +63,28 @@ export async function createServiceRequest(data: RequestFormValues) {
       description,
       address,
       contactPhone,
-      budgetType,
-      budgetValue,
+      amount: providerData.servicePrice, // Usando o preço definido no perfil do prestador
       status: "pending",
-    });
-
-    // 2. Buscar dados do Prestador para enviar o E-mail
-    // Precisamos do E-mail do usuário que é dono do perfil de prestador
-    const providerData = await db.query.serviceProvider.findFirst({
-      where: eq(serviceProvider.id, providerId),
-      with: {
-        user: true, // Traz os dados do usuário (email, nome)
-      },
+      paymentStatus: "pending",
     });
 
     // 3. Enviar E-mail via Resend
-    if (providerData && providerData.user.email) {
+    if (providerData.user?.email) {
       try {
         await resend.emails.send({
           from: process.env.EMAIL_FROM || "ESG Group <contato@esggroup.shop>",
           to: providerData.user.email,
           subject: `Novo Pedido de Serviço: ${session.user.name}`,
           react: NewRequestEmail({
-            providerName: providerData.user.name,
-            customerName: session.user.name,
+            providerName: providerData.user.name ?? "Prestador",
+            customerName: session.user.name ?? "Cliente",
             description: description,
             address: address,
-            budgetType: budgetType,
-            budgetValue: budgetValue,
             dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/painel-prestador`,
           }),
         });
       } catch (emailError) {
         console.error("Erro ao enviar e-mail:", emailError);
-        // Não bloqueamos o sucesso do pedido se o e-mail falhar, apenas logamos
       }
     }
 
