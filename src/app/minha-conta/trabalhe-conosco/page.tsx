@@ -5,7 +5,6 @@ import {
   ClipboardCheck,
   Clock,
   Info,
-  PercentCircle, // Ícone novo para a comissão
   UserCheck,
 } from "lucide-react";
 import { headers } from "next/headers";
