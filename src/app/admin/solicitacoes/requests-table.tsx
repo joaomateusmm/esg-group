@@ -101,7 +101,7 @@ export function RequestsTable({ data }: RequestsTableProps) {
         );
       case "completed":
         return (
-          <Badge className="border-emerald-200 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+          <Badge className="border-blue-200 bg-blue-100 text-blue-700 hover:bg-blue-100">
             Concluído
           </Badge>
         );
@@ -173,7 +173,7 @@ export function RequestsTable({ data }: RequestsTableProps) {
                 <TableCell>{item.category.name}</TableCell>
 
                 {/* MOSTRA O VALOR */}
-                <TableCell className="font-semibold text-orange-600">
+                <TableCell className="font-semibold text-neutral-500">
                   {formatCurrency(item.amount)}
                 </TableCell>
 
@@ -247,7 +247,7 @@ export function RequestsTable({ data }: RequestsTableProps) {
                                 </p>
                                 {item.paymentStatus === "succeeded" ? (
                                   <Badge className="border-green-200 bg-green-100 text-green-700">
-                                    Aprovado (Stripe)
+                                    Aprovado
                                   </Badge>
                                 ) : (
                                   <Badge
