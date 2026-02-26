@@ -52,8 +52,7 @@ function ServiceSuccessContent() {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          // Redireciona para o painel do cliente (ajuste a URL conforme sua estrutura, ex: /minha-conta/servicos)
-          router.push("/minha-conta");
+          router.push("/minha-conta/servicos");
           return 0;
         }
         return prev - 1;

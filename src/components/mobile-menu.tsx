@@ -77,8 +77,8 @@ export function MobileMenu({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button className="h-10.5 w-10.5 cursor-pointer border border-neutral-200 bg-white text-neutral-800 duration-300 hover:bg-neutral-100">
-          <Menu strokeWidth={2} className="h-12 w-12" />
+        <Button className="h-10.5 w-10.5 cursor-pointer border-neutral-200 bg-white text-neutral-800 duration-300 hover:bg-neutral-100 md:border">
+          <Menu strokeWidth={2} className="scale-[1.2] md:h-12 md:w-12" />
         </Button>
       </SheetTrigger>
 
@@ -134,6 +134,13 @@ export function MobileMenu({
                 className="group flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-600 transition-colors hover:bg-orange-50 hover:text-orange-700"
               >
                 Minhas Compras
+                <ChevronRight className="h-4 w-4 text-neutral-300 transition-transform group-hover:translate-x-1 group-hover:text-orange-400" />
+              </Link>
+              <Link
+                href="/minha-conta/servicos"
+                className="group flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-600 transition-colors hover:bg-orange-50 hover:text-orange-700"
+              >
+                Meus Serviços
                 <ChevronRight className="h-4 w-4 text-neutral-300 transition-transform group-hover:translate-x-1 group-hover:text-orange-400" />
               </Link>
               <Link

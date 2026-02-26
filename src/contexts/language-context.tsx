@@ -20,7 +20,7 @@ const defaultTranslations = {
     bestDeals: "Ofertas",
     sale: "aaaa",
     wishlist: { title: "Sua Lista", empty: "Sem Favoritos" },
-    account: { myAccount: "Conta", orders: "Pedidos", logout: "Sair" },
+    account: { myAccount: "Conta", orders: "Minhas Compras", logout: "Sair" },
     cart: {
       title: "Carrinho",
       empty: "Carrinho Vazio",

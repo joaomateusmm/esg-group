@@ -4,17 +4,19 @@ import {
   Briefcase,
   ClipboardCheck,
   Clock,
+  Info,
+  PercentCircle, // Ícone novo para a comissão
   UserCheck,
 } from "lucide-react";
 import { headers } from "next/headers";
 import Link from "next/link";
 
-// Removi o import não utilizado do 'redirect'
 // Imports dos componentes de Auth
 import SignInForm from "@/app/authentication/components/sign-in-form";
 import SignUpForm from "@/app/authentication/components/sign-up-form";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -39,8 +41,6 @@ export default async function TrabalheConoscoPage() {
   });
 
   // CORREÇÃO DOS ERROS DE TYPE ANY:
-  // Fazendo dessa forma, o TypeScript entende perfeitamente o tipo dos dados
-  // retornados pelo banco ou assume uma array vazia tipada.
   const myApplications = session
     ? await db.query.serviceProvider.findMany({
         where: eq(serviceProvider.userId, session.user.id),
@@ -55,8 +55,6 @@ export default async function TrabalheConoscoPage() {
     .filter((app) => app.status === "approved" || app.status === "pending")
     .map((app) => app.categoryId);
 
-  // A MÁGICA ACONTECE AQUI: Em vez de excluir da lista, passamos todas, mas
-  // marcamos as já solicitadas com um texto e a tag disabled.
   const categoriesWithStatus = categories.map((cat) => ({
     id: cat.id,
     name: appliedCategoryIds.includes(cat.id)
@@ -70,8 +68,6 @@ export default async function TrabalheConoscoPage() {
     (cat) => !cat.disabled,
   );
 
-  // Para a exibição visual de "Você tem uma solicitação pendente" ou "rejeitada"
-  // caso queira manter a UI de aviso. Mostra o aviso mais relevante.
   const hasPending = myApplications.find((app) => app.status === "pending");
   const hasRejected = myApplications.find((app) => app.status === "rejected");
   const hasApproved = myApplications.some((app) => app.status === "approved");
@@ -200,6 +196,20 @@ export default async function TrabalheConoscoPage() {
                   </h2>
                   <ProviderForm categories={categoriesWithStatus} />
 
+                  {/* NOVO: ALERTA SOBRE A COMISSÃO GERAL */}
+                  <Alert className="my-8 border-neutral-200 bg-white shadow-sm text-neutral-800">
+                    <Info className="h-5 w-5 text-neutral-600" />
+                    <AlertTitle className="mb-2 font-bold text-neutral-900">
+                      Sobre os valores de comissão:
+                    </AlertTitle>
+                    <AlertDescription className="text-neutral-700">
+                      A ESG Group retém uma taxa fixa de apenas 5% sobre o valor
+                      dos serviços fechados pela plataforma. Você fica com os
+                      95% restantes e ganha visibilidade para centenas de
+                      clientes todos os dias.
+                    </AlertDescription>
+                  </Alert>
+
                   <div className="mt-8 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
                     <h3 className="mb-6 border-b border-neutral-100 pb-2 text-lg font-bold text-neutral-900">
                       Como funciona o processo?
@@ -212,40 +222,47 @@ export default async function TrabalheConoscoPage() {
                         </div>
                         <div>
                           <h4 className="font-semibold text-neutral-900">
-                            1. Cadastro
+                            1. Cadastro e Definição de Preço
                           </h4>
                           <p className="text-sm leading-relaxed text-neutral-500">
-                            Preencha o formulário com a nova especialidade que
-                            deseja atender.
+                            Preencha o formulário com a nova especialidade.
+                            Lembre-se que o valor que você definir como
+                            &quot;Preço Base&quot; já deve levar em consideração
+                            a <strong>taxa de 5% da plataforma</strong>.
                           </p>
                         </div>
                       </div>
+
                       <div className="flex gap-4">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
                           <UserCheck className="h-5 w-5" />
                         </div>
                         <div>
                           <h4 className="font-semibold text-neutral-900">
-                            2. Análise
+                            2. Análise de Segurança
                           </h4>
                           <p className="text-sm leading-relaxed text-neutral-500">
-                            Nossa equipe analisará seu perfil e experiência para
-                            esta nova área.
+                            Nossa equipe analisará seu perfil, experiência e a
+                            foto do seu documento de identidade para garantir a
+                            segurança dos clientes.
                           </p>
                         </div>
                       </div>
+
                       <div className="flex gap-4">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
                           <Briefcase className="h-5 w-5" />
                         </div>
                         <div>
                           <h4 className="font-semibold text-neutral-900">
-                            3. Aprovação
+                            3. Aprovação e Recebimento
                           </h4>
                           <p className="text-sm leading-relaxed text-neutral-500">
-                            Assim que aprovado, você terá acesso ao Painel do
-                            Prestador para aceitar serviços. A aprovação pode
-                            levar de 2 a 3 dias úteis.
+                            Assim que aprovado, você estará visível no catálogo.
+                            Quando um cliente pagar pelo seu serviço, o
+                            pagamento é retido pela Stripe de forma segura e
+                            você recebe seus 95% direto na sua conta após a
+                            conclusão do trabalho.
                           </p>
                         </div>
                       </div>

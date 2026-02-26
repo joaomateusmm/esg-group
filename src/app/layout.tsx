@@ -11,6 +11,7 @@ import { CouponPopup } from "@/components/coupon-popup";
 import FloatingScrollbar from "@/components/FloatingScrollbar";
 import { GoogleTranslator } from "@/components/google-translator";
 import SmoothScroll from "@/components/SmoothScroll";
+import { SupportFloatingButton } from "@/components/support-floating-button"; // IMPORT AQUI
 import { ThemeProvider } from "@/components/theme-provider";
 import { LanguageProvider } from "@/contexts/language-context";
 import { db } from "@/db";
@@ -104,6 +105,9 @@ export default function RootLayout({
               </SmoothScroll>
 
               <Toaster position="top-left" />
+
+              {/* COMPONENTE DE SUPORTE ADICIONADO AQUI */}
+              <SupportFloatingButton />
             </LanguageProvider>
           </Suspense>
         </ThemeProvider>

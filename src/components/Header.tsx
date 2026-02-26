@@ -2,6 +2,7 @@
 
 import {
   ChevronDown,
+  Drill,
   Flame,
   Hammer,
   Heart,
@@ -365,20 +366,15 @@ export function HeaderContent() {
 
             <Link
               href="/"
-              className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center justify-center rounded-md border border-neutral-200 px-3 py-1 duration-300 group-hover:scale-105 group-active:scale-95 active:scale-95 md:static md:hidden md:translate-x-0"
+              className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center justify-center duration-300 group-hover:scale-105 group-active:scale-95 active:scale-95 md:static md:hidden md:translate-x-0"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg sm:h-10 sm:w-10">
-                <Image
-                  src="/images/logo.png"
-                  alt="Logo ESG Group"
-                  width={50}
-                  height={50}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <span className="font-clash-display text-[16px] font-bold text-neutral-700 sm:text-2xl">
-                ESG Group
-              </span>
+              <Image
+                src="/logo.svg"
+                alt="Logo ESG Group"
+                width={55}
+                height={55}
+                className="rounded-full object-cover shadow-lg duration-300 group-hover:scale-105 group-active:scale-95"
+              />
             </Link>
 
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -636,6 +632,14 @@ export function HeaderContent() {
                   >
                     <Package className="h-4 w-4" />
                     <span>{t.header.account.orders}</span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-neutral-600 transition-colors focus:bg-orange-50 focus:text-orange-700"
+                    onClick={() => router.push("/minha-conta/servicos")}
+                  >
+                    <Drill className="h-4 w-4" />
+                    <span>Meus Serviços</span>
                   </DropdownMenuItem>
 
                   <DropdownMenuItem

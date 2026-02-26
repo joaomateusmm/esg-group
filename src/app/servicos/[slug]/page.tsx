@@ -4,10 +4,8 @@ import {
   Briefcase,
   CheckCircle2,
   ChevronRight,
-  Clock,
   ExternalLink,
   MapPin,
-  ShieldCheck,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
