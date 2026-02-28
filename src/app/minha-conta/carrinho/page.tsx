@@ -1,6 +1,15 @@
 "use client";
 
-import { Loader2, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { format } from "date-fns"; // Importamos para formatar a data no resumo
+import { ptBR } from "date-fns/locale";
+import {
+  CalendarDays,
+  Loader2,
+  Minus,
+  Plus,
+  ShoppingCart,
+  Trash2,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,6 +18,7 @@ import { toast } from "sonner";
 
 import { checkStockAvailability } from "@/actions/check-stock";
 import { createCheckoutSession } from "@/actions/checkout";
+import { BookingDatePicker } from "@/components/booking-date-picker"; // IMPORT DO NOSSO COMPONENTE
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -21,6 +31,9 @@ import { useCartStore } from "@/store/cart-store";
 function CartContent() {
   const [mounted, setMounted] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+
+  // ESTADO PARA ARMAZENAR A DATA ESCOLHIDA
+  const [bookingDate, setBookingDate] = useState<Date | undefined>(undefined);
 
   const router = useRouter();
   const { data: session } = authClient.useSession();
@@ -71,6 +84,14 @@ function CartContent() {
       return;
     }
 
+    // OPCIONAL: Se você quiser OBRIGAR o cliente a escolher a data antes de pagar, descomente abaixo:
+    /*
+    if (!bookingDate) {
+      toast.error("Por favor, selecione uma data de entrega antes de continuar.");
+      return;
+    }
+    */
+
     try {
       setIsCheckingOut(true);
 
@@ -95,6 +116,7 @@ function CartContent() {
         image: item.image,
       }));
 
+      // NO PASSO 3 NÓS VAMOS ENVIAR A `bookingDate` AQUI DENTRO PARA O BACKEND
       const result = await createCheckoutSession(checkoutItems);
 
       if (result && result.success) {
@@ -216,7 +238,7 @@ function CartContent() {
             ))}
           </div>
 
-          <div className=" lg:sticky lg:top-36">
+          <div className="lg:sticky lg:top-36">
             <Card className="border border-neutral-200 bg-white shadow-lg">
               <CardContent className="p-6">
                 <h3 className="mb-4 text-xl font-bold text-neutral-900">
@@ -235,6 +257,19 @@ function CartContent() {
                       Calculado no checkout
                     </span>
                   </div>
+
+                  {/* MOSTRA A DATA NO RESUMO SE O CLIENTE SELECIONOU */}
+                  {bookingDate && (
+                    <div className="flex justify-between border-t border-neutral-100 pt-3 text-neutral-600">
+                      <span className="flex items-center gap-1">
+                        <CalendarDays className="h-4 w-4" /> Data de Entrega
+                      </span>
+                      <span className="font-bold text-neutral-900">
+                        {format(bookingDate, "dd 'de' MMMM", { locale: ptBR })}
+                      </span>
+                    </div>
+                  )}
+
                   <Separator className="bg-neutral-100" />
                   <div className="flex justify-between text-base font-bold text-neutral-900">
                     <span>Total Estimado</span>
@@ -259,6 +294,22 @@ function CartContent() {
                     <>Comprar Agora</>
                   )}
                 </Button>
+
+                {/* SESSÃO DO CALENDÁRIO ABAIXO DO BOTÃO */}
+                <div className="mt-6 rounded-lg border border-neutral-100 bg-neutral-50 p-4">
+                  <label className="mb-2 block text-sm font-semibold text-neutral-900">
+                    Agendar Entrega
+                  </label>
+                  <p className="mb-3 text-xs text-neutral-500">
+                    Escolha o melhor dia para receber seus móveis (prazo mínimo
+                    de 10 dias).
+                  </p>
+                  <BookingDatePicker
+                    date={bookingDate}
+                    setDate={setBookingDate}
+                    title="Selecione uma data"
+                  />
+                </div>
 
                 <p className="mt-4 text-center text-xs text-neutral-400">
                   Ambiente 100% seguro via Stripe.

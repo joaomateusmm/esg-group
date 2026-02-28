@@ -13,7 +13,6 @@ import {
   ShieldCheck, // Novo
   Star,
   Tag, // Novo
-  Trash,
   Truck,
   X,
 } from "lucide-react";

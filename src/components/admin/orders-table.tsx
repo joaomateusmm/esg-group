@@ -1,8 +1,11 @@
 "use client";
 
+import { format } from "date-fns"; // IMPORT PARA FORMATAR A DATA
+import { ptBR } from "date-fns/locale";
 import {
   AlertCircle,
   Banknote,
+  CalendarClock, // NOVO ÍCONE
   CheckCircle2,
   Clock,
   Copy,
@@ -201,10 +204,7 @@ const stopPropagation = (
   e.stopPropagation();
 };
 
-export function OrdersTable({
-  data,
-  limitParam,
-}: OrdersTableProps) {
+export function OrdersTable({ data, limitParam }: OrdersTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -214,7 +214,7 @@ export function OrdersTable({
 
   const [trackingModalOpen, setTrackingModalOpen] = useState(false);
   const [addressModalOpen, setAddressModalOpen] = useState(false);
-  const [detailsModalOpen, setDetailsModalOpen] = useState(false); // NOVO ESTADO
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const [currentOrderData, setCurrentOrderData] = useState<OrderData | null>(
@@ -225,19 +225,15 @@ export function OrdersTable({
   const [startDateInput, setStartDateInput] = useState("");
   const [endDateInput, setEndDateInput] = useState("");
 
-  // Função para gerar o código aleatório
   const generateTrackingCode = () => {
     const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     const numbers = "0123456789";
 
     let code = "";
-    // 2 letras iniciais
     for (let i = 0; i < 2; i++)
       code += letters.charAt(Math.floor(Math.random() * letters.length));
-    // 9 números
     for (let i = 0; i < 9; i++)
       code += numbers.charAt(Math.floor(Math.random() * numbers.length));
-    // Final BR
     code += "BR";
 
     return code;
@@ -249,7 +245,6 @@ export function OrdersTable({
     setSelectedIds([]);
   }, [currentPage, limitParam, searchParams]);
 
-  // --- SELEÇÃO ---
   const handleSelectPage = (checked: boolean) => {
     if (checked) {
       const pageIds = data.map((order) => order.id);
@@ -282,7 +277,6 @@ export function OrdersTable({
     }
   };
 
-  // --- AÇÕES ---
   const handleSearch = (term: string) => {
     const params = new URLSearchParams(searchParams);
     if (term) {
@@ -368,21 +362,17 @@ export function OrdersTable({
   const saveTracking = async () => {
     if (!currentOrderData) return;
 
-    // LÓGICA NOVA: Se estiver vazio, gera um automático
     let finalTrackingCode = trackingCodeInput.trim();
     if (!finalTrackingCode) {
       finalTrackingCode = generateTrackingCode();
-      // Atualiza o state visualmente para o admin ver o que foi gerado
       setTrackingCodeInput(finalTrackingCode);
     }
 
-    // 1. Atualiza o código de rastreio com o código final
     const resTracking = await updateTrackingCode(
       currentOrderData.id,
       finalTrackingCode,
     );
 
-    // 2. Atualiza as datas de entrega (SE TIVEREM SIDO PREENCHIDAS)
     if (startDateInput && endDateInput) {
       await updateDeliveryDates(
         currentOrderData.id,
@@ -392,7 +382,6 @@ export function OrdersTable({
     }
 
     if (resTracking.success) {
-      // 3. Atualiza status para enviado
       await updateOrderStatus(currentOrderData.id, "shipped", "fulfillment");
 
       toast.success(`Pedido enviado! Rastreio: ${finalTrackingCode}`);
@@ -424,6 +413,36 @@ export function OrdersTable({
       style: "currency",
       currency: "BRL",
     }).format(val / 100);
+
+  // FUNÇÃO AUXILIAR PARA RENDERIZAR A DATA DE FORMA INTELIGENTE NA TABELA
+  const renderDeliveryInfo = (order: OrderData) => {
+    if (!order.estimatedDeliveryStart || !order.estimatedDeliveryEnd)
+      return null;
+
+    const startStr = new Date(order.estimatedDeliveryStart).toDateString();
+    const endStr = new Date(order.estimatedDeliveryEnd).toDateString();
+
+    // Se a data de início for a mesma de fim, significa que o cliente agendou manualmente
+    const isCustomDate = startStr === endStr;
+
+    return (
+      <div className="mt-1 flex w-fit items-center gap-1.5 rounded border border-neutral-100 bg-neutral-50 px-2 py-1 text-[11px] font-semibold text-neutral-700">
+        {isCustomDate ? (
+          <span title="Data agendada pelo cliente no momento da compra">
+            Agendado:{" "}
+            {format(order.estimatedDeliveryStart, "dd/MM/yyyy", {
+              locale: ptBR,
+            })}
+          </span>
+        ) : (
+          <span title="Prazo padrão estimado (10 a 17 dias)">
+            Prazo: {format(order.estimatedDeliveryStart, "dd/MM")} -{" "}
+            {format(order.estimatedDeliveryEnd, "dd/MM")}
+          </span>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -490,7 +509,7 @@ export function OrdersTable({
                 Prod. Comprado
               </TableHead>
               <TableHead className="font-semibold text-neutral-600">
-                Cliente
+                Cliente & Entrega
               </TableHead>
               <TableHead className="font-semibold text-neutral-600">
                 Financeiro
@@ -594,9 +613,10 @@ export function OrdersTable({
                           size="icon"
                           variant="ghost"
                           disabled={!order.productId}
-                          className="h-8 w-8 text-neutral-500 hover:bg-neutral-100 hover:text-orange-600 disabled:opacity-30"
+                          className="h-8 w-13 cursor-pointer text-neutral-500 hover:bg-neutral-100 hover:text-orange-600 active:scale-95 disabled:opacity-30"
                           onClick={() => copyProductId(order.productId)}
                         >
+                          Id:
                           <Copy className="h-4 w-4" />
                         </Button>
                       </div>
@@ -611,19 +631,20 @@ export function OrdersTable({
                         </span>
                         {displayPhone && (
                           <div
-                            className="flex w-fit cursor-pointer items-center gap-1.5 rounded-md border border-neutral-200/20 bg-neutral-50/20 px-2 py-1 transition-colors hover:bg-white"
+                            className="flex w-fit cursor-pointer items-center gap-1.5 rounded-xs border border-neutral-100 bg-neutral-50 px-2 py-1 transition-colors hover:bg-white"
                             onClick={(e) => {
                               e.stopPropagation();
                               navigator.clipboard.writeText(displayPhone);
                               toast.success("Telefone copiado!");
                             }}
                           >
-                            <Copy className="h-3 w-3 text-neutral-600" />
-                            <span className="font-mono text-[11px] font-medium text-neutral-500">
+                            <span className="text-[11px] font-semibold text-neutral-700">
                               {formatPhoneNumber(displayPhone)}
                             </span>
                           </div>
                         )}
+                        {/* AQUI RENDERIZAMOS A INFORMAÇÃO DA DATA (NOVO) */}
+                        {renderDeliveryInfo(order)}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -733,7 +754,6 @@ export function OrdersTable({
                           <DropdownMenuLabel>Ações</DropdownMenuLabel>
                           <DropdownMenuSeparator />
 
-                          {/* Botão Ver Detalhes que abre o Modal do OrderCard */}
                           <DropdownMenuItem
                             onClick={() => openDetailsModal(order)}
                           >

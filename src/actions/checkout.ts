@@ -24,6 +24,7 @@ export type ShippingAddressInput = {
   state: string;
   zipCode: string;
   phone?: string;
+  deliveryDate?: string;
 };
 
 type CartItemInput = {
@@ -151,6 +152,8 @@ export async function sendOrderConfirmationEmail(
   currency: string = "GBP",
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   items: any[] = [],
+  estimatedDeliveryStart?: Date | null,
+  estimatedDeliveryEnd?: Date | null,
 ) {
   try {
     const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://esggroup.com";
@@ -175,6 +178,32 @@ export async function sendOrderConfirmationEmail(
     `,
       )
       .join("");
+
+    let deliveryHtml = "";
+    if (estimatedDeliveryStart && estimatedDeliveryEnd) {
+      const formatDate = (date: Date) => {
+        return new Intl.DateTimeFormat("pt-BR", {
+          day: "numeric",
+          month: "long",
+        }).format(date);
+      };
+
+      const isSameDate =
+        estimatedDeliveryStart.getTime() === estimatedDeliveryEnd.getTime();
+
+      deliveryHtml = `
+         <div style="background-color: #f8fafc; border-left: 4px solid #ea580c; padding: 12px 15px; margin-bottom: 25px; border-radius: 4px;">
+            <p style="margin: 0; font-size: 14px; color: #334155;">
+              <strong>Prazo de Entrega:</strong><br/>
+              ${
+                isSameDate
+                  ? formatDate(estimatedDeliveryStart)
+                  : `${formatDate(estimatedDeliveryStart)} a ${formatDate(estimatedDeliveryEnd)}`
+              }
+            </p>
+         </div>
+      `;
+    }
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -210,6 +239,8 @@ export async function sendOrderConfirmationEmail(
             <p style="color: #555; line-height: 1.5;">
               Seu pedido está sendo processado com sucesso. Estamos muito felizes em ter você como cliente! Já estamos preparando tudo para o envio.
             </p>
+
+            ${deliveryHtml}
             
             <div style="margin-top: 25px; margin-bottom: 25px;">
               <h3 style="font-size: 14px; text-transform: uppercase; color: #888; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 0;">Itens do Pedido</h3>
@@ -411,11 +442,20 @@ export async function createOrderCOD(
   }
   const userId = session.user.id;
 
-  // Passamos a cidade para validar frete grátis no backend (COD)
   const { finalTotal, discountAmount, activeCouponId, shippingCost } =
     await calculateOrderTotals(items, couponCode, shippingAddress?.city);
 
-  const { start, end } = calculateDeliveryDates();
+  let finalStart: Date;
+  let finalEnd: Date;
+
+  if (shippingAddress?.deliveryDate) {
+    finalStart = new Date(shippingAddress.deliveryDate);
+    finalEnd = new Date(shippingAddress.deliveryDate);
+  } else {
+    const { start, end } = calculateDeliveryDates();
+    finalStart = start;
+    finalEnd = end;
+  }
 
   const [newOrder] = await db
     .insert(order)
@@ -431,8 +471,8 @@ export async function createOrderCOD(
       shippingAddress: shippingAddress ? shippingAddress : null,
       userPhone: shippingAddress?.phone,
       fulfillmentStatus: "processing",
-      estimatedDeliveryStart: start,
-      estimatedDeliveryEnd: end,
+      estimatedDeliveryStart: finalStart,
+      estimatedDeliveryEnd: finalEnd,
       customerName: session.user.name,
       customerEmail: session.user.email,
     })
@@ -499,7 +539,6 @@ export async function updateOrderToCOD(
     throw new Error("Pedido inicial não encontrado. Tente novamente.");
   }
 
-  // Recalcular totais com a cidade (para aplicar frete grátis se Londres)
   const cartItems: CartItemInput[] = existingOrder.items.map((i) => ({
     id: i.productId,
     name: i.productName,
@@ -523,7 +562,17 @@ export async function updateOrderToCOD(
     shippingAddress?.city,
   );
 
-  const { start, end } = calculateDeliveryDates();
+  let finalStart: Date;
+  let finalEnd: Date;
+
+  if (shippingAddress?.deliveryDate) {
+    finalStart = new Date(shippingAddress.deliveryDate);
+    finalEnd = new Date(shippingAddress.deliveryDate);
+  } else {
+    const { start, end } = calculateDeliveryDates();
+    finalStart = start;
+    finalEnd = end;
+  }
 
   await db
     .update(order)
@@ -535,8 +584,8 @@ export async function updateOrderToCOD(
       fulfillmentStatus: "processing",
       shippingAddress: shippingAddress ? shippingAddress : null,
       userPhone: shippingAddress?.phone,
-      estimatedDeliveryStart: start,
-      estimatedDeliveryEnd: end,
+      estimatedDeliveryStart: finalStart,
+      estimatedDeliveryEnd: finalEnd,
       stripePaymentIntentId: null,
       stripeClientSecret: null,
     })
@@ -617,7 +666,17 @@ export async function createFreeOrder(
     throw new Error("O valor final não é gratuito. Use o checkout pago.");
   }
 
-  const { start, end } = calculateDeliveryDates();
+  let finalStart: Date;
+  let finalEnd: Date;
+
+  if (shippingAddress?.deliveryDate) {
+    finalStart = new Date(shippingAddress.deliveryDate);
+    finalEnd = new Date(shippingAddress.deliveryDate);
+  } else {
+    const { start, end } = calculateDeliveryDates();
+    finalStart = start;
+    finalEnd = end;
+  }
 
   const [newOrder] = await db
     .insert(order)
@@ -633,8 +692,8 @@ export async function createFreeOrder(
       shippingAddress: shippingAddress ? shippingAddress : null,
       userPhone: shippingAddress?.phone,
       fulfillmentStatus: "processing",
-      estimatedDeliveryStart: start,
-      estimatedDeliveryEnd: end,
+      estimatedDeliveryStart: finalStart,
+      estimatedDeliveryEnd: finalEnd,
       customerName: session.user.name,
       customerEmail: session.user.email,
     })
@@ -697,10 +756,10 @@ export async function updateOrderAddressAction(
     state: string;
     zipCode: string;
     phone?: string;
+    deliveryDate?: string;
   },
 ) {
   try {
-    // 1. Busca o pedido existente
     const existingOrder = await db.query.order.findFirst({
       where: eq(order.id, orderId),
       with: {
@@ -710,7 +769,6 @@ export async function updateOrderAddressAction(
 
     if (!existingOrder) throw new Error("Pedido não encontrado.");
 
-    // 2. Prepara itens para recálculo
     const cartItems: CartItemInput[] = existingOrder.items.map((i) => ({
       id: i.productId,
       name: i.productName,
@@ -720,7 +778,6 @@ export async function updateOrderAddressAction(
       currency: existingOrder.currency || "GBP",
     }));
 
-    // Verifica cupom
     let couponCode = undefined;
     if (existingOrder.couponId) {
       const c = await db.query.coupon.findFirst({
@@ -729,14 +786,24 @@ export async function updateOrderAddressAction(
       couponCode = c?.code;
     }
 
-    // 3. RECALCULA TUDO (COM A NOVA CIDADE)
     const { finalTotal, shippingCost } = await calculateOrderTotals(
       cartItems,
       couponCode,
-      shippingAddress.city, // Verifica Londres aqui
+      shippingAddress.city,
     );
 
-    // 4. Atualiza o pedido no banco com o novo valor
+    let finalStart: Date;
+    let finalEnd: Date;
+
+    if (shippingAddress.deliveryDate) {
+      finalStart = new Date(shippingAddress.deliveryDate);
+      finalEnd = new Date(shippingAddress.deliveryDate);
+    } else {
+      const { start, end } = calculateDeliveryDates();
+      finalStart = start;
+      finalEnd = end;
+    }
+
     await db
       .update(order)
       .set({
@@ -749,15 +816,15 @@ export async function updateOrderAddressAction(
           city: shippingAddress.city,
           state: shippingAddress.state,
           zipCode: shippingAddress.zipCode,
-          country: "BR", // Ajuste conforme necessário
+          country: "BR",
         },
         userPhone: shippingAddress.phone,
+        estimatedDeliveryStart: finalStart,
+        estimatedDeliveryEnd: finalEnd,
         updatedAt: new Date(),
       })
       .where(eq(order.id, orderId));
 
-    // 5. ATUALIZA O STRIPE PAYMENT INTENT (O PULO DO GATO)
-    // Isso garante que o cartão será cobrado pelo valor NOVO (sem frete se Londres)
     if (existingOrder.stripePaymentIntentId) {
       await stripe.paymentIntents.update(existingOrder.stripePaymentIntentId, {
         amount: finalTotal,

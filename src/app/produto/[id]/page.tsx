@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { headers } from "next/headers";
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { DeleteReviewButton } from "@/components/delete-review-button";
@@ -290,17 +291,24 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     <Hammer className="h-4 w-4 text-neutral-400" />
                     <span>Vem Montado?</span>
                   </div>
-                  <span
-                    className={`font-medium ${
-                      productData.isAssembled
-                        ? "text-neutral-800"
-                        : "text-neutral-800"
-                    }`}
-                  >
-                    {productData.isAssembled
-                      ? "Sim. Produto já vem Montado"
-                      : "Não. Produto requer montagem"}
-                  </span>
+                  <div className="flex flex-col items-end">
+                    <span
+                      className={`font-medium ${
+                        productData.isAssembled
+                          ? "text-neutral-800"
+                          : "text-neutral-800"
+                      }`}
+                    >
+                      {productData.isAssembled
+                        ? "Sim. Produto já vem Montado"
+                        : "Não. Produto requer montagem"}
+                    </span>
+                    <Link href="/servicos">
+                      <p className="cursor-pointer text-[12px] font-medium text-orange-500 hover:underline">
+                        Contrate nosso serviço de montagem!
+                      </p>
+                    </Link>
+                  </div>
                 </div>
 
                 {/* Garantia */}

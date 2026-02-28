@@ -6,6 +6,8 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
+import { addDays, format, startOfDay } from "date-fns"; // addDays e startOfDay adicionados
+import { ptBR } from "date-fns/locale";
 import {
   CreditCard,
   Info,
@@ -27,6 +29,7 @@ import {
   updateOrderToCOD,
 } from "@/actions/checkout";
 import { validateCoupon } from "@/actions/coupons";
+import { BookingDatePicker } from "@/components/booking-date-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
@@ -61,16 +64,18 @@ export function CheckoutForm({
   const [isLoading, setIsLoading] = useState(false);
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
 
-  // --- ESTADOS DE FRETE ---
-  const [baseShippingCost, setBaseShippingCost] = useState(0); // Valor original da API
-  const [shippingCost, setShippingCost] = useState(0); // Valor aplicado na UI e Pedido
+  // --- ESTADOS DE FRETE E DATA ---
+  const [baseShippingCost, setBaseShippingCost] = useState(0);
+  const [shippingCost, setShippingCost] = useState(0);
+
+  // Data é opcional.
+  const [bookingDate, setBookingDate] = useState<Date | undefined>(undefined);
 
   const [message, setMessage] = useState<string | null>(null);
 
   const [couponInput, setCouponInput] = useState("");
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
-  // CORREÇÃO AQUI: Tipagem correta e valor inicial "cod"
   const [paymentMethod, setPaymentMethod] = useState<"card" | "cod">("cod");
   const [isAddressComplete, setIsAddressComplete] = useState(false);
 
@@ -93,7 +98,6 @@ export function CheckoutForm({
         try {
           const result = await getCartShippingCost(items);
           setBaseShippingCost(result.price);
-          // Inicialmente, assumimos o frete base. A lógica de cidade vai sobrescrever se necessário.
           setShippingCost(result.price);
         } catch (error) {
           console.error("Erro frete:", error);
@@ -105,27 +109,23 @@ export function CheckoutForm({
     }
   }, [items]);
 
-  // 2. MONITOR DE ENDEREÇO (A LÓGICA DE OURO)
+  // 2. MONITOR DE ENDEREÇO (LÓGICA DO FRETE LONDRES)
   useEffect(() => {
     if (addressDetails?.address?.city) {
       const city = addressDetails.address.city.trim().toLowerCase();
 
-      // Verifica variações comuns de Londres
       if (city === "london" || city === "londres") {
         setShippingCost(0);
       } else {
-        // Se mudou para outra cidade, restaura o frete original
         setShippingCost(baseShippingCost);
       }
     } else {
-      // Se limpou o endereço, volta ao base
       setShippingCost(baseShippingCost);
     }
   }, [addressDetails, baseShippingCost]);
 
   // --- CÁLCULOS FINAIS ---
   const subtotal = getSubtotal();
-  // O total agora usa SEMPRE o `shippingCost` que já foi ajustado pelo useEffect acima
   const total = getTotalPrice() + shippingCost;
   const discountAmount = Math.max(0, subtotal - getTotalPrice());
 
@@ -248,6 +248,13 @@ export function CheckoutForm({
     setIsLoading(true);
     setMessage(null);
 
+    // Lógica para definir a data de entrega que vai pro banco:
+    // Se o cliente escolheu no calendário, usa a data dele.
+    // Se NÃO escolheu, calcula a data padrão de segurança (hoje + 10 dias).
+    const finalDeliveryDate = bookingDate
+      ? bookingDate
+      : addDays(startOfDay(new Date()), 10);
+
     // --- DADOS FINAIS DE ENVIO ---
     const shippingData = {
       street: addressDetails.address.line1,
@@ -257,9 +264,8 @@ export function CheckoutForm({
       state: addressDetails.address.state,
       zipCode: addressDetails.address.postal_code,
       phone: addressDetails.phone,
-      // IMPORTANTE: Se o backend aceitar o custo do frete, passamos aqui.
-      // Se não, o backend precisará recalcular com a mesma lógica de "London".
       cost: shippingCost,
+      deliveryDate: finalDeliveryDate.toISOString(),
     };
 
     if (paymentMethod === "card") {
@@ -272,7 +278,6 @@ export function CheckoutForm({
         return;
       }
 
-      // Atualiza endereço no backend antes de confirmar no Stripe
       if (existingOrderId) {
         try {
           await updateOrderAddressAction(existingOrderId, shippingData);
@@ -304,14 +309,12 @@ export function CheckoutForm({
       if (error) setMessage(error.message || "Ocorreu um erro.");
       setIsLoading(false);
     } else {
-      // --- PAGAMENTO NA ENTREGA (COD) ---
       try {
         let result;
 
         if (existingOrderId) {
           result = await updateOrderToCOD(existingOrderId, shippingData);
         } else {
-          // Aqui passamos o shippingData que pode ser usado no backend para validar
           result = await createOrderCOD(items, coupon?.code, shippingData);
         }
 
@@ -326,6 +329,7 @@ export function CheckoutForm({
     }
   };
 
+  // REMOVIDA a validação de bloqueio por !bookingDate
   const isButtonDisabled =
     isLoading ||
     isCalculatingShipping ||
@@ -372,14 +376,12 @@ export function CheckoutForm({
         <div className="rounded-xl border border-neutral-200 bg-white p-6">
           <h2 className="mb-4 text-lg font-bold text-neutral-900">Pagamento</h2>
           <div className="mb-6 flex w-full flex-col gap-3 sm:flex-row">
-            {/* --- BOTÃO CARTÃO (DESATIVADO) --- */}
             <button
               type="button"
-              disabled={true} // Desativa a interação
-              onClick={() => setPaymentMethod("card")} // Lógica mantida (mas inativa)
+              disabled={true}
+              onClick={() => setPaymentMethod("card")}
               className={cn(
                 "flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-neutral-100 px-5 py-3 font-medium text-neutral-400 opacity-70 transition-all duration-200",
-                // Forcei o estilo visual de desativado, ignorando a seleção atual
               )}
             >
               <CreditCard className="h-4 w-4" />
@@ -391,13 +393,11 @@ export function CheckoutForm({
               </span>
             </button>
 
-            {/* --- BOTÃO PAGAR NA ENTREGA (ATIVO) --- */}
             <button
               type="button"
               onClick={() => setPaymentMethod("cod")}
               className={cn(
                 "flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-5 py-3 font-medium transition-all duration-200",
-                // Mantive a lógica visual original para este botão
                 paymentMethod === "cod"
                   ? "bg-orange-50 text-orange-700 shadow-sm ring-1 ring-orange-600"
                   : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900",
@@ -453,16 +453,42 @@ export function CheckoutForm({
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : shippingCost > 0 ? (
                   formatPrice(shippingCost)
-                ) : // Se for 0, e o base era > 0, sabemos que é por causa de Londres
-                baseShippingCost > 0 ? (
+                ) : baseShippingCost > 0 ? (
                   "Grátis (Londres)"
                 ) : (
                   "Grátis"
                 )}
               </span>
             </div>
+
+            {/* PRAZO DE ENTREGA PADRÃO OU DATA ESCOLHIDA (NOVO) */}
+            <div className="flex flex-row items-center justify-between rounded text-neutral-600">
+              <div className="flex items-center gap-1 font-semibold text-neutral-600">
+                {bookingDate
+                  ? "Entrega agendada para:"
+                  : "Prazo estimado de entrega:"}
+              </div>
+              <div className="font-s text-sm text-neutral-600">
+                {bookingDate
+                  ? // Se ele escolheu, mostra a data exata
+                    format(bookingDate, "dd 'de' MMMM", { locale: ptBR })
+                  : // Se não escolheu, mostra o prazo padrão (+10 a +17 dias)
+                    (() => {
+                      const minDate = addDays(startOfDay(new Date()), 10);
+                      const maxDate = addDays(startOfDay(new Date()), 17);
+
+                      // Se estiverem no mesmo mês, evita repetir o mês
+                      if (minDate.getMonth() === maxDate.getMonth()) {
+                        return `${format(minDate, "dd")} a ${format(maxDate, "dd 'de' MMMM", { locale: ptBR })}`;
+                      } else {
+                        return `${format(minDate, "dd 'de' MMMM", { locale: ptBR })} a ${format(maxDate, "dd 'de' MMMM", { locale: ptBR })}`;
+                      }
+                    })()}
+              </div>
+            </div>
+
             {coupon && discountAmount > 0 && (
-              <div className="flex justify-between font-medium text-emerald-600">
+              <div className="flex justify-between border-t border-neutral-100 pt-3 font-medium text-emerald-600">
                 <span className="flex items-center gap-1">
                   Cupom ({coupon.code})
                 </span>
@@ -474,7 +500,7 @@ export function CheckoutForm({
               {!coupon ? (
                 <div className="flex gap-3">
                   <div className="relative flex-1">
-                    <Ticket className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                    <Ticket className="absolute top-1/2 left-3 h-4 w-4 -translate-y-2.5 text-neutral-400" />
                     <Input
                       placeholder="Cupom"
                       className="h-10 pl-9"
@@ -486,7 +512,7 @@ export function CheckoutForm({
                   </div>
                   <Button
                     type="button"
-                    className="h-10 cursor-pointer bg-emerald-500 shadow-md duration-300 hover:-translate-y-0.5 hover:bg-emerald-500"
+                    className="mb-2 h-10 cursor-pointer bg-emerald-500 shadow-md duration-300 hover:-translate-y-0.5 hover:bg-emerald-500"
                     onClick={handleApplyCoupon}
                     disabled={!couponInput || isValidatingCoupon}
                   >
@@ -516,7 +542,7 @@ export function CheckoutForm({
             </div>
           </div>
 
-          <div className="mt-4 flex justify-between border-t border-neutral-200 pt-4 text-lg font-bold text-neutral-900">
+          <div className="mt-2 flex justify-between border-t border-neutral-200 pt-4 text-lg font-bold text-neutral-900">
             <span>Total</span>
             <span>{formatPrice(total)}</span>
           </div>
@@ -524,7 +550,7 @@ export function CheckoutForm({
           <Button
             disabled={isButtonDisabled}
             type="submit"
-            className="text-md mt-6 h-12 w-full bg-emerald-500 font-bold text-white hover:bg-emerald-600 disabled:bg-neutral-300 disabled:text-neutral-800"
+            className="text-md mt-4 h-12 w-full cursor-pointer bg-emerald-500 font-bold text-white hover:bg-emerald-600 disabled:bg-neutral-300 disabled:text-neutral-800"
           >
             {isLoading ? (
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -537,10 +563,18 @@ export function CheckoutForm({
             )}
           </Button>
 
+          <div className="mt-3">
+            <BookingDatePicker
+              date={bookingDate}
+              setDate={setBookingDate}
+              title="Agendar Entrega (Opcional)"
+            />
+          </div>
+
           {helperMessage && (
             <div className="mt-4 flex items-center justify-center gap-1 text-center text-xs font-medium text-neutral-500">
               <Info className="h-3.5 w-3.5" />
-              {helperMessage}
+              <span>{helperMessage}</span>
             </div>
           )}
         </div>
