@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart, HeartMinus, ShoppingCart, Trash2 } from "lucide-react";
+import { Heart, HeartMinus, ShoppingCart } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";

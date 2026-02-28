@@ -1,8 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { format } from "date-fns"; // IMPORT PARA DATA
+import { ptBR } from "date-fns/locale";
 import {
   Briefcase,
   Calendar,
+  CalendarDays, // ÍCONE NOVO
   CreditCard,
   Eye,
   FileText,
@@ -48,15 +52,13 @@ import {
 } from "@/components/ui/table";
 
 interface RequestsTableProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any[];
 }
 
 export function RequestsTable({ data }: RequestsTableProps) {
   const [isPending, startTransition] = useTransition();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [, setSelectedRequest] = useState<any>(null);
 
   const handleDelete = (id: string) => {
     if (
@@ -100,7 +102,7 @@ export function RequestsTable({ data }: RequestsTableProps) {
         );
       case "completed":
         return (
-          <Badge className="border-blue-200 bg-blue-100 text-blue-700 hover:bg-blue-100">
+          <Badge className="border-emerald-200 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
             Concluído
           </Badge>
         );
@@ -165,8 +167,21 @@ export function RequestsTable({ data }: RequestsTableProps) {
                 <TableCell className="pl-6 text-xs text-neutral-500">
                   {new Date(item.createdAt).toLocaleDateString()}
                 </TableCell>
-                <TableCell className="font-medium">
-                  {item.customer.name}
+                <TableCell>
+                  <div className="flex flex-col gap-1">
+                    <span className="font-medium">{item.customer.name}</span>
+
+                    {/* EXIBIÇÃO DA DATA AGENDADA NO ADMIN */}
+                    {item.scheduledDate && (
+                      <span className="flex w-fit items-center gap-1 rounded border border-orange-100 bg-orange-50 px-1.5 py-0.5 text-[10px] font-medium text-orange-700">
+                        <CalendarDays className="h-3 w-3" />
+                        Agendado:{" "}
+                        {format(new Date(item.scheduledDate), "dd/MM", {
+                          locale: ptBR,
+                        })}
+                      </span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>{item.provider.user.name}</TableCell>
                 <TableCell>{item.category.name}</TableCell>
@@ -246,7 +261,7 @@ export function RequestsTable({ data }: RequestsTableProps) {
                                 </p>
                                 {item.paymentStatus === "succeeded" ? (
                                   <Badge className="border-green-200 bg-green-100 text-green-700">
-                                    Aprovado
+                                    Aprovado (Stripe)
                                   </Badge>
                                 ) : (
                                   <Badge
@@ -259,7 +274,7 @@ export function RequestsTable({ data }: RequestsTableProps) {
                               </div>
                               <div>
                                 <p className="mb-1 flex items-center gap-1 text-xs font-semibold text-neutral-500">
-                                  <Calendar className="h-3 w-3" /> Data
+                                  <Calendar className="h-3 w-3" /> Solicitado em
                                 </p>
                                 <span className="text-xs font-medium">
                                   {new Date(item.createdAt).toLocaleString()}
@@ -274,6 +289,24 @@ export function RequestsTable({ data }: RequestsTableProps) {
                                 </span>
                               </div>
                             </div>
+
+                            {/* AGENDAMENTO NO MODAL DE DETALHES */}
+                            {item.scheduledDate && (
+                              <div className="flex items-center gap-2 rounded-md border border-orange-100 bg-orange-50/50 p-3 text-sm text-neutral-700">
+                                <CalendarDays className="h-4 w-4 text-orange-600" />
+                                <span>
+                                  O cliente agendou a realização deste serviço
+                                  para:{" "}
+                                  <strong className="text-orange-700">
+                                    {format(
+                                      new Date(item.scheduledDate),
+                                      "dd 'de' MMMM 'de' yyyy",
+                                      { locale: ptBR },
+                                    )}
+                                  </strong>
+                                </span>
+                              </div>
+                            )}
 
                             {/* Stripe ID */}
                             {item.stripePaymentIntentId && (

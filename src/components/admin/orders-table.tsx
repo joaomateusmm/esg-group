@@ -5,7 +5,6 @@ import { ptBR } from "date-fns/locale";
 import {
   AlertCircle,
   Banknote,
-  CalendarClock, // NOVO ÍCONE
   CheckCircle2,
   Clock,
   Copy,
