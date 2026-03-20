@@ -563,12 +563,26 @@ export function CheckoutForm({
             )}
           </Button>
 
-          <div className="mt-3">
+          {/* ÁREA DO CALENDÁRIO COM BOTÃO DE LIMPAR (NOVO) */}
+          <div className="relative mt-3">
             <BookingDatePicker
               date={bookingDate}
               setDate={setBookingDate}
               title="Agendar Entrega (Opcional)"
             />
+            {/* BOTÃO PARA LIMPAR A DATA SELECIONADA */}
+            {bookingDate && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setBookingDate(undefined)}
+                className="absolute -top-2 -right-3 z-10 h-7 w-7 cursor-pointer bg-neutral-800 text-white shadow-md duration-300 hover:bg-neutral-950 hover:text-red-500"
+                title="Remover data agendada"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
 
           {helperMessage && (

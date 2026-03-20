@@ -12,7 +12,7 @@ const TABS = [
   { id: "shipped", label: "A Caminho" },
   { id: "delivered", label: "Entregue" }, // Antes estava "Finalizado", agora é o status de quando chega na casa
   { id: "completed", label: "Concluído" }, // NOVO STATUS: Quando o cliente clica em confirmar
-  { id: "canceled", label: "Cancelado" },
+  { id: "canceled", label: "Recusado" },
 ];
 
 export function OrderTabs() {

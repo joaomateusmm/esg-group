@@ -19,7 +19,7 @@ export default async function MyServicesPage() {
   });
 
   if (!session) {
-    redirect("/login?callbackUrl=/minha-conta/servicos");
+    redirect("https://esggroup.shop/minha-conta/servicos");
   }
 
   // Busca todos os pedidos de serviço ONDE o cliente é o usuário logado

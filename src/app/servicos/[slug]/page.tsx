@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ChevronRight,
   ExternalLink,
+  Info,
   MapPin,
 } from "lucide-react";
 import Image from "next/image";
@@ -58,11 +59,9 @@ export default async function ServiceDetailPage({ params }: ServicePageProps) {
   // FUNÇÃO PARA GARANTIR LINK EXTERNO
   const ensureExternalLink = (url: string) => {
     if (!url) return "#";
-    // Se o link já começa com http ou https, retorna ele puro
     if (url.startsWith("http://") || url.startsWith("https://")) {
       return url;
     }
-    // Caso contrário, adiciona https:// para o navegador não achar que é rota interna
     return `https://${url}`;
   };
 
@@ -125,109 +124,138 @@ export default async function ServiceDetailPage({ params }: ServicePageProps) {
       </div>
 
       {/* LISTA DE PRESTADORES */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-          {providers.map((provider) => (
-            <div
-              key={provider.id}
-              className="group relative flex flex-col rounded-3xl border border-neutral-200 bg-white p-2 transition-all duration-300 hover:border-orange-500/30 hover:shadow-2xl hover:shadow-orange-500/10"
-            >
-              <div className="p-6">
-                {/* Header: Avatar, Nome e Preço */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full shadow-md">
-                      {provider.user.image ? (
-                        <Image
-                          src={provider.user.image}
-                          alt={provider.user.name}
-                          fill
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-orange-50 text-2xl font-bold text-orange-500">
-                          {provider.user.name.charAt(0)}
+      <div className="container mx-auto px-4 py-10">
+        {providers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-neutral-300 bg-neutral-50 px-4 py-15 text-center shadow-sm">
+            <h2 className="mb-2 text-2xl font-bold text-neutral-900">
+              Nenhum profissional disponível no momento
+            </h2>
+            <p className="mb-8 max-w-md text-neutral-500">
+              Estamos expandindo nossa rede para a categoria de{" "}
+              <strong>{category.name}.</strong> Por favor, verifique novamente
+              mais tarde ou entre em contato com nosso atendimento para
+              indicações manuais.
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link href="/servicos">
+                <button className="flex h-12 w-full cursor-pointer items-center justify-center rounded-xl bg-orange-600 px-6 font-bold text-white shadow-sm transition-colors hover:bg-orange-700 sm:w-auto">
+                  Ver outros serviços
+                </button>
+              </Link>
+            </div>
+          </div>
+        ) : (
+          // --- LISTA NORMAL (QUANDO HÁ PROFISSIONAIS) ---
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {providers.map((provider) => (
+              <div
+                key={provider.id}
+                className="group relative flex flex-col rounded-3xl border border-neutral-200 bg-white p-2 transition-all duration-300 hover:border-orange-500/30 hover:shadow-2xl hover:shadow-orange-500/10"
+              >
+                <div className="p-6">
+                  {/* Header: Avatar, Nome e Preço */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full shadow-md">
+                        {provider.user.image ? (
+                          <Image
+                            src={provider.user.image}
+                            alt={provider.user.name}
+                            fill
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-orange-50 text-2xl font-bold text-orange-500">
+                            {provider.user.name.charAt(0)}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-neutral-900">
+                          {provider.user.name}
+                        </h3>
+                        <div className="mt-1 flex items-center gap-1 text-emerald-600">
+                          <CheckCircle2 className="h-4 w-4 fill-emerald-600 text-white" />
+                          <span className="text-xs font-bold tracking-wider uppercase">
+                            Verificado
+                          </span>
                         </div>
-                      )}
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-neutral-900">
-                        {provider.user.name}
-                      </h3>
-                      <div className="mt-1 flex items-center gap-1 text-emerald-600">
-                        <CheckCircle2 className="h-4 w-4 fill-emerald-600 text-white" />
-                        <span className="text-xs font-bold tracking-wider uppercase">
-                          Verificado
-                        </span>
                       </div>
                     </div>
                   </div>
-                  <div className="rounded-2xl border border-neutral-100 bg-white/90 px-3 py-2 shadow-sm backdrop-blur-md">
-                    <span className="block text-[10px] font-bold text-neutral-400 uppercase">
-                      A partir de
+
+                  <div className="mt-4 flex items-center justify-between rounded-2xl border border-neutral-100 bg-white/90 px-3 py-2 shadow-sm backdrop-blur-md">
+                    <span className="block text-sm font-bold text-neutral-400 uppercase">
+                      A partir de:
                     </span>
                     <span className="text-lg font-bold text-orange-600">
                       {formatPrice(provider.servicePrice)}
                     </span>
                   </div>
-                </div>
 
-                {/* Stats */}
-                <div className="mt-8 grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl bg-neutral-50 p-3">
-                    <div className="mb-1 flex items-center gap-2 text-neutral-500">
-                      <Award className="h-3.5 w-3.5" />
-                      <span className="text-[10px] font-bold uppercase">
-                        Experiência
-                      </span>
+                  {/* Stats */}
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl p-3 shadow-sm">
+                      <div className="mb-1 flex items-center gap-2 text-neutral-500">
+                        <Award className="h-3.5 w-3.5" />
+                        <span className="text-[10px] font-bold uppercase">
+                          Experiência
+                        </span>
+                      </div>
+                      <p className="font-bold text-neutral-900">
+                        {provider.experienceYears} Anos
+                      </p>
                     </div>
-                    <p className="font-bold text-neutral-900">
-                      {provider.experienceYears} Anos
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-neutral-50 p-3">
-                    <div className="mb-1 flex items-center gap-2 text-neutral-500">
-                      <MapPin className="h-3.5 w-3.5" />
-                      <span className="text-[10px] font-bold uppercase">
-                        Atendimento
-                      </span>
+                    <div className="rounded-2xl p-3 shadow-sm">
+                      <div className="mb-1 flex items-center gap-2 text-neutral-500">
+                        <MapPin className="h-3.5 w-3.5" />
+                        <span className="text-[10px] font-bold uppercase">
+                          Atendimento
+                        </span>
+                      </div>
+                      <p className="truncate font-bold text-neutral-900">
+                        {provider.location}
+                      </p>
                     </div>
-                    <p className="truncate font-bold text-neutral-900">
-                      {provider.location}
-                    </p>
                   </div>
-                </div>
 
-                {/* Bio */}
-                <div className="mt-6">
-                  <p className="line-clamp-3 h-[60px] text-sm leading-relaxed text-neutral-600">
-                    {provider.bio}
-                  </p>
-                </div>
-
-                {/* Link do Portfólio CORRIGIDO */}
-                {provider.portfolioUrl && (
+                  {/* Bio */}
                   <div className="mt-4">
-                    <a
-                      href={ensureExternalLink(provider.portfolioUrl)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-orange-100 bg-orange-50 px-3 py-2 text-xs font-bold text-orange-600 transition-colors hover:bg-orange-100"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      VER PORTFÓLIO / REDE SOCIAL
-                    </a>
+                    <p className="line-clamp-3 h-[60px] text-sm leading-relaxed text-neutral-600">
+                      {provider.bio}
+                    </p>
                   </div>
-                )}
 
-                {/* Botão de Contratação */}
-                <div className="mt-6 flex flex-col gap-3 border-t border-neutral-100 pt-6">
-                  <HireButton provider={provider} categoryId={category.id} />
+                  <div className="flex flex-col gap-3">
+                    {provider.portfolioUrl && (
+                      <a
+                        href={ensureExternalLink(provider.portfolioUrl)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-orange-100 bg-orange-50 px-3 py-2 text-xs font-bold text-orange-600 transition-colors hover:bg-orange-100"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        VER PORTFÓLIO / REDE SOCIAL
+                      </a>
+                    )}
+
+                    <div className="w-full border-t border-neutral-200/80"></div>
+
+                    <HireButton provider={provider} categoryId={category.id} />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-center pb-10">
+        <p className="flex items-center justify-center gap-1 text-sm text-neutral-600">
+          <Info className="h-4 w-4 text-neutral-600" />
+          Após o agendamento do serviço, o prestador irá aceitar ou recusar o
+          serviço. Caso ele aceite, o próximo passo é o pagamento do serviço.
+        </p>
       </div>
 
       <Footer />

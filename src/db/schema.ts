@@ -395,6 +395,9 @@ export const serviceOrder = pgTable("serviceOrder", {
   status: text("status").default("pending").notNull(), // pending, accepted, in_progress, completed, canceled
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  completionSummary: text("completionSummary"), // Resumo opcional preenchido pelo prestador
+  completionPhotoUrl: text("completionPhotoUrl"),
+  rejectionReason: text("rejectionReason"),
 });
 
 // --- RELATIONS (Para facilitar as queries no Drizzle) ---

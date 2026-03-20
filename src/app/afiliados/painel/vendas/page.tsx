@@ -144,7 +144,7 @@ export default async function AffiliateSalesPage() {
                               : "bg-red-500/10 text-red-500"
                         }`}
                       >
-                        {isPending ? "Pendente" : isPaid ? "Pago" : "Cancelado"}
+                        {isPending ? "Pendente" : isPaid ? "Pago" : "Recusado"}
                       </div>
                     </div>
                   </li>

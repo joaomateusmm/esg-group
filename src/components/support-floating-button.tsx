@@ -1,9 +1,9 @@
 "use client";
 
-import { MessageCircle, X } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import {
   Accordion,
@@ -11,6 +11,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 // Mesmos dados do FAQ da sua página original
 const faqData = [
@@ -42,20 +49,6 @@ const faqData = [
 
 export function SupportFloatingButton() {
   const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  // Fecha o menu ao clicar fora dele
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
 
   // Previne travamento de rolagem caso o conteúdo interno cresça demais
   const stopPropagation = (
@@ -65,82 +58,78 @@ export function SupportFloatingButton() {
   };
 
   return (
-    <div
-      ref={menuRef}
-      className="fixed right-6 bottom-6 z-50 flex flex-col items-end"
-    >
-      {/* Menu DropUp */}
-      <div
-        className={`mb-2 flex w-80 origin-bottom-right flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl transition-all duration-300 ease-out sm:w-96 ${
-          isOpen
-            ? "translate-y-0 scale-100 opacity-100"
-            : "pointer-events-none translate-y-4 scale-95 opacity-0"
-        }`}
-      >
-        {/* Cabeçalho do Menu */}
-        <div className="flex items-center justify-between bg-orange-600 p-5 text-white">
-          <div>
-            <h3 className="text-lg font-bold">Precisa de Ajuda?</h3>
-            <p className="text-xs text-orange-100">
-              Confira as dúvidas comuns ou fale conosco.
+    <>
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
+        <SheetContent className="z-[100] flex w-full flex-col border-none p-0 sm:max-w-md">
+          {/* Cabeçalho do Sheet (Laranja) */}
+          <div className="relative flex flex-col items-start justify-center bg-orange-600 px-6 py-8 text-white shadow-sm">
+            <SheetHeader className="text-left">
+              <SheetTitle className="text-2xl font-bold text-white">
+                Precisa de Ajuda?
+              </SheetTitle>
+              <SheetDescription className="text-orange-100">
+                Confira as dúvidas comuns ou fale com nosso time.
+              </SheetDescription>
+            </SheetHeader>
+          </div>
+
+          {/* Corpo (FAQ Rolável) */}
+          <div
+            className="scrollbar-thin scrollbar-thumb-neutral-200 flex-1 overflow-y-auto bg-white p-6"
+            onWheel={stopPropagation}
+            onTouchMove={stopPropagation}
+          >
+            <h3 className="mb-4 text-sm font-bold tracking-wider text-neutral-400 uppercase">
+              Dúvidas Frequentes
+            </h3>
+            <Accordion type="single" collapsible className="w-full space-y-3">
+              {faqData.map((item) => (
+                <AccordionItem
+                  key={item.value}
+                  value={item.value}
+                  className="rounded-xl border border-neutral-100 px-4 transition-colors data-[state=open]:border-orange-200 data-[state=open]:bg-orange-50/50"
+                >
+                  <AccordionTrigger className="py-4 text-left text-[14px] font-semibold hover:text-orange-600 hover:no-underline">
+                    {item.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-4 text-[16px] leading-relaxed text-neutral-600">
+                    {item.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+            <div className="mt-6 flex justify-center">
+              <Link
+                href="/faq"
+                onClick={() => setIsOpen(false)}
+                className="text-sm font-medium text-orange-600 hover:underline"
+              >
+                Ver todas as dúvidas na Central de Ajuda
+              </Link>
+            </div>
+          </div>
+
+          {/* Footer Fixo (Botão do WhatsApp) */}
+          <div className="border-t border-neutral-100 bg-neutral-50 p-6 shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.05)]">
+            <Link
+              href="https://wa.link/klquec"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setIsOpen(false)}
+              className="group flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-[#25D366] px-6 py-3 font-bold text-white shadow-md transition-all hover:bg-[#20ba5a] hover:shadow-lg active:scale-95"
+            >
+              <MessageCircle className="h-6 w-6" />
+              Atendimento no WhatsApp
+            </Link>
+            <p className="mt-4 text-center text-xs font-medium text-neutral-400">
+              Respondemos de Segunda a Sexta, das 9h às 18h (Horário de Londres)
             </p>
           </div>
-          {/* Botão de Fechar no topo para facilitar acessibilidade */}
-          <button
-            onClick={() => setIsOpen(false)}
-            className="rounded-full bg-orange-700 p-1 transition-colors hover:bg-orange-800"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+        </SheetContent>
+      </Sheet>
 
-        {/* Lista de Perguntas (FAQ) - Rolável */}
-        <div
-          className="scrollbar-thin scrollbar-thumb-neutral-200 max-h-[52vh] overflow-y-auto p-4"
-          onWheel={stopPropagation}
-          onTouchMove={stopPropagation}
-        >
-          <Accordion type="single" collapsible className="w-full space-y-2">
-            {faqData.map((item) => (
-              <AccordionItem
-                key={item.value}
-                value={item.value}
-                className="rounded-lg border border-neutral-100 px-3 transition-colors data-[state=open]:border-orange-200 data-[state=open]:bg-orange-50/50"
-              >
-                <AccordionTrigger className="py-3 text-left text-sm font-semibold hover:text-orange-600 hover:no-underline">
-                  {item.question}
-                </AccordionTrigger>
-                <AccordionContent className="pb-3 text-xs leading-relaxed text-neutral-600">
-                  {item.answer}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-          <p className="mt-2 cursor-pointer text-center text-xs text-neutral-400 hover:underline">
-            <Link href="/faq"> Ver todas as dúvidas.</Link>
-          </p>
-        </div>
-
-        {/* Footer com Botão do WhatsApp */}
-        <div className="border-t border-neutral-100 bg-neutral-50 p-4">
-          <Link
-            href="https://wa.link/klquec"
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => setIsOpen(false)}
-            className="group flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#20ba5a] hover:shadow-md active:scale-95"
-          >
-            <MessageCircle className="h-5 w-5" />
-            Atendimento no WhatsApp
-          </Link>
-          <p className="mt-2 text-center text-[10px] text-neutral-400">
-            Respondemos de Segunda a Sexta, das 9h às 18h - UK
-          </p>
-        </div>
-      </div>
-
-      {/* Botão Flutuante (Mascote com efeito Pop-out Cortado Embaixo) */}
-      <div className="relative flex items-end justify-center">
+      {/* Botão Flutuante (Mascote) que aciona o Sheet */}
+      <div className="fixed right-6 bottom-6 z-40 flex items-end justify-center">
         {/* Balãozinho de Fala */}
         <div
           className={`absolute -top-6 -left-28 flex items-center justify-center rounded-2xl rounded-br-none border border-neutral-200 bg-white px-3 py-2 text-xs font-bold text-neutral-700 shadow-md transition-all duration-300 ${
@@ -153,7 +142,7 @@ export function SupportFloatingButton() {
         </div>
 
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => setIsOpen(true)}
           className={`group relative flex h-22 w-22 cursor-pointer items-end justify-center duration-300 hover:-translate-y-1 active:scale-95 md:h-28 md:w-28`}
           aria-label="Abrir menu de suporte"
         >
@@ -176,6 +165,6 @@ export function SupportFloatingButton() {
           </div>
         </button>
       </div>
-    </div>
+    </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Briefcase, CheckCircle2, Copy, Home, Loader2 } from "lucide-react";
+import { CheckCircle2, Copy, Drill, Home, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -73,7 +73,7 @@ function ServiceSuccessContent() {
     <div className="flex flex-1 flex-col items-center justify-center px-4 pt-22 text-center">
       {/* Mensagem discreta do Timer */}
       <div className="animate-fade-in mb-4 text-xs font-medium text-neutral-400">
-        Redirecionando para sua conta em{" "}
+        Redirecionando para seus serviços em{" "}
         <span className="font-bold text-orange-600">{countdown}s</span>...
       </div>
 
@@ -131,17 +131,17 @@ function ServiceSuccessContent() {
       </div>
 
       <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-        <Link href="/minha-conta" className="w-full sm:w-auto">
+        <Link href="/minha-conta/servicos" className="w-full sm:w-auto">
           <Button
             variant="outline"
-            className="h-12 w-full gap-2 border-neutral-300 px-8 sm:w-auto"
+            className="h-12 w-full cursor-pointer gap-2 bg-orange-600 px-8 text-white duration-300 hover:bg-orange-700 hover:text-white sm:w-auto"
           >
-            <Briefcase className="h-4 w-4" /> Minha Conta
+            <Drill className="h-4 w-4" /> Meus Serviços
           </Button>
         </Link>
         <Link href="/" className="w-full sm:w-auto">
-          <Button className="h-12 w-full gap-2 bg-orange-600 px-8 font-bold text-white hover:bg-orange-700 sm:w-auto">
-            <Home className="h-4 w-4" /> Voltar para a Início
+          <Button className="h-12 w-full cursor-pointer gap-2 border-neutral-300 px-8 font-bold text-white duration-300 hover:bg-neutral-950 sm:w-auto">
+            <Home className="h-4 w-4" /> Início
           </Button>
         </Link>
       </div>

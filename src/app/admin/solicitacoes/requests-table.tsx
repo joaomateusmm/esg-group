@@ -113,7 +113,7 @@ export function RequestsTable({ data }: RequestsTableProps) {
             variant="destructive"
             className="border-red-200 bg-red-100 text-red-700 hover:bg-red-100"
           >
-            Cancelado
+            Recusado
           </Badge>
         );
       default:

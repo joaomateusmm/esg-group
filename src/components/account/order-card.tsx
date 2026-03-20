@@ -99,7 +99,7 @@ const getStatusLabel = (
     returned: "Devolvido",
   };
 
-  if (status === "canceled" || status === "failed") return "CANCELADO";
+  if (status === "canceled" || status === "failed") return "Recusado";
 
   if (status === "completed") return "CONCLUÍDO";
 

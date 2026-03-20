@@ -31,11 +31,15 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "utfs.io", 
+        hostname: "*.ufs.sh",
       },
       {
         protocol: "https",
-        hostname: "flagcdn.com", 
+        hostname: "utfs.io",
+      },
+      {
+        protocol: "https",
+        hostname: "flagcdn.com",
       },
     ],
   },

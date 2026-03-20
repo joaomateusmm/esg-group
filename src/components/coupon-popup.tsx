@@ -88,7 +88,7 @@ export function CouponPopup({ coupon }: CouponPopupProps) {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="fixed right-4 bottom-4 z-[9999] w-full max-w-sm px-4 md:right-8 md:bottom-8 md:px-0"
+          className="fixed bottom-4 left-8 z-[9999] w-full max-w-sm px-4 md:bottom-8 md:left-8 md:px-0"
         >
           <div className="relative overflow-hidden rounded-xl border border-neutral-200 bg-white p-6 shadow-2xl">
             {/* Efeito decorativo sutil */}

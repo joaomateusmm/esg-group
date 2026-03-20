@@ -4,9 +4,10 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import Stripe from "stripe";
 
+import { notifyPaymentSuccess } from "@/actions/service-checkout";
 import { decreaseProductStock } from "@/actions/stock";
 import { db } from "@/db";
-import { order, serviceOrder } from "@/db/schema"; // <-- Adicionei o serviceOrder aqui
+import { order, serviceOrder } from "@/db/schema";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-02-24.acacia" as unknown as Stripe.LatestApiVersion,
@@ -17,10 +18,8 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@esggroup.com";
 
-// --- DEBUG INICIAL ---
 console.log("🔧 WEBHOOK INIT: ADMIN_EMAIL carregado como:", ADMIN_EMAIL);
 
-// --- HELPER FORMATADOR ---
 const formatCurrency = (amount: number, currency = "GBP") => {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -250,17 +249,29 @@ export async function POST(req: Request) {
       );
 
       try {
+        // Primeiro, atualizamos o banco de dados
         await db
           .update(serviceOrder)
           .set({
             paymentStatus: "succeeded",
-            status: "accepted", // Ao pagar, o serviço já fica como 'aceito' para o prestador fazer
+            status: "in_progress", // Mudamos para in_progress porque o serviço já foi aceito E pago!
           })
           .where(eq(serviceOrder.stripePaymentIntentId, obj.id));
 
-        console.log("✅ WEBHOOK: Serviço atualizado para pago e aceito.");
+        console.log("✅ WEBHOOK: Serviço atualizado para pago e em andamento.");
 
-        // DICA: No futuro, você pode enviar um e-mail para o Prestador aqui usando a Resend.
+        // AGORA BUSCAMOS O ID DO PEDIDO RECENTE PARA MANDAR OS EMAILS
+        const orderData = await db.query.serviceOrder.findFirst({
+          where: eq(serviceOrder.stripePaymentIntentId, obj.id),
+        });
+
+        // DISPARAMOS A AÇÃO DE EMAILS QUE CRIAMOS NO OUTRO ARQUIVO
+        if (orderData) {
+          await notifyPaymentSuccess(orderData.id);
+          console.log(
+            "✅ WEBHOOK: Emails de notificação de pagamento de serviço enviados.",
+          );
+        }
 
         return NextResponse.json({ received: true });
       } catch (err) {
@@ -278,7 +289,8 @@ export async function POST(req: Request) {
       console.log(`⚡ WEBHOOK: Processando Pedido ID: ${orderId}`);
 
       try {
-        // 1. VERIFICAÇÃO DE SEGURANÇA (EVITA E-MAIL DUPLO)
+        // Ok, essa sua solução nn funcionou, eu fiz o pagamento e o email nn foi gerado, nn tem nada nem dentro do log da propria Resend, parece que nem a API identificou que o pagamento foi feito, eu acredito que seja por conta do metodo que vc usou, ao invez de criar o corpo do email dentro da actions service-checkout.ts, crie o corpo do email e toda a lógica responsável dentro do arquivo do webhook da Stripe, igual como é feito com as outras compras na plataforma. Adicione isso:
+
         // Buscamos o pedido antes de atualizar
         const existingOrder = await db.query.order.findFirst({
           where: eq(order.id, orderId),
